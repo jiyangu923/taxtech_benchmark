@@ -5,7 +5,7 @@ import { mockStore } from '../services/mockStore';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (email: string, name: string, password?: string) => void;
+  onLogin: () => void;
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
@@ -53,7 +53,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
       setIsSuccess(true);
       await new Promise(resolve => setTimeout(resolve, 600));
       
-      onLogin(email, name, password);
+      onLogin();
       onClose();
     } catch (err: any) {
       setError(err.message || "An authentication error occurred.");
