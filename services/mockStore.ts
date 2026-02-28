@@ -96,7 +96,7 @@ const generateMockData = (): Submission[] => {
   return submissions;
 }
 
-class MockStore {
+export class MockStore {
   private currentUser: User | null = null;
   private users: UserRecord[] = [];
   private submissions: Submission[] = [];
