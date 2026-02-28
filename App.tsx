@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import Home from './pages/Home';
@@ -40,6 +41,7 @@ const App: React.FC = () => {
   };
 
   return (
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''}>
     <HashRouter>
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Navbar 
@@ -84,6 +86,7 @@ const App: React.FC = () => {
         </main>
       </div>
     </HashRouter>
+    </GoogleOAuthProvider>
   );
 };
 

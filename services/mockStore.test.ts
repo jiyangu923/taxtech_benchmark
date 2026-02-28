@@ -199,6 +199,16 @@ describe('loginWithGoogle()', () => {
     const user = store.loginWithGoogle('googleadmin@gmail.com');
     expect(user.role).toBe('admin');
   });
+
+  it('uses the verified name from Google profile when provided', () => {
+    const user = store.loginWithGoogle('jane@gmail.com', 'Jane Smith');
+    expect(user.name).toBe('Jane Smith');
+  });
+
+  it('falls back to deriving a name from the email when no name is provided', () => {
+    const user = store.loginWithGoogle('janedoe@gmail.com');
+    expect(user.name).toBe('Janedoe');
+  });
 });
 
 // ---------------------------------------------------------------------------

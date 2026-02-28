@@ -207,15 +207,14 @@ export class MockStore {
     return this.currentUser;
   }
 
-  loginWithGoogle(email: string): User {
-    // For Google simulation, we check if the user exists. 
-    // If they exist, log them in. If not, create them (auto-registration).
+  loginWithGoogle(email: string, name?: string): User {
+    // email and name are sourced from a verified Google OAuth token —
+    // no password needed; use a sentinel value for the password field.
     try {
       return this.login(email);
     } catch (e) {
-      // User doesn't exist, create them
-      const name = email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
-      return this.register(name, email, 'google-authenticated');
+      const displayName = name ?? (email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1));
+      return this.register(displayName, email, 'google-authenticated');
     }
   }
 
