@@ -189,8 +189,9 @@ export class MockStore {
 
     if (!userRecord) throw new Error("Account not found. Please register first.");
 
-    // Password check (if password provided)
-    if (password && userRecord.password !== password) {
+    // Password check — always enforced for password-based login; skipped only
+    // when called internally from loginWithGoogle (no password argument passed).
+    if (password !== undefined && userRecord.password !== password) {
       throw new Error("Incorrect password.");
     }
 
@@ -208,14 +209,14 @@ export class MockStore {
   }
 
   loginWithGoogle(email: string, name?: string): User {
-    // email and name are sourced from a verified Google OAuth token —
-    // no password needed; use a sentinel value for the password field.
-    try {
-      return this.login(email);
-    } catch (e) {
-      const displayName = name ?? (email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1));
-      return this.register(displayName, email, 'google-authenticated');
+    // Only allow pre-registered users to sign in via Google.
+    // Auto-registration is intentionally disabled to prevent arbitrary
+    // Google accounts from gaining access.
+    const userRecord = this.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!userRecord) {
+      throw new Error("This email is not registered. Please contact an admin to get access.");
     }
+    return this.login(email);
   }
 
   // Added missing updateUserProfile method
