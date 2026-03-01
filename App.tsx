@@ -27,7 +27,6 @@ const App: React.FC = () => {
     // Refresh user state from the now-populated store session
     const freshUser = mockStore.getCurrentUser();
     setUser(freshUser);
-    setIsAuthModalOpen(false);
   };
 
   const handleUserUpdate = (updatedUser: User) => {
