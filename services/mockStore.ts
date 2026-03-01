@@ -96,7 +96,7 @@ const generateMockData = (): Submission[] => {
   return submissions;
 }
 
-export class MockStore {
+class MockStore {
   private currentUser: User | null = null;
   private users: UserRecord[] = [];
   private submissions: Submission[] = [];
@@ -165,7 +165,7 @@ export class MockStore {
     const existing = this.users.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (existing) throw new Error("Email already registered.");
 
-    const isAdmin = this.adminEmails.some(e => e.toLowerCase() === email.toLowerCase());
+    const isAdmin = this.adminEmails.includes(email.toLowerCase());
     const newUser: UserRecord = {
       id: `user-${Date.now()}`,
       name,
@@ -186,7 +186,7 @@ export class MockStore {
 
   login(email: string, password?: string): User {
     const userRecord = this.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
+    
     if (!userRecord) throw new Error("Account not found. Please register first.");
 
     // Password check — always enforced for password-based login; skipped only
@@ -195,15 +195,7 @@ export class MockStore {
       throw new Error("Incorrect password.");
     }
 
-    // Always resolve role from the live adminEmails list so that role changes
-    // made via the Admin panel take effect on the next login.
-    const role = this.adminEmails.some(e => e.toLowerCase() === userRecord.email.toLowerCase()) ? 'admin' : 'user';
-    if (userRecord.role !== role) {
-      userRecord.role = role;
-      this.saveUsers();
-    }
-
-    this.currentUser = { id: userRecord.id, name: userRecord.name, email: userRecord.email, role };
+    this.currentUser = { id: userRecord.id, name: userRecord.name, email: userRecord.email, role: userRecord.role };
     localStorage.setItem(this.SESSION_KEY, JSON.stringify(this.currentUser));
     return this.currentUser;
   }
@@ -247,23 +239,19 @@ export class MockStore {
   getWebhookUrl() { return this.webhookUrl; }
   setWebhookUrl(url: string) { this.webhookUrl = url; this.saveSettings(); }
   getAdminEmails() { return this.adminEmails; }
-  addAdminEmail(email: string) {
-    const normalized = email.toLowerCase();
-    if (!this.adminEmails.some(e => e.toLowerCase() === normalized)) {
-      this.adminEmails.push(normalized);
+  addAdminEmail(email: string) { 
+    if (!this.adminEmails.includes(email)) { 
+      this.adminEmails.push(email); 
       this.saveSettings();
-      // Promote existing registered user immediately
-      const u = this.users.find(user => user.email.toLowerCase() === normalized);
-      if (u) { u.role = 'admin'; this.saveUsers(); }
-    }
+      // Also update existing user roles if they are currently logged in or in DB
+      const u = this.users.find(user => user.email === email);
+      if (u) u.role = 'admin';
+      this.saveUsers();
+    } 
   }
-  removeAdminEmail(email: string) {
-    const normalized = email.toLowerCase();
-    this.adminEmails = this.adminEmails.filter(e => e.toLowerCase() !== normalized);
-    this.saveSettings();
-    // Downgrade existing registered user immediately
-    const u = this.users.find(user => user.email.toLowerCase() === normalized);
-    if (u) { u.role = 'user'; this.saveUsers(); }
+  removeAdminEmail(email: string) { 
+    this.adminEmails = this.adminEmails.filter(e => e !== email); 
+    this.saveSettings(); 
   }
 
   private saveSettings() {
