@@ -201,14 +201,13 @@ class MockStore {
   }
 
   loginWithGoogle(email: string, name?: string): User {
-    // Only allow pre-registered users to sign in via Google.
-    // Auto-registration is intentionally disabled to prevent arbitrary
-    // Google accounts from gaining access.
     const userRecord = this.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (!userRecord) {
-      throw new Error("This email is not registered. Please contact an admin to get access.");
+    if (userRecord) {
+      return this.login(email); // existing user — log straight in
     }
-    return this.login(email);
+    // New user — auto-register with a random internal password (Google users never need it)
+    const displayName = name || email.split('@')[0];
+    return this.register(displayName, email, `google-${crypto.randomUUID()}`);
   }
 
   // Added missing updateUserProfile method
