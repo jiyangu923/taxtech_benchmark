@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import Home from './pages/Home';
@@ -82,6 +83,7 @@ const App: React.FC = () => {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </main>
+        <Analytics />
       </div>
     </HashRouter>
   );
