@@ -3,10 +3,16 @@ import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Submission } from "../types";
 import * as C from "../constants";
 
-// Initialize Gemini
-// Note: In a real app, ensure process.env.API_KEY is handled securely (e.g. backend proxy)
-// For this frontend-only demo, we assume it's injected.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize Gemini lazily so a missing API key doesn't crash the app on load.
+let ai: GoogleGenAI | null = null;
+function getAI(): GoogleGenAI {
+  if (!ai) {
+    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+}
 
 const RESPONSE_SCHEMA: Schema = {
   type: Type.OBJECT,
@@ -79,7 +85,7 @@ export async function askBenchmarkAI(
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: model,
       contents: [
         { role: 'user', parts: [{ text: JSON.stringify(context) }] },
