@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, Save, AlertCircle, SkipForward, CheckCircle2, Calculator, CheckSquare, Square } from 'lucide-react';
-import { mockStore } from '../services/mockStore';
+import { api } from '../services/api';
 import { Submission } from '../types';
 import * as C from '../constants';
 
@@ -88,9 +88,9 @@ const Survey: React.FC = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     try {
-      mockStore.createSubmission(formData as any);
+      await api.createSubmission(formData as any);
       alert('Survey submitted! Awaiting review.');
       navigate('/report');
     } catch (e) {

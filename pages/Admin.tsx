@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { mockStore } from '../services/mockStore';
+import { api } from '../services/api';
 import { Submission, User } from '../types';
 import { 
     Check, X, Eye, XCircle, RefreshCw, Trash2, 
@@ -22,16 +22,21 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [industryFilter, setIndustryFilter] = useState<string>('all');
 
-  const [webhookUrl, setWebhookUrl] = useState(mockStore.getWebhookUrl());
-  const [adminEmails, setAdminEmails] = useState<string[]>(mockStore.getAdminEmails());
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [adminEmails, setAdminEmails] = useState<string[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error' | 'warning', text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  const loadSubmissions = () => {
-    setSubmissions(mockStore.getSubmissions());
+  const loadSubmissions = async () => {
+    try {
+      const subs = await api.getSubmissions();
+      setSubmissions(subs);
+    } catch (err) {
+      console.error('Failed to load submissions:', err);
+    }
   };
 
   useEffect(() => {
@@ -39,7 +44,17 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
       navigate('/');
       return;
     }
-    loadSubmissions();
+    const loadAll = async () => {
+      const [subs, url, emails] = await Promise.all([
+        api.getSubmissions(),
+        api.getWebhookUrl(),
+        api.getAdminEmails(),
+      ]);
+      setSubmissions(subs);
+      setWebhookUrl(url);
+      setAdminEmails(emails);
+    };
+    loadAll();
   }, [user, navigate]);
 
   // Combined Filtering Logic
@@ -58,101 +73,98 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
     setIndustryFilter('all');
   };
 
-  const handleUpdateStatus = (id: string, status: 'approved' | 'rejected', e?: React.MouseEvent) => {
+  const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected', e?: React.MouseEvent) => {
     if (e) {
-        e.preventDefault();
-        e.stopPropagation();
+      e.preventDefault();
+      e.stopPropagation();
     }
-    mockStore.updateSubmissionStatus(id, status);
-    loadSubmissions();
-    if (selectedSub && selectedSub.id === id) {
-        setSelectedSub(null); 
-    }
+    await api.updateSubmissionStatus(id, status);
+    await loadSubmissions();
+    if (selectedSub && selectedSub.id === id) setSelectedSub(null);
   };
 
-  const handleDelete = (id: string, e?: React.MouseEvent) => {
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
     if (e) {
-        e.preventDefault();
-        e.stopPropagation();
+      e.preventDefault();
+      e.stopPropagation();
     }
     if (window.confirm('PERMANENTLY delete this submission?')) {
-        mockStore.deleteSubmission(id);
-        loadSubmissions();
-        if (selectedSub && selectedSub.id === id) setSelectedSub(null);
+      await api.deleteSubmission(id);
+      await loadSubmissions();
+      if (selectedSub && selectedSub.id === id) setSelectedSub(null);
     }
   };
 
-  const handleDeleteAll = () => {
+  const handleDeleteAll = async () => {
     if (window.confirm('DANGER: This will delete ALL submissions. Proceed?')) {
-        mockStore.deleteAllSubmissions();
-        loadSubmissions();
+      await api.deleteAllSubmissions();
+      await loadSubmissions();
     }
-  }
+  };
 
-  const handleAddAdmin = (e: React.FormEvent) => {
+  const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAdminEmail || !newAdminEmail.includes('@')) return;
-    mockStore.addAdminEmail(newAdminEmail);
-    setAdminEmails(mockStore.getAdminEmails());
+    await api.addAdminEmail(newAdminEmail);
+    setAdminEmails(await api.getAdminEmails());
     setNewAdminEmail('');
     setSyncMessage({ type: 'success', text: 'Admin authorized.' });
     setTimeout(() => setSyncMessage(null), 3000);
   };
 
-  const handleRemoveAdmin = (email: string) => {
+  const handleRemoveAdmin = async (email: string) => {
     if (email.toLowerCase() === user?.email.toLowerCase()) {
-        alert("You cannot remove your own admin access.");
-        return;
+      alert("You cannot remove your own admin access.");
+      return;
     }
     if (window.confirm(`Remove admin access for ${email}?`)) {
-        mockStore.removeAdminEmail(email);
-        setAdminEmails(mockStore.getAdminEmails());
+      await api.removeAdminEmail(email);
+      setAdminEmails(await api.getAdminEmails());
     }
   };
 
-  const handleBackup = () => {
-      mockStore.exportDatabase();
-      setSyncMessage({ type: 'success', text: 'Full database backup downloaded.' });
-      setTimeout(() => setSyncMessage(null), 3000);
+  const handleBackup = async () => {
+    await api.exportDatabase();
+    setSyncMessage({ type: 'success', text: 'Full database backup downloaded.' });
+    setTimeout(() => setSyncMessage(null), 3000);
   };
 
   const handleRestoreClick = () => {
-      fileInputRef.current?.click();
+    fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      if (window.confirm('WARNING: Restoring will overwrite your current database. Continue?')) {
-          const success = await mockStore.importDatabase(file);
-          if (success) {
-              setSyncMessage({ type: 'success', text: 'Database restored successfully. Refreshing...' });
-              setTimeout(() => window.location.reload(), 1500);
-          } else {
-              setSyncMessage({ type: 'error', text: 'Invalid backup file format.' });
-          }
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (window.confirm('WARNING: Restoring will overwrite your current database. Continue?')) {
+      const success = await api.importDatabase(file);
+      if (success) {
+        setSyncMessage({ type: 'success', text: 'Database restored successfully. Refreshing...' });
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setSyncMessage({ type: 'error', text: 'Invalid backup file format.' });
       }
-      e.target.value = ''; // Reset input
+    }
+    e.target.value = '';
   };
 
   const handleSyncToSheets = async () => {
     if (!webhookUrl) return;
     setIsSyncing(true);
     try {
-        await fetch(webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ data: submissions }) });
-        setSyncMessage({ type: 'success', text: 'Sync triggered!' });
+      await fetch(webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ data: submissions }) });
+      setSyncMessage({ type: 'success', text: 'Sync triggered!' });
     } catch (error) {
-        setSyncMessage({ type: 'error', text: 'Sync failed.' });
+      setSyncMessage({ type: 'error', text: 'Sync failed.' });
     } finally {
-        setIsSyncing(false);
+      setIsSyncing(false);
     }
   };
 
-  const saveWebhook = () => {
-      mockStore.setWebhookUrl(webhookUrl);
-      setSyncMessage({ type: 'success', text: 'Integration settings saved.' });
-      setTimeout(() => setSyncMessage(null), 3000);
+  const saveWebhook = async () => {
+    await api.setWebhookUrl(webhookUrl);
+    setSyncMessage({ type: 'success', text: 'Integration settings saved.' });
+    setTimeout(() => setSyncMessage(null), 3000);
   };
 
   const getLabel = (options: { value: string; label: string }[], val?: string) => {
