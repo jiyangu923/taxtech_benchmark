@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Lock, ShieldCheck, AlertCircle, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react';
-import { mockStore } from '../services/mockStore';
+import { api } from '../services/api';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (email: string, name: string, password?: string) => void;
+  onLogin: () => void;
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
@@ -38,18 +38,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     setError(null);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-
       if (mode === 'signup') {
         if (!name) throw new Error("Please enter your full name.");
-        mockStore.register(name, email, password);
+        await api.register(name, email, password);
       } else {
-        mockStore.login(email, password);
+        await api.login(email, password);
       }
 
       setIsSuccess(true);
       await new Promise(resolve => setTimeout(resolve, 600));
-      onLogin(email, name, password);
+      onLogin();
       onClose();
     } catch (err: any) {
       setError(err.message || "An authentication error occurred.");
@@ -58,58 +56,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     }
   };
 
-  const handleGoogleSignIn = () => {
-    const clientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
-    const googleLib = (window as any).google;
-
-    if (!clientId) {
-      setError("Google Sign-In is not configured. Add VITE_GOOGLE_CLIENT_ID to your .env.local file.");
-      return;
-    }
-    if (!googleLib) {
-      setError("Google Sign-In library failed to load. Check your internet connection.");
-      return;
-    }
-
+  const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError(null);
-
-    googleLib.accounts.id.initialize({
-      client_id: clientId,
-      callback: async (response: { credential: string }) => {
-        try {
-          // Decode the JWT payload — we trust it because it came directly from Google
-          const payload = JSON.parse(atob(response.credential.split('.')[1]));
-          mockStore.loginWithGoogle(payload.email, payload.name);
-          setIsSuccess(true);
-          await new Promise(resolve => setTimeout(resolve, 600));
-          onLogin(payload.email, payload.name);
-          onClose();
-        } catch (err: any) {
-          setError(err.message || "Google authentication failed.");
-          setIsLoading(false);
-        }
-      },
-    });
-
-    googleLib.accounts.id.prompt((notification: any) => {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        setIsLoading(false);
-        const reason = notification.getNotDisplayedReason?.() ?? '';
-        if (reason === 'suppressed_by_user') {
-          setError("Google Sign-In was dismissed. Please try again.");
-        }
-      }
-    });
+    try {
+      // Triggers a redirect to Google — page will navigate away
+      await api.loginWithGoogle();
+    } catch (err: any) {
+      setError(err.message || "Google Sign-In failed. Check your Supabase configuration.");
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-      <div 
-        className="absolute inset-0 bg-gray-900/40 backdrop-blur-md transition-opacity duration-300" 
+      <div
+        className="absolute inset-0 bg-gray-900/40 backdrop-blur-md transition-opacity duration-300"
         onClick={!isLoading ? onClose : undefined}
       />
-      
+
       <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden transform transition-all animate-fadeIn border border-gray-100">
         <div className="px-8 py-10">
           <div className="flex justify-between items-center mb-8">
@@ -151,12 +116,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                 type="button"
                 className="w-full flex items-center justify-center gap-3 px-4 py-4 border border-gray-200 rounded-2xl bg-white hover:bg-gray-50 transition-all font-bold text-gray-700 shadow-sm active:scale-[0.99] disabled:opacity-50"
               >
-                <svg className="h-5 w-5" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.26.81-.58z" fill="#FBBC05" />
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                </svg>
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-gray-400" /> : (
+                  <svg className="h-5 w-5" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.26.81-.58z" fill="#FBBC05" />
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 2.18 2.18 4.93l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                  </svg>
+                )}
                 Continue with Google
               </button>
 
@@ -169,19 +136,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                 {mode === 'signup' && (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Full Name</label>
-                    <input 
+                    <input
                       type="text" required placeholder="John Doe"
                       className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all text-sm outline-none font-bold placeholder:text-gray-300"
                       value={name} onChange={(e) => setName(e.target.value)}
                     />
                   </div>
                 )}
-                
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Work Email</label>
                   <div className="relative group">
                     <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-300 group-focus-within:text-primary transition-colors" />
-                    <input 
+                    <input
                       type="email" required placeholder="name@company.com"
                       className="w-full pl-14 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all text-sm outline-none font-bold placeholder:text-gray-300"
                       value={email} onChange={(e) => setEmail(e.target.value)}
@@ -207,7 +174,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                   </div>
                 </div>
 
-                <button 
+                <button
                   type="submit" disabled={isLoading}
                   className="w-full flex items-center justify-center gap-2 py-4.5 bg-primary text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-900 transition-all shadow-xl shadow-primary/20 active:scale-[0.98] disabled:opacity-70 mt-4"
                 >
@@ -231,7 +198,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
         </div>
         <div className="bg-gray-50/80 px-8 py-5 border-t border-gray-100 flex items-center justify-center gap-2">
           <ShieldCheck className="h-3.5 w-3.5 text-gray-400" />
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em]">Military-Grade Mock Security</p>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em]">Secured by Supabase</p>
         </div>
       </div>
     </div>

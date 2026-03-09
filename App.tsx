@@ -9,78 +9,91 @@ import Report from './pages/Report';
 import DirectTax from './pages/DirectTax';
 import Profile from './pages/Profile';
 import { User } from './types';
-import { mockStore } from './services/mockStore';
+import { supabase, api } from './services/api';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
-    // Check if session persists
-    const current = mockStore.getCurrentUser();
-    if (current) {
-        setUser(current);
-    }
+    // Load initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const profile = await api.ensureProfile(session.user);
+        setUser(profile);
+      }
+    });
+
+    // Listen for sign-in / sign-out (including OAuth redirects back from Google)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const profile = await api.ensureProfile(session.user);
+        setUser(profile);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleAuthSuccess = () => {
-    // Refresh user state from the now-populated store session
-    const freshUser = mockStore.getCurrentUser();
-    setUser(freshUser);
+    // User state is updated via onAuthStateChange; just close the modal
+    setIsAuthModalOpen(false);
   };
 
-  const handleUserUpdate = (updatedUser: User) => {
-    const freshUser = mockStore.updateUserProfile(updatedUser);
-    setUser(freshUser);
+  const handleUserUpdate = async (updatedUser: User) => {
+    const fresh = await api.updateUserProfile(updatedUser);
+    setUser(fresh);
   };
 
-  const handleLogout = () => {
-    mockStore.logout();
+  const handleLogout = async () => {
+    await api.logout();
     setUser(null);
   };
 
   return (
     <HashRouter>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar 
-          user={user} 
+        <Navbar
+          user={user}
           onOpenLogin={() => setIsAuthModalOpen(true)}
-          onLogout={handleLogout} 
+          onLogout={handleLogout}
         />
-        
-        <AuthModal 
+
+        <AuthModal
           isOpen={isAuthModalOpen}
           onClose={() => setIsAuthModalOpen(false)}
           onLogin={handleAuthSuccess}
         />
 
         <main className="flex-1">
-            <Routes>
-              <Route path="/" element={<Home user={user} />} />
-              <Route path="/direct-tax" element={<DirectTax />} />
-              
-              <Route 
-                path="/survey" 
-                element={user ? <Survey /> : <Navigate to="/" replace />} 
-              />
-              
-              <Route 
-                path="/report" 
-                element={user ? <Report user={user} /> : <Navigate to="/" replace />} 
-              />
-              
-              <Route 
-                path="/admin" 
-                element={user?.role === 'admin' ? <Admin user={user} /> : <Navigate to="/" replace />} 
-              />
+          <Routes>
+            <Route path="/" element={<Home user={user} />} />
+            <Route path="/direct-tax" element={<DirectTax />} />
 
-              <Route 
-                path="/profile" 
-                element={user ? <Profile user={user} onUpdate={handleUserUpdate} /> : <Navigate to="/" replace />} 
-              />
-              
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <Route
+              path="/survey"
+              element={user ? <Survey /> : <Navigate to="/" replace />}
+            />
+
+            <Route
+              path="/report"
+              element={user ? <Report user={user} /> : <Navigate to="/" replace />}
+            />
+
+            <Route
+              path="/admin"
+              element={user?.role === 'admin' ? <Admin user={user} /> : <Navigate to="/" replace />}
+            />
+
+            <Route
+              path="/profile"
+              element={user ? <Profile user={user} onUpdate={handleUserUpdate} /> : <Navigate to="/" replace />}
+            />
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </main>
       </div>
     </HashRouter>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { mockStore } from '../services/mockStore';
+import { api } from '../services/api';
 import { Submission, User } from '../types';
 import { 
   Lock, FileText, CheckCircle, Sparkles, BarChart3, TrendingUp, Users, 
@@ -37,11 +37,14 @@ const Report: React.FC<ReportProps> = ({ user }) => {
 
   useEffect(() => {
     if (user) {
-        const subs = mockStore.getSubmissions();
+      const loadData = async () => {
+        const subs = await api.getSubmissions();
         setAllSubmissions(subs);
         const mySub = subs.find(s => s.userId === user.id) || null;
         setMySubmission(mySub);
         if (mySub) calculateIndustryStats(subs, mySub);
+      };
+      loadData();
     }
   }, [user]);
 
