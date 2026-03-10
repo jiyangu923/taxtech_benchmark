@@ -17,6 +17,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -26,6 +27,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
       setError(null);
       setIsLoading(false);
       setIsSuccess(false);
+      setAwaitingConfirmation(false);
       setMode('login');
     }
   }, [isOpen]);
@@ -41,6 +43,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
       if (mode === 'signup') {
         if (!name) throw new Error("Please enter your full name.");
         await api.register(name, email, password);
+        setAwaitingConfirmation(true);
+        return;
       } else {
         await api.login(email, password);
       }
@@ -93,7 +97,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
             )}
           </div>
 
-          {isSuccess ? (
+          {awaitingConfirmation ? (
+            <div className="py-12 flex flex-col items-center justify-center animate-bounceIn">
+              <div className="bg-blue-100 p-4 rounded-full mb-4">
+                <Mail className="h-12 w-12 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-black text-gray-900">Check your email</h3>
+              <p className="text-gray-500 text-sm mt-2 font-medium text-center">
+                We sent a confirmation link to <span className="font-black text-gray-700">{email}</span>.<br />
+                Click it to activate your account.
+              </p>
+              <button onClick={onClose} className="mt-6 text-sm font-bold text-primary hover:underline">Close</button>
+            </div>
+          ) : isSuccess ? (
             <div className="py-12 flex flex-col items-center justify-center animate-bounceIn">
               <div className="bg-green-100 p-4 rounded-full mb-4">
                 <CheckCircle2 className="h-12 w-12 text-green-600" />

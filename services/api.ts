@@ -45,21 +45,16 @@ export const api = {
     return (newProfile as User) || null;
   },
 
-  async register(name: string, email: string, password: string): Promise<User> {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+  async register(name: string, email: string, password: string): Promise<void> {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    });
     if (error) throw new Error(error.message);
     if (!data.user) throw new Error('Registration failed.');
-
-    const adminEmails = await api.getAdminEmails();
-    const role = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'user';
-
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .insert({ id: data.user.id, name, email: email.toLowerCase(), role })
-      .select()
-      .single();
-    if (profileError) throw new Error(profileError.message);
-    return profile as User;
+    // Profile is created by ensureProfile() after the user confirms their email
+    // and onAuthStateChange fires with a valid session.
   },
 
   async login(email: string, password: string): Promise<User> {
