@@ -106,7 +106,11 @@ alter table public.profiles    enable row level security;
 alter table public.submissions enable row level security;
 alter table public.settings    enable row level security;
 
--- Profiles: users can read/update their own profile; admins can read all
+-- Profiles: users can read/update/insert their own profile; admins can read all
+create policy "Users can insert own profile"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
 create policy "Users can view own profile"
   on public.profiles for select
   using (auth.uid() = id);
