@@ -16,10 +16,10 @@ const App: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
-    // Load initial session
+    // Load initial session — profile is guaranteed to exist (created by DB trigger)
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const profile = await api.ensureProfile(session.user);
+        const profile = await api.getCurrentUser();
         setUser(profile);
       }
     });
@@ -27,7 +27,7 @@ const App: React.FC = () => {
     // Listen for sign-in / sign-out (including OAuth redirects back from Google)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const profile = await api.ensureProfile(session.user);
+        const profile = await api.getCurrentUser();
         setUser(profile);
       } else {
         setUser(null);
