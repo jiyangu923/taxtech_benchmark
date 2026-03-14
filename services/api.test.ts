@@ -117,51 +117,6 @@ describe('getCurrentUser', () => {
   });
 });
 
-// ─── ensureProfile ────────────────────────────────────────────────────────────
-
-describe('ensureProfile', () => {
-  it('returns existing profile without inserting a new row', async () => {
-    const existing = { id: 'u1', name: 'Bob', email: 'bob@test.com', role: 'user' };
-    profiles.single.mockResolvedValueOnce({ data: existing });
-    const result = await api.ensureProfile({ id: 'u1', email: 'bob@test.com' });
-    expect(result).toEqual(existing);
-    expect(profiles.insert).not.toHaveBeenCalled();
-  });
-
-  it('creates a profile on first sign-in', async () => {
-    const created = { id: 'u2', name: 'Carol', email: 'carol@test.com', role: 'user' };
-    profiles.single
-      .mockResolvedValueOnce({ data: null })   // no existing profile
-      .mockResolvedValueOnce({ data: created }); // row returned after insert
-    settings.single.mockResolvedValueOnce({ data: null }); // getAdminEmails → defaults
-    const result = await api.ensureProfile({
-      id: 'u2', email: 'carol@test.com', user_metadata: { full_name: 'Carol' },
-    });
-    expect(profiles.insert).toHaveBeenCalled();
-    expect(result).toEqual(created);
-  });
-
-  it('assigns admin role when email matches an admin address', async () => {
-    profiles.single
-      .mockResolvedValueOnce({ data: null })
-      .mockResolvedValueOnce({ data: { id: 'u3', role: 'admin' } });
-    settings.single.mockResolvedValueOnce({ data: null }); // getAdminEmails → INITIAL_ADMINS
-    await api.ensureProfile({ id: 'u3', email: 'jiyangu923@gmail.com' });
-    const insertArg = profiles.insert.mock.calls[0][0];
-    expect(insertArg.role).toBe('admin');
-  });
-
-  it('uses the email prefix as name when full_name metadata is absent', async () => {
-    profiles.single
-      .mockResolvedValueOnce({ data: null })
-      .mockResolvedValueOnce({ data: {} });
-    settings.single.mockResolvedValueOnce({ data: null });
-    await api.ensureProfile({ id: 'u4', email: 'jane.smith@test.com' });
-    const insertArg = profiles.insert.mock.calls[0][0];
-    expect(insertArg.name).toBe('jane.smith');
-  });
-});
-
 // ─── register ────────────────────────────────────────────────────────────────
 
 describe('register', () => {
@@ -216,7 +171,7 @@ describe('login', () => {
     });
     profiles.single.mockResolvedValueOnce({ data: null });
     await expect(api.login('unregistered@test.com', 'pass'))
-      .rejects.toThrow('Account not found');
+      .rejects.toThrow('Account not found. Please register first or confirm your email.');
   });
 
   it('throws when auth returns a null user', async () => {

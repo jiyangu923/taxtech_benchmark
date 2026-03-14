@@ -199,18 +199,48 @@ create policy "Admins can update settings"
     )
   );
 
--- ─── Profile auto-creation trigger (optional but recommended) ────────────────
--- This handles the rare case where signUp completes but the profile insert fails.
--- create or replace function public.handle_new_user()
--- returns trigger as $$
--- begin
---   insert into public.profiles (id, name, email, role)
---   values (new.id, coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)), new.email, 'user')
---   on conflict (id) do nothing;
---   return new;
--- end;
--- $$ language plpgsql security definer;
+-- ─── Profile auto-creation trigger ───────────────────────────────────────────
+-- Fires the instant Supabase creates a new auth.users row — for both
+-- email/password sign-up AND Google OAuth.  This guarantees the profile row
+-- exists before the client ever tries to log in, removing the race condition
+-- where login fails with "Account not found" before email confirmation.
 --
--- create trigger on_auth_user_created
---   after insert on auth.users
---   for each row execute procedure public.handle_new_user();
+-- Admin role: checks the settings table first; falls back to the hard-coded
+-- seed list so the very first admins work even before any settings row exists.
+
+create or replace function public.handle_new_user()
+returns trigger as $$
+declare
+  admin_emails jsonb;
+  user_role    text := 'user';
+begin
+  -- Load admin email list from settings; fall back to hard-coded seed values
+  select value::jsonb into admin_emails
+  from public.settings
+  where key = 'adminEmails';
+
+  if admin_emails is null then
+    admin_emails := '["admin@taxbenchmark.com","jiyangu923@gmail.com"]'::jsonb;
+  end if;
+
+  -- jsonb ? operator returns true when the string is an element of a jsonb array
+  if admin_emails ? lower(new.email) then
+    user_role := 'admin';
+  end if;
+
+  insert into public.profiles (id, name, email, role)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    lower(new.email),
+    user_role
+  )
+  on conflict (id) do nothing;
+
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();

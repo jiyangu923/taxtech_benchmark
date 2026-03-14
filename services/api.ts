@@ -22,29 +22,6 @@ export const api = {
     return (profile as User) || null;
   },
 
-  /** Called after Google OAuth redirect to ensure a profile row exists. */
-  async ensureProfile(authUser: { id: string; email?: string; user_metadata?: any }): Promise<User | null> {
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', authUser.id)
-      .single();
-    if (existing) return existing as User;
-
-    // First-time sign-in: create profile
-    const email = authUser.email || '';
-    const name = authUser.user_metadata?.full_name || email.split('@')[0];
-    const adminEmails = await api.getAdminEmails();
-    const role = adminEmails.includes(email.toLowerCase()) ? 'admin' : 'user';
-
-    const { data: newProfile } = await supabase
-      .from('profiles')
-      .insert({ id: authUser.id, name, email: email.toLowerCase(), role })
-      .select()
-      .single();
-    return (newProfile as User) || null;
-  },
-
   async register(name: string, email: string, password: string): Promise<void> {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -67,7 +44,7 @@ export const api = {
       .select('*')
       .eq('id', data.user.id)
       .single();
-    if (!profile) throw new Error('Account not found. Please register first.');
+    if (!profile) throw new Error('Account not found. Please register first or confirm your email.');
     return profile as User;
   },
 
