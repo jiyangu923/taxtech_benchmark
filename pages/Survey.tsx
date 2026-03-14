@@ -90,11 +90,22 @@ const Survey: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      await api.createSubmission(formData as any);
+      // companyProfile and participationGoal are text[] in the DB but radio buttons
+      // set them as plain strings — wrap in array before submitting.
+      const payload = {
+        ...formData,
+        companyProfile: formData.companyProfile
+          ? (Array.isArray(formData.companyProfile) ? formData.companyProfile : [formData.companyProfile])
+          : [],
+        participationGoal: formData.participationGoal
+          ? (Array.isArray(formData.participationGoal) ? formData.participationGoal : [formData.participationGoal])
+          : [],
+      };
+      await api.createSubmission(payload as any);
       alert('Survey submitted! Awaiting review.');
       navigate('/report');
-    } catch (e) {
-      setError('Failed to submit survey.');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to submit survey.');
     }
   };
 
