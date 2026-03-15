@@ -5,6 +5,16 @@ import { api } from '../services/api';
 import { Submission } from '../types';
 import * as C from '../constants';
 
+/**
+ * Normalizes a field that is text[] in the database but may arrive as a plain
+ * string when populated by a radio-button (single-select) control.
+ * Exported for unit testing.
+ */
+export function normalizeArrayField(value: string | string[] | undefined | null): string[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
 const Survey: React.FC = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState(1);
@@ -94,12 +104,8 @@ const Survey: React.FC = () => {
       // set them as plain strings — wrap in array before submitting.
       const payload = {
         ...formData,
-        companyProfile: formData.companyProfile
-          ? (Array.isArray(formData.companyProfile) ? formData.companyProfile : [formData.companyProfile])
-          : [],
-        participationGoal: formData.participationGoal
-          ? (Array.isArray(formData.participationGoal) ? formData.participationGoal : [formData.participationGoal])
-          : [],
+        companyProfile: normalizeArrayField(formData.companyProfile as any),
+        participationGoal: normalizeArrayField(formData.participationGoal as any),
       };
       await api.createSubmission(payload as any);
       alert('Survey submitted! Awaiting review.');
