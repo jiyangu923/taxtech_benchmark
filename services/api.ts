@@ -51,7 +51,7 @@ export const api = {
   async loginWithGoogle(): Promise<void> {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin + window.location.pathname },
+      options: { redirectTo: window.location.origin + '/' },
     });
   },
 

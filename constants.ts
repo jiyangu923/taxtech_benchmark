@@ -66,15 +66,18 @@ export const OPTS_TECH_APPROACH: Option[] = [
 ];
 
 export const OPTS_INDUSTRY: Option[] = [
-  { value: 'technology', label: 'Technology & Software' },
+  { value: 'saas_digital_services', label: 'SaaS & Digital Services' },
+  { value: 'ecommerce_retail', label: 'E-commerce & Online Retail' },
+  { value: 'consumer_brands_dtc', label: 'Consumer Brands & DTC' },
+  { value: 'marketplaces_platforms', label: 'Marketplaces & Platforms' },
+  { value: 'fintech_payments', label: 'Fintech & Payment Platforms' },
+  { value: 'multinational_technology', label: 'Multinational Technology' },
+  { value: 'manufacturing_industrials', label: 'Manufacturing & Industrials' },
   { value: 'healthcare_life_sciences', label: 'Healthcare & Life Sciences' },
-  { value: 'financial_services', label: 'Financial Services & Fintech' },
-  { value: 'consumer_goods_retail', label: 'Retail & E-commerce' },
-  { value: 'industrial_manufacturing', label: 'Manufacturing & Industrials' },
   { value: 'energy_utilities', label: 'Energy & Utilities' },
-  { value: 'telecommunications_media', label: 'Media & Telecommunications' },
-  { value: 'transportation_logistics', label: 'Logistics & Transportation' },
-  { value: 'other', label: 'Other / Specialized' },
+  { value: 'media_telecommunications', label: 'Media & Telecommunications' },
+  { value: 'professional_services', label: 'Professional Services' },
+  { value: 'other', label: 'Other' },
 ];
 
 export const OPTS_TAX_TECH_ORG_LOCATION: Option[] = [
@@ -92,11 +95,11 @@ export const OPTS_CENTRALIZATION: Option[] = [
 ];
 
 export const OPTS_REVENUE: Option[] = [
-  { value: 'under_100m', label: 'Under $100M' },
-  { value: '100m_1b', label: '$100M - $1B' },
-  { value: '1b_10b', label: '$1B - $10B' },
-  { value: '10b_50b', label: '$10B - $50B' },
-  { value: 'over_50b', label: 'Over $50B' },
+  { value: 'under_10m', label: 'Under $10M' },
+  { value: '10m_100m', label: '$10M – $100M' },
+  { value: '100m_500m', label: '$100M – $500M' },
+  { value: '500m_5b', label: '$500M – $5B' },
+  { value: 'over_5b', label: 'Over $5B' },
 ];
 
 export const OPTS_FTE_TECH: Option[] = [

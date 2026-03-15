@@ -47,7 +47,7 @@ function goToSection(target: number) {
     if (current === 2) {
       // Section 2: Revenue Range is required — it is the second <select>
       const selects = screen.getAllByRole('combobox');
-      fireEvent.change(selects[1], { target: { value: '1b_10b' } });
+      fireEvent.change(selects[1], { target: { value: '100m_500m' } });
     }
     fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
   }
