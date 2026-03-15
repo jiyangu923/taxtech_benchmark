@@ -120,8 +120,8 @@ describe('OPTS_REVENUE', () => {
 
   it('covers both smallest and largest bands', () => {
     const values = OPTS_REVENUE.map(o => o.value);
-    expect(values).toContain('under_100m');
-    expect(values).toContain('over_50b');
+    expect(values).toContain('under_10m');
+    expect(values).toContain('over_5b');
   });
 });
 
