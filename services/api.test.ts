@@ -213,7 +213,7 @@ describe('createSubmission', () => {
     profiles.single.mockResolvedValueOnce({ data: profile });
     submissions.single.mockResolvedValueOnce({ data: newSub, error: null });
 
-    const result = await api.createSubmission({ revenueRange: '100m_1b' } as any);
+    const result = await api.createSubmission({ revenueRange: '100m_500m' } as any);
 
     expect(submissions.delete).toHaveBeenCalled();
     expect(submissions.insert).toHaveBeenCalled();
@@ -230,7 +230,7 @@ describe('createSubmission', () => {
       error: null,
     });
 
-    const result = await api.createSubmission({ revenueRange: 'over_50b' } as any);
+    const result = await api.createSubmission({ revenueRange: 'over_5b' } as any);
 
     const insertArg = submissions.insert.mock.calls[0][0];
     expect(insertArg.userId).toBe('uid-99');
