@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
+import SetPasswordModal from './components/SetPasswordModal';
 import Home from './pages/Home';
 import Survey from './pages/Survey';
 import Admin from './pages/Admin';
@@ -14,8 +15,15 @@ import { supabase, api } from './services/api';
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [needsPasswordSet, setNeedsPasswordSet] = useState(false);
 
   useEffect(() => {
+    // Detect invite flow: Supabase puts #access_token=...&type=invite in the URL hash
+    const hash = window.location.hash;
+    if (hash.includes('type=invite')) {
+      setNeedsPasswordSet(true);
+    }
+
     // Load initial session — profile is guaranteed to exist (created by DB trigger)
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
@@ -25,7 +33,7 @@ const App: React.FC = () => {
     });
 
     // Listen for sign-in / sign-out (including OAuth redirects back from Google)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const profile = await api.getCurrentUser();
         setUser(profile);
@@ -66,6 +74,10 @@ const App: React.FC = () => {
           onClose={() => setIsAuthModalOpen(false)}
           onLogin={handleAuthSuccess}
         />
+
+        {needsPasswordSet && (
+          <SetPasswordModal onComplete={() => setNeedsPasswordSet(false)} />
+        )}
 
         <main className="flex-1">
           <Routes>
