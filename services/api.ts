@@ -14,12 +14,31 @@ export const api = {
   async getCurrentUser(): Promise<User | null> {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) return null;
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', authUser.id)
       .single();
-    return (profile as User) || null;
+
+    if (profile) return profile as User;
+
+    // Profile row was deleted but auth user still exists — recreate it.
+    const adminEmails = await api.getAdminEmails();
+    const email = (authUser.email ?? '').toLowerCase();
+    const role = adminEmails.map(e => e.toLowerCase()).includes(email) ? 'admin' : 'user';
+    const name =
+      authUser.user_metadata?.full_name ||
+      authUser.user_metadata?.name ||
+      email.split('@')[0];
+
+    const { data: created } = await supabase
+      .from('profiles')
+      .insert({ id: authUser.id, email, name, role })
+      .select()
+      .single();
+
+    return (created as User) || null;
   },
 
   async register(name: string, email: string, password: string): Promise<void> {
