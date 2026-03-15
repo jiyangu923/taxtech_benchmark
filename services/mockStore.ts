@@ -10,7 +10,7 @@ const INDUSTRIES = [
   'industrial_manufacturing', 'consumer_goods_retail', 
   'energy_utilities', 'telecommunications_media', 'transportation_logistics'
 ];
-const REVENUES = ['100m_1b', '1b_10b', '10b_50b', 'over_50b'];
+const REVENUES = ['under_10m', '10m_100m', '100m_500m', '500m_5b', 'over_5b'];
 
 const pick = <T>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
@@ -19,7 +19,7 @@ const createRandomSubmission = (id: string, userId: string, userName: string): S
   const industry = pick(INDUSTRIES);
   const revenue = pick(REVENUES);
   const isModern = industry === 'technology' || industry === 'financial_services' || Math.random() > 0.7;
-  const isLarge = revenue === '10b_50b' || revenue === 'over_50b';
+  const isLarge = revenue === '500m_5b' || revenue === 'over_5b';
   const automationSet = isModern ? ['70_90', '90_99', '99_plus'] : ['under_40', '40_70', '70_90'];
   const aiAdopted = isModern ? Math.random() > 0.3 : Math.random() > 0.8;
 
