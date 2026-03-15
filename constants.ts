@@ -73,6 +73,10 @@ export const OPTS_INDUSTRY: Option[] = [
   { value: 'fintech_payments', label: 'Fintech & Payment Platforms' },
   { value: 'multinational_technology', label: 'Multinational Technology' },
   { value: 'manufacturing_industrials', label: 'Manufacturing & Industrials' },
+  { value: 'healthcare_life_sciences', label: 'Healthcare & Life Sciences' },
+  { value: 'energy_utilities', label: 'Energy & Utilities' },
+  { value: 'media_telecommunications', label: 'Media & Telecommunications' },
+  { value: 'professional_services', label: 'Professional Services' },
   { value: 'other', label: 'Other' },
 ];
 
