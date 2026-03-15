@@ -25,6 +25,48 @@ const COLORS = {
   pie: ['#4f46e5', '#818cf8', '#a5b4fc', '#c7d2fe', '#e2e8f0']
 };
 
+/**
+ * Maps an automation range key to a representative numeric percentage.
+ * Exported for unit testing.
+ */
+export function mapAuto(val?: string): number {
+  const m: Record<string, number> = { '99_plus': 99.5, '90_99': 95, '70_90': 80, '40_70': 55, 'under_40': 20 };
+  return val ? m[val] ?? 0 : 0;
+}
+
+/**
+ * Computes aggregate industry statistics from a list of submissions.
+ * Exported for unit testing.
+ */
+export function calculateIndustryStats(allSubs: Submission[]) {
+  const valid = allSubs.filter(s => s.status !== 'rejected');
+  const n = valid.length;
+  if (n === 0) return null;
+
+  const avg = (fn: (s: Submission) => number) => valid.reduce((acc, s) => acc + fn(s), 0) / n;
+
+  const archCounts: Record<string, number> = {};
+  valid.forEach(s => {
+    if (s.taxDataArchitecture) archCounts[s.taxDataArchitecture] = (archCounts[s.taxDataArchitecture] || 0) + 1;
+  });
+  const archData = Object.keys(archCounts).map(k => ({
+    name: C.OPTS_TAX_DATA_ARCH.find(o => o.value === k)?.label || k,
+    value: archCounts[k],
+  }));
+
+  return {
+    averages: {
+      calculation: Math.round(avg(s => mapAuto(s.taxCalculationAutomationRange))),
+      payment:     Math.round(avg(s => mapAuto(s.taxPaymentAutomationRange))),
+      compliance:  Math.round(avg(s => mapAuto(s.complianceAutomationCoverageRange))),
+      techFTE:     Math.round(avg(s => (s.taxTechFTEsRange === 'over_100' ? 120 : 10))),
+      bizFTE:      Math.round(avg(s => (s.taxBusinessFTEsRange === 'over_150' ? 170 : 20))),
+      aiRate:      Math.round((valid.filter(s => s.aiAdopted).length / n) * 100),
+    },
+    archData,
+  };
+}
+
 const Report: React.FC<ReportProps> = ({ user }) => {
   const [activeTab, setActiveTab] = useState<'indirect' | 'direct'>('indirect');
   const [mySubmission, setMySubmission] = useState<Submission | null>(null);
@@ -42,39 +84,15 @@ const Report: React.FC<ReportProps> = ({ user }) => {
         setAllSubmissions(subs);
         const mySub = subs.find(s => s.userId === user.id) || null;
         setMySubmission(mySub);
-        if (mySub) calculateIndustryStats(subs, mySub);
+        if (mySub) loadIndustryStats(subs);
       };
       loadData();
     }
   }, [user]);
 
-  const mapAuto = (val?: string) => {
-    const m: any = { '99_plus': 99.5, '90_99': 95, '70_90': 80, '40_70': 55, 'under_40': 20 };
-    return val ? m[val] || 0 : 0;
-  };
-
-  const calculateIndustryStats = (allSubs: Submission[], mySub: Submission) => {
-    const valid = allSubs.filter(s => s.status !== 'rejected');
-    const n = valid.length;
-    if (n === 0) return;
-
-    const avg = (fn: (s: Submission) => number) => valid.reduce((acc, s) => acc + fn(s), 0) / n;
-
-    const archCounts: any = {};
-    valid.forEach(s => { if (s.taxDataArchitecture) archCounts[s.taxDataArchitecture] = (archCounts[s.taxDataArchitecture] || 0) + 1; });
-    const archData = Object.keys(archCounts).map(k => ({ name: C.OPTS_TAX_DATA_ARCH.find(o => o.value === k)?.label || k, value: archCounts[k] }));
-
-    setIndustryStats({
-      averages: {
-        calculation: Math.round(avg(s => mapAuto(s.taxCalculationAutomationRange))),
-        payment: Math.round(avg(s => mapAuto(s.taxPaymentAutomationRange))),
-        compliance: Math.round(avg(s => mapAuto(s.complianceAutomationCoverageRange))),
-        techFTE: Math.round(avg(s => (s.taxTechFTEsRange === 'over_100' ? 120 : 10))),
-        bizFTE: Math.round(avg(s => (s.taxBusinessFTEsRange === 'over_150' ? 170 : 20))),
-        aiRate: Math.round((valid.filter(s => s.aiAdopted).length / n) * 100)
-      },
-      archData
-    });
+  const loadIndustryStats = (allSubs: Submission[]) => {
+    const stats = calculateIndustryStats(allSubs);
+    if (stats) setIndustryStats(stats);
   };
 
   const handleAiQuery = async (q?: string) => {
