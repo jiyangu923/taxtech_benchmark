@@ -110,9 +110,13 @@ describe('getCurrentUser', () => {
     expect(await api.getCurrentUser()).toEqual(profile);
   });
 
-  it('returns null when the profile row does not exist', async () => {
-    mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
-    profiles.single.mockResolvedValueOnce({ data: null });
+  it('returns null when the profile row does not exist and recreation fails', async () => {
+    mockAuth.getUser.mockResolvedValueOnce({
+      data: { user: { id: 'u1', email: 'new@test.com', user_metadata: {} } },
+    });
+    profiles.single.mockResolvedValueOnce({ data: null });   // initial profile lookup
+    settings.single.mockResolvedValueOnce({ data: null });   // getAdminEmails() → fallback list
+    profiles.single.mockResolvedValueOnce({ data: null });   // insert().select().single() → fails
     expect(await api.getCurrentUser()).toBeNull();
   });
 });
