@@ -4,7 +4,9 @@ import { Submission, User } from '../types';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { flowType: 'pkce' },
+});
 
 const INITIAL_ADMINS = ['admin@taxbenchmark.com', 'jiyangu923@gmail.com'];
 
