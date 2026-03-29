@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import SetPasswordModal from './components/SetPasswordModal';
@@ -11,6 +11,23 @@ import DirectTax from './pages/DirectTax';
 import Profile from './pages/Profile';
 import { User } from './types';
 import { supabase, api } from './services/api';
+
+const PAGE_TITLES: Record<string, string> = {
+  '/': 'Indirect Tax Benchmark | TaxTech',
+  '/direct-tax': 'Direct Tax Benchmark | TaxTech',
+  '/survey': 'Submit Data | TaxTech',
+  '/report': 'Analytics | TaxTech',
+  '/admin': 'Control Panel | TaxTech',
+  '/profile': 'Profile | TaxTech',
+};
+
+function PageTitle() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    document.title = PAGE_TITLES[pathname] || 'TaxTech Benchmark';
+  }, [pathname]);
+  return null;
+}
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -65,6 +82,7 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
+      <PageTitle />
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Navbar
           user={user}
