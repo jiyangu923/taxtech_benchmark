@@ -77,7 +77,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
               <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Security Notice</p>
               <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
                 <p className="text-xs text-blue-800 leading-relaxed font-medium">
-                  Your identity is protected by Enterprise SSO simulation. Changes here only affect your display profile within this session.
+                  Your identity is verified through Google SSO. Profile changes are saved to your account.
                 </p>
               </div>
             </div>
