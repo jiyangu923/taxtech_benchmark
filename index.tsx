@@ -8,16 +8,20 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
-// Exchange PKCE auth code before React mounts to avoid StrictMode double-fire
-// causing Supabase lock conflicts.
+// Perform all Supabase auth work before React mounts to avoid
+// StrictMode double-firing useEffect and creating lock conflicts.
 async function bootstrap() {
+  // 1. Exchange PKCE code if returning from OAuth redirect
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
   if (code) {
     await supabase.auth.exchangeCodeForSession(code);
-    // Clean up the URL so the code isn't reused on refresh
     window.history.replaceState({}, '', window.location.pathname + window.location.hash);
   }
+
+  // 2. Load the initial session once, outside React
+  const { data: { session } } = await supabase.auth.getSession();
+  (window as any).__INITIAL_SESSION__ = session;
 
   const root = ReactDOM.createRoot(rootElement!);
   root.render(

@@ -24,22 +24,20 @@ const App: React.FC = () => {
       setNeedsPasswordSet(true);
     }
 
-    // Load initial session — profile is guaranteed to exist (created by DB trigger)
-    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
-      console.log('[Auth] getSession ->', { event: 'initial', userId: session?.user?.id, error });
-      if (session?.user) {
-        const profile = await api.getCurrentUser();
-        console.log('[Auth] initial profile ->', profile);
+    // Use the session loaded in index.tsx (before React mounted) to avoid
+    // StrictMode double-fire causing Supabase lock conflicts.
+    const initialSession = (window as any).__INITIAL_SESSION__;
+    if (initialSession?.user) {
+      api.getCurrentUser().then((profile) => {
         if (profile) setUser(profile);
-      }
-    });
+      });
+    }
 
     // Listen for sign-in / sign-out (including OAuth redirects back from Google)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[Auth] onAuthStateChange ->', { event, userId: session?.user?.id });
+      if (event === 'INITIAL_SESSION') return; // already handled above
       if (session?.user) {
         const profile = await api.getCurrentUser();
-        console.log('[Auth] profile after', event, '->', profile);
         if (profile) setUser(profile);
         else setUser(null);
       } else {
