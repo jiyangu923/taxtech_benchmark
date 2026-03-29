@@ -318,6 +318,7 @@ const Survey: React.FC = () => {
           <div className="space-y-6">
             {renderCheckbox("Company Profile", "companyProfile", C.OPTS_COMPANY_PROFILE, true)}
             {renderCheckbox("Primary Goal", "participationGoal", C.OPTS_PARTICIPATION_GOAL)}
+            {renderRadio("Your Role", "respondentRole", C.OPTS_RESPONDENT_ROLE, true)}
           </div>
         )}
 
