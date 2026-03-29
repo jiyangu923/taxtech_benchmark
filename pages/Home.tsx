@@ -41,38 +41,26 @@ const Home: React.FC<HomeProps> = ({ user }) => {
       {/* Feature Grid */}
       <div className="relative -mt-24 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          {/* Card 1 */}
-          <div className="rounded-2xl bg-white p-8 shadow-lg">
-            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-secondary">
-              <TrendingUp className="h-6 w-6" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900">Automation Metrics</h3>
-            <p className="mt-2 text-gray-600">
-              Benchmark your tax calculation, payment, and compliance automation rates against the market.
-            </p>
-          </div>
-
-          {/* Card 2 */}
-          <div className="rounded-2xl bg-white p-8 shadow-lg">
-            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-secondary">
-              <Users className="h-6 w-6" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900">Team Structure</h3>
-            <p className="mt-2 text-gray-600">
-              Understand how peer organizations structure their tax technology vs. tax business teams.
-            </p>
-          </div>
-
-          {/* Card 3 */}
-          <div className="rounded-2xl bg-white p-8 shadow-lg">
-            <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-secondary">
-              <CheckCircle2 className="h-6 w-6" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900">AI Readiness</h3>
-            <p className="mt-2 text-gray-600">
-              See where the industry stands on GenAI adoption—from exploration to mass production.
-            </p>
-          </div>
+          {[
+            { icon: <TrendingUp className="h-6 w-6" />, title: 'Automation Metrics', desc: 'Benchmark your tax calculation, payment, and compliance automation rates against the market.' },
+            { icon: <Users className="h-6 w-6" />, title: 'Team Structure', desc: 'Understand how peer organizations structure their tax technology vs. tax business teams.' },
+            { icon: <CheckCircle2 className="h-6 w-6" />, title: 'AI Readiness', desc: 'See where the industry stands on GenAI adoption—from exploration to mass production.' },
+          ].map((card) => (
+            <Link
+              key={card.title}
+              to={user ? '/survey' : '/'}
+              className="rounded-2xl bg-white p-8 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all group"
+            >
+              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-secondary">
+                {card.icon}
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 group-hover:text-primary transition-colors">{card.title}</h3>
+              <p className="mt-2 text-gray-600">{card.desc}</p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-secondary opacity-0 group-hover:opacity-100 transition-opacity">
+                {user ? 'Start Survey' : 'Sign in to participate'} <ArrowRight className="h-4 w-4" />
+              </span>
+            </Link>
+          ))}
         </div>
       </div>
     </div>
