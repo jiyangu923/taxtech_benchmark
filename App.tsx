@@ -25,18 +25,23 @@ const App: React.FC = () => {
     }
 
     // Load initial session — profile is guaranteed to exist (created by DB trigger)
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      console.log('[Auth] getSession ->', { event: 'initial', userId: session?.user?.id, error });
       if (session?.user) {
         const profile = await api.getCurrentUser();
-        setUser(profile);
+        console.log('[Auth] initial profile ->', profile);
+        if (profile) setUser(profile);
       }
     });
 
     // Listen for sign-in / sign-out (including OAuth redirects back from Google)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth] onAuthStateChange ->', { event, userId: session?.user?.id });
       if (session?.user) {
         const profile = await api.getCurrentUser();
-        setUser(profile);
+        console.log('[Auth] profile after', event, '->', profile);
+        if (profile) setUser(profile);
+        else setUser(null);
       } else {
         setUser(null);
       }

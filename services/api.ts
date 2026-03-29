@@ -14,15 +14,17 @@ export const api = {
   // ─── Auth ────────────────────────────────────────────────────────────────
 
   async getCurrentUser(): Promise<User | null> {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+    console.log('[getCurrentUser] authUser ->', authUser?.id, userError);
     if (!authUser) return null;
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', authUser.id)
       .single();
 
+    console.log('[getCurrentUser] profile lookup ->', profile, profileError);
     if (profile) return profile as User;
 
     // Profile row was deleted but auth user still exists — recreate it.
@@ -34,12 +36,13 @@ export const api = {
       authUser.user_metadata?.name ||
       email.split('@')[0];
 
-    const { data: created } = await supabase
+    const { data: created, error: insertError } = await supabase
       .from('profiles')
       .insert({ id: authUser.id, email, name, role })
       .select()
       .single();
 
+    console.log('[getCurrentUser] profile insert ->', created, insertError);
     return (created as User) || null;
   },
 
