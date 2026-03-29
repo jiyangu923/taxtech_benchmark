@@ -206,17 +206,27 @@ export const api = {
         try {
           const data = JSON.parse(e.target?.result as string);
           if (data.submissions?.length) {
-            await supabase.from('submissions').delete().not('id', 'is', null);
-            await supabase.from('submissions').insert(data.submissions);
+            const { error: delErr } = await supabase.from('submissions').delete().not('id', 'is', null);
+            if (delErr) { console.error('[importDatabase] delete error:', delErr); resolve(false); return; }
+            // Insert one at a time to handle potential conflicts
+            for (const sub of data.submissions) {
+              const { error: insErr } = await supabase.from('submissions').upsert(sub);
+              if (insErr) console.error('[importDatabase] upsert error:', insErr, sub.id);
+            }
           }
           if (data.settings?.adminEmails) {
-            await supabase.from('settings').upsert({ key: 'adminEmails', value: JSON.stringify(data.settings.adminEmails) });
+            const { error } = await supabase.from('settings').upsert({ key: 'adminEmails', value: JSON.stringify(data.settings.adminEmails) });
+            if (error) console.error('[importDatabase] adminEmails error:', error);
           }
           if (data.settings?.webhookUrl !== undefined) {
-            await supabase.from('settings').upsert({ key: 'webhookUrl', value: data.settings.webhookUrl });
+            const { error } = await supabase.from('settings').upsert({ key: 'webhookUrl', value: data.settings.webhookUrl });
+            if (error) console.error('[importDatabase] webhookUrl error:', error);
           }
           resolve(true);
-        } catch { resolve(false); }
+        } catch (err) {
+          console.error('[importDatabase] parse error:', err);
+          resolve(false);
+        }
       };
       reader.readAsText(file);
     });
