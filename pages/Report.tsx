@@ -229,6 +229,16 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                                           </ResponsiveContainer>
                                       </div>
                                   )}
+                                  {item.followUps?.length > 0 && i === aiHistory.length - 1 && (
+                                      <div className="mt-6 pt-4 border-t border-gray-200">
+                                          <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3">Dig deeper</p>
+                                          <div className="flex flex-wrap gap-2">
+                                              {item.followUps.map((q: string) => (
+                                                  <button key={q} onClick={() => handleAiQuery(q)} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold hover:bg-indigo-100 transition-all border border-indigo-100">{q}</button>
+                                              ))}
+                                          </div>
+                                      </div>
+                                  )}
                               </div>
                           </div>
                       </div>
