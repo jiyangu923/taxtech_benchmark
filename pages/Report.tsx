@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import * as C from '../constants';
 import { askBenchmarkAI } from '../services/gemini';
+import taxiAvatar from '../assets/taxi-avatar-cab.svg';
 
 interface ReportProps { user: User | null; }
 
@@ -209,16 +210,17 @@ const Report: React.FC<ReportProps> = ({ user }) => {
           <div className="p-10">
               <div className="space-y-8 max-h-[500px] overflow-y-auto mb-10 px-2 custom-scrollbar">
                   {aiHistory.length === 0 && (
-                      <div className="py-12 text-center opacity-30">
-                          <BrainCircuit className="h-16 w-16 mx-auto mb-4" />
-                          <p className="font-bold">Hey, I'm Taxi! Pick a question below or type your own.</p>
+                      <div className="py-12 text-center">
+                          <img src={taxiAvatar} alt="Taxi" className="w-20 h-20 mx-auto mb-4 rounded-full shadow-lg" />
+                          <p className="font-bold text-gray-400">Hey, I'm Taxi! Pick a question below or type your own.</p>
                       </div>
                   )}
                   {aiHistory.map((item, i) => (
                       <div key={i} className="space-y-4 animate-fadeIn">
                           <div className="flex justify-end"><div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold max-w-[80%] shadow-lg">{item.question}</div></div>
-                          <div className="flex justify-start">
-                              <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl max-w-[95%] shadow-sm">
+                          <div className="flex justify-start items-start gap-3">
+                              <img src={taxiAvatar} alt="Taxi" className="w-9 h-9 rounded-full shadow-md flex-shrink-0 mt-1" />
+                              <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl max-w-[90%] shadow-sm">
                                   <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-3">Taxi</p>
                                   <div className="prose prose-sm text-gray-700 font-medium leading-relaxed"><ReactMarkdown>{item.analysis}</ReactMarkdown></div>
                                   {item.chart && (
@@ -243,7 +245,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                           </div>
                       </div>
                   ))}
-                  {isAiLoading && <div className="flex items-center gap-3 text-primary animate-pulse"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-xs font-black uppercase tracking-widest">Taxi is analyzing your data...</span></div>}
+                  {isAiLoading && <div className="flex items-center gap-3 text-primary animate-pulse"><img src={taxiAvatar} alt="Taxi" className="w-9 h-9 rounded-full shadow-md" /><Loader2 className="h-5 w-5 animate-spin" /><span className="text-xs font-black uppercase tracking-widest">Taxi is analyzing your data...</span></div>}
                   <div ref={chatEndRef} />
               </div>
               <div className="flex items-center gap-2 mb-8">

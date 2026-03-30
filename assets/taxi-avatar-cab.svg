@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- Background circle -->
+  <circle cx="24" cy="24" r="24" fill="#FBBF24"/>
+  <!-- Cab body -->
+  <rect x="8" y="22" width="32" height="12" rx="3" fill="#1e3a8a"/>
+  <!-- Cab roof -->
+  <rect x="14" y="15" width="20" height="9" rx="3" fill="#1e3a8a"/>
+  <!-- Taxi sign on roof -->
+  <rect x="18" y="11" width="12" height="5" rx="2" fill="#FBBF24" stroke="#1e3a8a" stroke-width="1"/>
+  <text x="24" y="15" text-anchor="middle" font-size="4" font-weight="bold" fill="#1e3a8a" font-family="Arial">TAXI</text>
+  <!-- Windows -->
+  <rect x="16" y="17" width="7" height="5" rx="1" fill="#93C5FD"/>
+  <rect x="25" y="17" width="7" height="5" rx="1" fill="#93C5FD"/>
+  <!-- Headlights -->
+  <circle cx="11" cy="28" r="2" fill="#FBBF24"/>
+  <circle cx="37" cy="28" r="2" fill="#FBBF24"/>
+  <!-- Wheels -->
+  <circle cx="15" cy="34" r="4" fill="#1F2937"/>
+  <circle cx="15" cy="34" r="2" fill="#6B7280"/>
+  <circle cx="33" cy="34" r="4" fill="#1F2937"/>
+  <circle cx="33" cy="34" r="2" fill="#6B7280"/>
+  <!-- Checkerboard stripe -->
+  <rect x="8" y="26" width="4" height="3" fill="#FBBF24"/>
+  <rect x="16" y="26" width="4" height="3" fill="#FBBF24"/>
+  <rect x="24" y="26" width="4" height="3" fill="#FBBF24"/>
+  <rect x="32" y="26" width="4" height="3" fill="#FBBF24"/>
+  <rect x="12" y="26" width="4" height="3" fill="white"/>
+  <rect x="20" y="26" width="4" height="3" fill="white"/>
+  <rect x="28" y="26" width="4" height="3" fill="white"/>
+</svg>
