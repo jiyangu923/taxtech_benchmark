@@ -180,22 +180,23 @@ const Report: React.FC<ReportProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* AI Analyst Section */}
+      {/* Taxi AI Analyst Section */}
       <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
           <div className="bg-gradient-to-br from-primary to-secondary p-10 text-white">
               <div className="flex items-center gap-3 mb-4">
                   <Sparkles className="h-8 w-8 text-indigo-300" />
-                  <span className="text-xs font-black uppercase tracking-[0.2em]">Strategy Assistant</span>
+                  <span className="text-xs font-black uppercase tracking-[0.2em]">Powered by Taxable AI</span>
               </div>
-              <h2 className="text-4xl font-black mb-4">Benchmark Intelligence</h2>
-              <p className="text-indigo-100 max-w-2xl font-medium leading-relaxed">Ask specific questions about your maturity level, automation roadmap, or peer architecture choices.</p>
+              <h2 className="text-4xl font-black mb-2">Ask Taxi</h2>
+              <p className="text-sm text-indigo-200 font-semibold mb-3">Your AI Benchmark Analyst</p>
+              <p className="text-indigo-100 max-w-2xl font-medium leading-relaxed">Ask me about your maturity level, automation gaps, FTE benchmarks, or how you stack up against peers.</p>
           </div>
           <div className="p-10">
               <div className="space-y-8 max-h-[500px] overflow-y-auto mb-10 px-2 custom-scrollbar">
                   {aiHistory.length === 0 && (
                       <div className="py-12 text-center opacity-30">
                           <BrainCircuit className="h-16 w-16 mx-auto mb-4" />
-                          <p className="font-bold">Select a suggested analysis to begin</p>
+                          <p className="font-bold">Hey, I'm Taxi! Pick a question below or type your own.</p>
                       </div>
                   )}
                   {aiHistory.map((item, i) => (
@@ -203,6 +204,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                           <div className="flex justify-end"><div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold max-w-[80%] shadow-lg">{item.question}</div></div>
                           <div className="flex justify-start">
                               <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl max-w-[95%] shadow-sm">
+                                  <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-3">Taxi</p>
                                   <div className="prose prose-sm text-gray-700 font-medium leading-relaxed"><ReactMarkdown>{item.analysis}</ReactMarkdown></div>
                                   {item.chart && (
                                       <div className="mt-8 p-6 bg-white rounded-2xl border border-gray-100 h-64 shadow-inner">
@@ -216,16 +218,16 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                           </div>
                       </div>
                   ))}
-                  {isAiLoading && <div className="flex items-center gap-3 text-primary animate-pulse"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-xs font-black uppercase tracking-widest">Synthesizing benchmark data...</span></div>}
+                  {isAiLoading && <div className="flex items-center gap-3 text-primary animate-pulse"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-xs font-black uppercase tracking-widest">Taxi is analyzing your data...</span></div>}
                   <div ref={chatEndRef} />
               </div>
               <div className="flex flex-wrap gap-2 mb-8">
-                  {["How do I compare on FTEs?", "What are the common AI use cases?", "Am I a market leader or follower?"].map(s => (
+                  {["How do I compare on FTEs?", "What are the common AI use cases?", "Am I a market leader or follower?", "Where are my biggest automation gaps?", "How does my tech stack compare?"].map(s => (
                       <button key={s} onClick={() => handleAiQuery(s)} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all border border-indigo-100">{s}</button>
                   ))}
               </div>
               <div className="relative">
-                  <input type="text" placeholder="Type your query..." className="w-full pl-6 pr-16 py-5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary font-bold shadow-inner" value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAiQuery()} />
+                  <input type="text" placeholder="Ask Taxi anything about your benchmark..." className="w-full pl-6 pr-16 py-5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary font-bold shadow-inner" value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAiQuery()} />
                   <button onClick={() => handleAiQuery()} className="absolute right-2 top-2 bottom-2 px-6 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all"><Send className="h-5 w-5" /></button>
               </div>
           </div>
