@@ -2,9 +2,9 @@ import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../services/api';
 import { Submission, User } from '../types';
 import { 
-  Lock, FileText, CheckCircle, Sparkles, BarChart3, TrendingUp, Users, 
-  BrainCircuit, Hammer, Layers, Ruler, ArrowRight, Send, Loader2, 
-  MessageSquare, Lightbulb, RefreshCcw, XCircle, Database
+  Lock, FileText, CheckCircle, Sparkles, BarChart3, TrendingUp, Users,
+  BrainCircuit, Hammer, Layers, Ruler, ArrowRight, Send, Loader2,
+  MessageSquare, Lightbulb, RefreshCcw, XCircle, Database, Trash2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -75,8 +75,23 @@ const Report: React.FC<ReportProps> = ({ user }) => {
   const [industryStats, setIndustryStats] = useState<any>(null);
   const [aiInput, setAiInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiHistory, setAiHistory] = useState<any[]>([]);
+  const [aiHistory, setAiHistory] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('taxi_chat_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try { localStorage.setItem('taxi_chat_history', JSON.stringify(aiHistory)); }
+    catch { /* ignore quota errors */ }
+  }, [aiHistory]);
+
+  const clearChat = () => {
+    setAiHistory([]);
+    localStorage.removeItem('taxi_chat_history');
+  };
 
   useEffect(() => {
     if (user) {
@@ -221,10 +236,17 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                   {isAiLoading && <div className="flex items-center gap-3 text-primary animate-pulse"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-xs font-black uppercase tracking-widest">Taxi is analyzing your data...</span></div>}
                   <div ref={chatEndRef} />
               </div>
-              <div className="flex flex-wrap gap-2 mb-8">
-                  {["How do I compare on FTEs?", "What are the common AI use cases?", "Am I a market leader or follower?", "Where are my biggest automation gaps?", "How does my tech stack compare?"].map(s => (
-                      <button key={s} onClick={() => handleAiQuery(s)} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all border border-indigo-100">{s}</button>
-                  ))}
+              <div className="flex items-center gap-2 mb-8">
+                  <div className="flex flex-wrap gap-2 flex-1">
+                      {["How do I compare on FTEs?", "What are the common AI use cases?", "Am I a market leader or follower?", "Where are my biggest automation gaps?", "How does my tech stack compare?"].map(s => (
+                          <button key={s} onClick={() => handleAiQuery(s)} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all border border-indigo-100">{s}</button>
+                      ))}
+                  </div>
+                  {aiHistory.length > 0 && (
+                      <button onClick={clearChat} className="flex items-center gap-1.5 px-3 py-2 text-gray-400 hover:text-red-500 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-50 transition-all" title="Clear chat">
+                          <Trash2 className="h-3.5 w-3.5" /><span>Clear</span>
+                      </button>
+                  )}
               </div>
               <div className="relative">
                   <input type="text" placeholder="Ask Taxi anything about your benchmark..." className="w-full pl-6 pr-16 py-5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary font-bold shadow-inner" value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAiQuery()} />
