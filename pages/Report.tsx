@@ -7,6 +7,7 @@ import {
   MessageSquare, Lightbulb, RefreshCcw, XCircle, Database
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -202,7 +203,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                           <div className="flex justify-end"><div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold max-w-[80%] shadow-lg">{item.question}</div></div>
                           <div className="flex justify-start">
                               <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl max-w-[95%] shadow-sm">
-                                  <div className="prose prose-sm text-gray-700 font-medium leading-relaxed whitespace-pre-wrap">{item.analysis}</div>
+                                  <div className="prose prose-sm text-gray-700 font-medium leading-relaxed"><ReactMarkdown>{item.analysis}</ReactMarkdown></div>
                                   {item.chart && (
                                       <div className="mt-8 p-6 bg-white rounded-2xl border border-gray-100 h-64 shadow-inner">
                                           <p className="text-[10px] font-black uppercase text-gray-400 mb-4">{item.chart.title}</p>
