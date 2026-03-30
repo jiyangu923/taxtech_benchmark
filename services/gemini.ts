@@ -44,7 +44,12 @@ const RESPONSE_SCHEMA: Schema = {
       required: ["title", "type", "data"]
     }
   },
-  required: ["analysis"]
+  followUps: {
+    type: Type.ARRAY,
+    description: "2-3 short follow-up questions the user might want to ask next, based on what was just discussed.",
+    items: { type: Type.STRING }
+  },
+  required: ["analysis", "followUps"]
 };
 
 export async function askBenchmarkAI(
@@ -85,7 +90,8 @@ export async function askBenchmarkAI(
     3. For the chart 'data', usually include a point for 'You' and a point for 'Avg' or 'Top Quartile'.
     4. Translate internal codes (e.g., '100m_1b') to readable labels (e.g., '$100M - $1B') using the provided metadata.
     5. If the dataset is small, acknowledge that the benchmark is growing but still provide the best analysis you can.
-    6. End with a brief actionable takeaway or a follow-up question to keep the conversation going.
+    6. End with a brief actionable takeaway.
+    7. Always provide 2-3 relevant follow-up questions in the followUps array. These should naturally build on the current analysis and help the user dig deeper.
   `;
 
   try {
