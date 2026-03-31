@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, TrendingUp, Users } from 'lucide-react';
+import { ArrowRight, CheckCircle2, TrendingUp, Users, Heart, ShieldCheck, Eye } from 'lucide-react';
 import { User } from '../types';
 
 interface HomeProps {
@@ -61,6 +61,37 @@ const Home: React.FC<HomeProps> = ({ user }) => {
               </span>
             </Link>
           ))}
+        </div>
+      </div>
+
+      {/* How It Works / Trust Section */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16">
+        <div className="text-center mb-10">
+          <h2 className="text-2xl font-bold text-gray-900">Built for the Community</h2>
+          <p className="mt-2 text-gray-500 max-w-2xl mx-auto">This benchmark is a non-profit, community-driven initiative. Your data helps everyone make better decisions.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="text-center p-6">
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50 text-green-600 mb-4">
+              <Heart className="h-7 w-7" />
+            </div>
+            <h3 className="font-bold text-gray-900 text-lg">Non-Profit</h3>
+            <p className="mt-2 text-gray-500 text-sm">This is a free, community resource. No commercial agenda — just honest industry data to help tax teams improve.</p>
+          </div>
+          <div className="text-center p-6">
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-4">
+              <ShieldCheck className="h-7 w-7" />
+            </div>
+            <h3 className="font-bold text-gray-900 text-lg">Anonymous & Reviewed</h3>
+            <p className="mt-2 text-gray-500 text-sm">All submissions are anonymous. Every response goes through a review and approval process before entering the dataset.</p>
+          </div>
+          <div className="text-center p-6">
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 mb-4">
+              <Eye className="h-7 w-7" />
+            </div>
+            <h3 className="font-bold text-gray-900 text-lg">Equal Access</h3>
+            <p className="mt-2 text-gray-500 text-sm">Once approved, everyone gets the same access to survey data and analytics — participants and admins alike.</p>
+          </div>
         </div>
       </div>
     </div>
