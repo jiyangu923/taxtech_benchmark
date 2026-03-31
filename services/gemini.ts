@@ -42,12 +42,12 @@ const RESPONSE_SCHEMA: Schema = {
         yAxisLabel: { type: Type.STRING }
       },
       required: ["title", "type", "data"]
+    },
+    followUps: {
+      type: Type.ARRAY,
+      description: "2-3 short follow-up questions the user might want to ask next, based on what was just discussed.",
+      items: { type: Type.STRING }
     }
-  },
-  followUps: {
-    type: Type.ARRAY,
-    description: "2-3 short follow-up questions the user might want to ask next, based on what was just discussed.",
-    items: { type: Type.STRING }
   },
   required: ["analysis", "followUps"]
 };
