@@ -66,7 +66,10 @@ export async function askBenchmarkAI(
       constants: {
         revenueRanges: C.OPTS_REVENUE,
         roles: C.OPTS_RESPONDENT_ROLE,
-        automation: C.OPTS_AUTOMATION
+        automation: C.OPTS_AUTOMATION,
+        budgetRanges: C.OPTS_BUDGET_RANGE,
+        decisionOwner: C.OPTS_DECISION_OWNER,
+        buildBuyExperience: C.OPTS_BUILD_BUY_EXPERIENCE
       }
     }
   };

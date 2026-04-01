@@ -24,6 +24,12 @@ const INITIAL_FORM: Partial<Submission> = {
   ownedTaxFunctions: [],
   organizationScope: '',
   revenueRange: '',
+  taxTechDecisionOwner: '',
+  buildVsBuyExperience: [],
+  annualTaxTechBudgetRange: '',
+  vatSalesTaxAutomationRange: '',
+  eInvoicingAutomationRange: '',
+  customsDutiesAutomationRange: '',
   aiAdopted: false,
   taxTechSkillMixFrontendPercent: 0,
   taxTechSkillMixBackendPercent: 0,
@@ -107,6 +113,10 @@ const Survey: React.FC = () => {
     }
     if (activeSection === 2 && !formData.revenueRange) {
       setError('Please select a revenue range.');
+      return;
+    }
+    if (activeSection === 2 && (!formData.jurisdictionsCovered || formData.jurisdictionsCovered < 1)) {
+      setError('Please enter the number of jurisdictions (minimum 1).');
       return;
     }
 
@@ -326,6 +336,19 @@ const Survey: React.FC = () => {
           <div className="space-y-6">
             {renderSelect("Industry", "industry", C.OPTS_INDUSTRY)}
             {renderSelect("Revenue Range", "revenueRange", C.OPTS_REVENUE, true)}
+            <div className="mb-4">
+              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
+                Number of Countries/Jurisdictions You Operate In<span className="text-red-500 ml-1" aria-label="required">*</span>
+              </label>
+              <input
+                type="number"
+                min={1}
+                required
+                className="w-full rounded-xl border-gray-200 p-3 border font-bold text-sm focus:ring-primary focus:border-primary outline-none"
+                value={formData.jurisdictionsCovered || ''}
+                onChange={(e) => handleChange('jurisdictionsCovered', Math.max(1, parseInt(e.target.value) || 0))}
+              />
+            </div>
             {renderRadio("Org Scope", "organizationScope", C.OPTS_ORG_SCOPE)}
           </div>
         )}
@@ -335,6 +358,8 @@ const Survey: React.FC = () => {
             {renderSelect("Tech Location", "taxTechLocation", C.OPTS_TAX_TECH_ORG_LOCATION)}
             {renderSelect("Operating Model", "centralizationModel", C.OPTS_CENTRALIZATION)}
             {renderRadio("Outsourcing Strategy", "taxOutsourcingExtent", C.OPTS_OUTSOURCING_EXTENT)}
+            {renderRadio("Who owns tax technology decisions (budget, vendor selection, roadmap)?", "taxTechDecisionOwner", C.OPTS_DECISION_OWNER)}
+            {renderCheckbox("Build vs. Buy History (select all that apply)", "buildVsBuyExperience", C.OPTS_BUILD_BUY_EXPERIENCE)}
           </div>
         )}
 
@@ -345,6 +370,7 @@ const Survey: React.FC = () => {
               {renderSelect("Internal Tech FTEs", "taxTechFTEsRange", C.OPTS_FTE_TECH)}
               {renderSelect("External Tech Support", "taxTechOutsourcedResourcesFTEsRange", C.OPTS_FTE_TECH)}
             </div>
+            {renderRadio("Total Annual Budget for Tax Technology (licenses + internal + external)", "annualTaxTechBudgetRange", C.OPTS_BUDGET_RANGE)}
             <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
               <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Business Resources</h3>
               {renderSelect("Internal Business FTEs", "taxBusinessFTEsRange", C.OPTS_FTE_BUSINESS)}
@@ -388,7 +414,10 @@ const Survey: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {renderSelect("Calculation Auto", "taxCalculationAutomationRange", C.OPTS_AUTOMATION)}
             {renderSelect("Payment Auto", "taxPaymentAutomationRange", C.OPTS_AUTOMATION)}
-            {renderSelect("Compliance Auto", "complianceAutomationCoverageRange", C.OPTS_AUTOMATION)}
+            {renderSelect("VAT / Sales Tax Compliance Automation", "vatSalesTaxAutomationRange", C.OPTS_AUTOMATION)}
+            {renderSelect("E-Invoicing & Digital Reporting Automation", "eInvoicingAutomationRange", C.OPTS_AUTOMATION)}
+            {renderSelect("Withholding Tax Automation", "withholdingTaxAutomationRange", C.OPTS_AUTOMATION)}
+            {renderSelect("Customs & Duties Automation", "customsDutiesAutomationRange", C.OPTS_AUTOMATION)}
             {renderRadio("Regulatory Response", "regulatoryChangeResponseTime", C.OPTS_REGULATORY_RESPONSE)}
           </div>
         )}
@@ -413,6 +442,9 @@ const Survey: React.FC = () => {
 
         {activeSection === 9 && (
           <div className="space-y-6">
+            {renderRadio("How quickly can your team implement a regulatory change end-to-end?", "productRegulationEnablementCycle", C.OPTS_REGULATORY_RESPONSE)}
+            {renderInput("Financial Close Duration (Days)", "financialCloseTotalDays", "number")}
+            {renderInput("Tax Close Completion (Day of Close Cycle)", "financialCloseCompletionDay", "number")}
             <div className="bg-green-50/50 p-6 rounded-2xl border border-green-100 flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold text-green-900">GenAI Integration</p>
@@ -426,8 +458,6 @@ const Survey: React.FC = () => {
               </button>
             </div>
             {formData.aiAdopted && renderSelect("Maturity Phase", "genAIAdoptionStage", C.OPTS_GENAI_STAGE)}
-            {renderInput("Financial Close Duration (Days)", "financialCloseTotalDays", "number")}
-            {renderInput("Tax Close Completion (Day of Close Cycle)", "financialCloseCompletionDay", "number")}
           </div>
         )}
       </div>

@@ -38,10 +38,13 @@ export interface Submission {
   centralizationModel?: string;
   taxTechApproach?: string;
   taxOutsourcingExtent?: string;
+  taxTechDecisionOwner?: string;
+  buildVsBuyExperience?: string[];
 
   // Section 4
   taxTechFTEsRange?: string;
   taxTechOutsourcedResourcesFTEsRange?: string;
+  annualTaxTechBudgetRange?: string;
   dataHostingPlatform?: string;
   dataHostingPlatformOther?: string;
   taxTechSkillMixFrontendPercent?: number;
@@ -64,6 +67,9 @@ export interface Submission {
   taxPaymentAutomationRange?: string;
   withholdingTaxAutomationRange?: string;
   complianceAutomationCoverageRange?: string;
+  vatSalesTaxAutomationRange?: string;
+  eInvoicingAutomationRange?: string;
+  customsDutiesAutomationRange?: string;
   regulatoryChangeResponseTime?: string;
   dataConfidence?: string;
 
