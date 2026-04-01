@@ -9,7 +9,7 @@ export const SECTIONS: SectionDef[] = [
   { id: 6, title: 'Process Maturity & Automation', description: 'Core automation and responsiveness KPIs' },
   { id: 7, title: 'Data & Filing Ecosystem', description: 'Compliance volume and data integrity' },
   { id: 8, title: 'Technical Architecture', description: 'Underlying tech stack and engineering patterns' },
-  { id: 9, title: 'Performance & Innovation', description: 'Operational efficiency and AI readiness' },
+  { id: 9, title: 'Regulatory Agility', description: 'Regulatory change responsiveness' },
 ];
 
 export const OPTS_COMPANY_PROFILE: Option[] = [
@@ -210,4 +210,31 @@ export const OPTS_GENAI_STAGE: Option[] = [
   { value: 'poc', label: 'Proof of Concept (PoC)' },
   { value: 'production', label: 'Production Deployment' },
   { value: 'enterprise_wide', label: 'Enterprise-Wide Adoption' },
+];
+
+export const OPTS_DECISION_OWNER: Option[] = [
+  { value: 'tax_leadership', label: 'Tax leadership (VP Tax / Tax Director)' },
+  { value: 'finance_leadership', label: 'Finance leadership (CFO / Controller)' },
+  { value: 'it_leadership', label: 'IT leadership (CIO / CTO)' },
+  { value: 'shared_governance', label: 'Shared governance (Tax + IT committee)' },
+  { value: 'business_unit_leads', label: 'Business unit leads' },
+  { value: 'other', label: 'Other' },
+];
+
+export const OPTS_BUILD_BUY_EXPERIENCE: Option[] = [
+  { value: 'replaced_vendor_with_build', label: 'Replaced a vendor solution with in-house build (e.g., moved off Vertex/Avalara to a custom tax engine)' },
+  { value: 'replaced_build_with_vendor', label: 'Replaced an in-house build with a vendor solution (e.g., retired a custom system in favor of a SaaS product)' },
+  { value: 'abandoned_build', label: 'Attempted in-house build that was abandoned (e.g., started building a tax data platform but killed the project)' },
+  { value: 'evaluated_vendor_chose_build', label: 'Evaluated vendors but chose to build (e.g., reviewed market options and decided to develop internally)' },
+  { value: 'no_significant_decisions', label: 'No significant build vs. buy decisions yet' },
+];
+
+export const OPTS_BUDGET_RANGE: Option[] = [
+  { value: 'under_500k', label: 'Under $500K' },
+  { value: '500k_1m', label: '$500K – $1M' },
+  { value: '1m_3m', label: '$1M – $3M' },
+  { value: '3m_10m', label: '$3M – $10M' },
+  { value: '10m_25m', label: '$10M – $25M' },
+  { value: 'over_25m', label: 'Over $25M' },
+  { value: 'prefer_not_to_answer', label: 'Prefer not to answer' },
 ];
