@@ -2,6 +2,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Submission } from "../types";
 import * as C from "../constants";
+import SURVEY_TOOLTIPS from "../surveyTooltips";
 
 // Initialize Gemini lazily so a missing API key doesn't crash the app on load.
 let ai: GoogleGenAI | null = null;
@@ -70,7 +71,8 @@ export async function askBenchmarkAI(
         budgetRanges: C.OPTS_BUDGET_RANGE,
         decisionOwner: C.OPTS_DECISION_OWNER,
         buildBuyExperience: C.OPTS_BUILD_BUY_EXPERIENCE
-      }
+      },
+      fieldDescriptions: SURVEY_TOOLTIPS
     }
   };
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { api } from '../services/api';
 import { Submission, Option } from '../types';
 import * as C from '../constants';
+import SURVEY_TOOLTIPS from '../surveyTooltips';
 
 const DRAFT_KEY = 'taxtech_survey_draft';
 
@@ -156,6 +157,20 @@ const Survey: React.FC = () => {
 
   // ── Sub-components ──────────────────────────────────────────────────────────
 
+  const Tooltip = ({ field }: { field: string }) => {
+    const text = SURVEY_TOOLTIPS[field];
+    if (!text) return null;
+    return (
+      <span className="relative group inline-flex ml-1.5 align-middle">
+        <Info className="h-3.5 w-3.5 text-gray-300 hover:text-indigo-500 cursor-help transition-colors" />
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 text-white text-xs font-medium leading-relaxed rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+          {text}
+          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+        </span>
+      </span>
+    );
+  };
+
   const SumIndicator = ({ fields, label }: { fields: (keyof Submission)[], label: string }) => {
     const total = getGroupSum(fields);
     const isExact = Math.abs(total - 100) < 0.1;
@@ -180,7 +195,7 @@ const Survey: React.FC = () => {
 
   const renderPercentInput = (label: string, field: keyof Submission) => (
     <div className="mb-4" key={field}>
-      <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">{label}</label>
+      <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">{label}<Tooltip field={field} /></label>
       <input
         type="number"
         min={0}
@@ -194,7 +209,7 @@ const Survey: React.FC = () => {
 
   const renderInput = (label: string, field: keyof Submission, type: 'text' | 'number' = 'text') => (
     <div className="mb-4" key={field}>
-      <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">{label}</label>
+      <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">{label}<Tooltip field={field} /></label>
       <input
         type={type}
         className="w-full rounded-xl border-gray-200 p-3 border font-bold text-sm focus:ring-primary focus:border-primary outline-none"
@@ -207,7 +222,7 @@ const Survey: React.FC = () => {
   const renderSelect = (label: string, field: keyof Submission, options: Option[], required = false) => (
     <div className="mb-4" key={field}>
       <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-        {label}{required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
+        {label}{required && <span className="text-red-500 ml-1" aria-label="required">*</span>}<Tooltip field={field} />
       </label>
       <select
         className="w-full rounded-xl border-gray-200 p-3 border font-bold text-sm bg-white cursor-pointer outline-none"
@@ -223,7 +238,7 @@ const Survey: React.FC = () => {
   const renderRadio = (label: string, field: keyof Submission, options: Option[], required = false) => (
     <div className="mb-6" key={field}>
       <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-4">
-        {label}{required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
+        {label}{required && <span className="text-red-500 ml-1" aria-label="required">*</span>}<Tooltip field={field} />
       </label>
       <div className="space-y-3">
         {options.map(o => (
@@ -245,7 +260,7 @@ const Survey: React.FC = () => {
     return (
       <div className="mb-6" key={field}>
         <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
-          {label}{required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
+          {label}{required && <span className="text-red-500 ml-1" aria-label="required">*</span>}<Tooltip field={field} />
         </label>
         <p className="text-[11px] text-gray-400 mb-4">Select all that apply</p>
         <div className="space-y-3">
@@ -338,7 +353,7 @@ const Survey: React.FC = () => {
             {renderSelect("Revenue Range", "revenueRange", C.OPTS_REVENUE, true)}
             <div className="mb-4">
               <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                Number of Countries/Jurisdictions You Operate In<span className="text-red-500 ml-1" aria-label="required">*</span>
+                Number of Countries/Jurisdictions You Operate In<span className="text-red-500 ml-1" aria-label="required">*</span><Tooltip field="jurisdictionsCovered" />
               </label>
               <input
                 type="number"
@@ -447,7 +462,7 @@ const Survey: React.FC = () => {
             {renderInput("Tax Close Completion (Day of Close Cycle)", "financialCloseCompletionDay", "number")}
             <div className="bg-green-50/50 p-6 rounded-2xl border border-green-100 flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-green-900">GenAI Integration</p>
+                <p className="text-sm font-bold text-green-900">GenAI Integration<Tooltip field="aiAdopted" /></p>
                 <p className="text-xs text-green-700">Have you deployed LLM tools?</p>
               </div>
               <button
