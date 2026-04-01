@@ -142,12 +142,12 @@ const Report: React.FC<ReportProps> = ({ user }) => {
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 space-y-8 animate-fadeIn">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-            <h1 className="text-4xl font-black text-gray-900 tracking-tight">Benchmark Analytics</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">Benchmark Analytics</h1>
             <p className="text-gray-500 font-medium">Peer-to-peer maturity comparisons</p>
         </div>
-        <div className="bg-indigo-50 p-4 rounded-2xl flex items-center gap-4">
+        <div className="bg-indigo-50 p-3 sm:p-4 rounded-2xl flex items-center gap-4">
             <div className="text-right">
                 <p className="text-[10px] font-black uppercase text-indigo-400">Sample Size</p>
                 <p className="text-sm font-black text-indigo-900">{allSubmissions.length} Entities</p>
@@ -156,14 +156,14 @@ const Report: React.FC<ReportProps> = ({ user }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
         {/* Automation Bar Chart */}
         <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
           <div className="flex items-center gap-3 mb-8">
             <TrendingUp className="h-6 w-6 text-primary" />
             <h3 className="text-lg font-black text-gray-900">Automation Gaps</h3>
           </div>
-          <div className="h-64">
+          <div className="h-48 sm:h-56 md:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={autoData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -183,7 +183,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                 <Database className="h-6 w-6 text-indigo-600" />
                 <h3 className="text-lg font-black text-gray-900">Industry Data Architecture</h3>
             </div>
-            <div className="h-64">
+            <div className="h-48 sm:h-56 md:h-64">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie data={industryStats?.archData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
@@ -198,16 +198,16 @@ const Report: React.FC<ReportProps> = ({ user }) => {
 
       {/* Taxi AI Analyst Section */}
       <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
-          <div className="bg-gradient-to-br from-primary to-secondary p-10 text-white">
+          <div className="bg-gradient-to-br from-primary to-secondary p-6 sm:p-8 lg:p-10 text-white">
               <div className="flex items-center gap-3 mb-4">
                   <Sparkles className="h-8 w-8 text-indigo-300" />
                   <span className="text-xs font-black uppercase tracking-[0.2em]">Powered by Taxable AI</span>
               </div>
-              <h2 className="text-4xl font-black mb-2">Ask Taxi</h2>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black mb-2">Ask Taxi</h2>
               <p className="text-sm text-indigo-200 font-semibold mb-3">Your AI Benchmark Analyst</p>
               <p className="text-indigo-100 max-w-2xl font-medium leading-relaxed">Ask me about your maturity level, automation gaps, FTE benchmarks, or how you stack up against peers.</p>
           </div>
-          <div className="p-10">
+          <div className="p-4 sm:p-6 lg:p-10">
               <div className="space-y-8 max-h-[500px] overflow-y-auto mb-10 px-2 custom-scrollbar">
                   {aiHistory.length === 0 && (
                       <div className="py-12 text-center">
@@ -217,10 +217,10 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                   )}
                   {aiHistory.map((item, i) => (
                       <div key={i} className="space-y-4 animate-fadeIn">
-                          <div className="flex justify-end"><div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold max-w-[80%] shadow-lg">{item.question}</div></div>
+                          <div className="flex justify-end"><div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold max-w-[90%] sm:max-w-[80%] shadow-lg">{item.question}</div></div>
                           <div className="flex justify-start items-start gap-3">
                               <img src={taxiAvatar} alt="Taxi" className="w-9 h-9 rounded-full shadow-md flex-shrink-0 mt-1" />
-                              <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl max-w-[90%] shadow-sm">
+                              <div className="bg-gray-50 border border-gray-100 p-4 sm:p-6 lg:p-8 rounded-3xl max-w-full sm:max-w-[90%] shadow-sm">
                                   <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-3">Taxi</p>
                                   <div className="prose prose-sm text-gray-700 font-medium leading-relaxed"><ReactMarkdown>{item.analysis}</ReactMarkdown></div>
                                   {item.chart && (
@@ -251,7 +251,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
               <div className="flex items-center gap-2 mb-8">
                   <div className="flex flex-wrap gap-2 flex-1">
                       {["How do I compare on FTEs?", "What are the common AI use cases?", "Am I a market leader or follower?", "Where are my biggest automation gaps?", "How does my tech stack compare?"].map(s => (
-                          <button key={s} onClick={() => handleAiQuery(s)} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all border border-indigo-100">{s}</button>
+                          <button key={s} onClick={() => handleAiQuery(s)} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all border border-indigo-100">{s}</button>
                       ))}
                   </div>
                   {aiHistory.length > 0 && (
@@ -261,7 +261,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                   )}
               </div>
               <div className="relative">
-                  <input type="text" placeholder="Ask Taxi anything about your benchmark..." className="w-full pl-6 pr-16 py-5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary font-bold shadow-inner" value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAiQuery()} />
+                  <input type="text" placeholder="Ask Taxi anything about your benchmark..." className="w-full pl-4 pr-14 py-4 sm:pl-6 sm:pr-16 sm:py-5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary font-bold shadow-inner" value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAiQuery()} />
                   <button onClick={() => handleAiQuery()} className="absolute right-2 top-2 bottom-2 px-6 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all"><Send className="h-5 w-5" /></button>
               </div>
           </div>

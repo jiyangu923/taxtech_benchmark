@@ -11,13 +11,13 @@ const Home: React.FC<HomeProps> = ({ user }) => {
   return (
     <div className="bg-gray-50 min-h-screen">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-primary pb-32 pt-16 lg:pb-40 lg:pt-24">
+      <div className="relative overflow-hidden bg-primary pb-24 pt-12 sm:pb-32 sm:pt-16 lg:pb-40 lg:pt-24">
         <div className="relative mx-auto max-w-7xl px-4 sm:static sm:px-6 lg:px-8">
           <div className="sm:max-w-lg">
-            <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white sm:text-6xl">
               Indirect Tax Technology Benchmark
             </h1>
-            <p className="mt-4 text-xl text-indigo-100">
+            <p className="mt-4 text-lg sm:text-xl text-indigo-100">
               Compare your organizational model, automation rates, and AI adoption against industry peers.
             </p>
             <div className="mt-10">
@@ -40,7 +40,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
 
       {/* Feature Grid */}
       <div className="relative -mt-24 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 md:gap-8 md:grid-cols-3">
           {[
             { icon: <TrendingUp className="h-6 w-6" />, title: 'Automation Metrics', desc: 'Benchmark your tax calculation, payment, and compliance automation rates against the market.' },
             { icon: <Users className="h-6 w-6" />, title: 'Team Structure', desc: 'Understand how peer organizations structure their tax technology vs. tax business teams.' },
@@ -70,7 +70,7 @@ const Home: React.FC<HomeProps> = ({ user }) => {
           <h2 className="text-2xl font-bold text-gray-900">Built for the Community</h2>
           <p className="mt-2 text-gray-500 max-w-2xl mx-auto">This benchmark is a non-profit, community-driven initiative. Your data helps everyone make better decisions.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           <div className="text-center p-6">
             <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50 text-green-600 mb-4">
               <Heart className="h-7 w-7" />

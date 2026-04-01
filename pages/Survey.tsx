@@ -297,7 +297,7 @@ const Survey: React.FC = () => {
       )}
 
       <div className="mb-10 text-center">
-        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Benchmark Survey</h1>
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">Benchmark Survey</h1>
         <p className="text-gray-500 text-sm mt-1">Step {activeSection} of {C.SECTIONS.length}</p>
         <div className="mt-6 w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
           <div className="bg-primary h-full transition-all duration-500" style={{ width: `${progress}%` }} />
@@ -310,7 +310,7 @@ const Survey: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 min-h-[400px]">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-xl border border-gray-100 min-h-[400px]">
         <h2 className="text-2xl font-black text-gray-900 mb-2">{currentSection.title}</h2>
         <p className="text-gray-400 text-sm mb-8 pb-6 border-b border-gray-50">{currentSection.description}</p>
 
@@ -360,7 +360,7 @@ const Survey: React.FC = () => {
                 label="Tech Skill Mix"
                 fields={['taxTechSkillMixFrontendPercent', 'taxTechSkillMixBackendPercent', 'taxTechSkillMixDataEngineeringPercent', 'taxTechSkillMixDevOpsPercent', 'taxTechSkillMixOtherPercent']}
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {renderPercentInput("Frontend %", "taxTechSkillMixFrontendPercent")}
                 {renderPercentInput("Backend %", "taxTechSkillMixBackendPercent")}
                 {renderPercentInput("Data Engineering %", "taxTechSkillMixDataEngineeringPercent")}
@@ -373,7 +373,7 @@ const Survey: React.FC = () => {
                 label="Business Specialization"
                 fields={['planningSpecialistsPercent', 'complianceSpecialistsPercent', 'auditSpecialistsPercent', 'provisionSpecialistsPercent', 'otherSpecialistsPercent']}
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {renderPercentInput("Strategy %", "planningSpecialistsPercent")}
                 {renderPercentInput("Compliance %", "complianceSpecialistsPercent")}
                 {renderPercentInput("Audit %", "auditSpecialistsPercent")}
@@ -432,17 +432,17 @@ const Survey: React.FC = () => {
         )}
       </div>
 
-      <div className="mt-8 flex justify-between">
+      <div className="mt-8 flex flex-col-reverse sm:flex-row justify-between gap-3">
         <button
           onClick={handleBack}
           disabled={activeSection === 1}
-          className="px-6 py-3 bg-white border rounded-xl font-bold flex items-center gap-2 hover:bg-gray-50 disabled:opacity-30"
+          className="w-full sm:w-auto px-6 py-3 bg-white border rounded-xl font-bold flex items-center gap-2 hover:bg-gray-50 disabled:opacity-30"
         >
           <ChevronLeft className="h-4 w-4" /> Back
         </button>
         <button
           onClick={handleNext}
-          className="px-10 py-3 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-900 shadow-xl shadow-primary/20"
+          className="w-full sm:w-auto px-10 py-3 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-900 shadow-xl shadow-primary/20"
         >
           {activeSection === C.SECTIONS.length ? 'Submit' : 'Continue'} <ChevronRight className="h-4 w-4" />
         </button>

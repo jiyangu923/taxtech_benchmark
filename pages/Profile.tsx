@@ -58,10 +58,10 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {/* Left Column: Summary Card */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden text-center p-8">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden text-center p-6 sm:p-8">
             <div className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-indigo-50 mb-4 border-4 border-white shadow-sm ring-1 ring-indigo-100">
               <UserIcon className="h-10 w-10 text-primary" />
             </div>

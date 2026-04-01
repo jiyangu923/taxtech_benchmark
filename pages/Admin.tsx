@@ -201,7 +201,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
 
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-8">
-            <nav className="-mb-px flex space-x-10">
+            <nav className="-mb-px flex space-x-3 sm:space-x-6 md:space-x-10 overflow-x-auto">
                 <button onClick={() => setActiveTab('submissions')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'submissions' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Eye className="h-4 w-4" /> Submissions</button>
                 <button onClick={() => setActiveTab('sync')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'sync' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><CloudSync className="h-4 w-4" /> Integration</button>
                 <button onClick={() => setActiveTab('admins')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'admins' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Users className="h-4 w-4" /> Team Access</button>
@@ -279,6 +279,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
             </div>
 
             <div className="bg-white shadow-xl overflow-hidden border border-gray-200 sm:rounded-2xl">
+              <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -330,12 +331,13 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                     )}
                     </tbody>
                 </table>
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === 'sync' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 animate-fadeIn">
                 <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="bg-indigo-50 p-2 rounded-lg"><CloudSync className="h-6 w-6 text-primary"/></div>
@@ -373,7 +375,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
         )}
 
         {activeTab === 'admins' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-fadeIn">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 animate-fadeIn">
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-3">
@@ -427,7 +429,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
         )}
 
         {activeTab === 'system' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 animate-fadeIn">
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="bg-indigo-50 p-2 rounded-lg"><Database className="h-6 w-6 text-primary"/></div>
