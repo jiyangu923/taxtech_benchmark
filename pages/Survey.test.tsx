@@ -48,6 +48,9 @@ function goToSection(target: number) {
       // Section 2: Revenue Range is required — it is the second <select>
       const selects = screen.getAllByRole('combobox');
       fireEvent.change(selects[1], { target: { value: '100m_500m' } });
+      // Section 2: jurisdictionsCovered is required (min 1)
+      const numberInputs = screen.getAllByRole('spinbutton');
+      fireEvent.change(numberInputs[0], { target: { value: '5' } });
     }
     fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
   }
