@@ -124,7 +124,8 @@ export async function askBenchmarkAI(
     console.error("AI Request Failed", error);
     return {
       analysis: "I apologize, but I encountered an error analyzing the data. Please try again.",
-      chart: null
+      chart: null,
+      followUps: []
     };
   }
 }
