@@ -112,15 +112,23 @@ const Report: React.FC<ReportProps> = ({ user }) => {
     if (stats) setIndustryStats(stats);
   };
 
+  const scrollToBottom = () => {
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+  };
+
   const handleAiQuery = async (q?: string) => {
     const query = q || aiInput;
     if (!query || !mySubmission || isAiLoading) return;
     setIsAiLoading(true);
     setAiInput('');
+    scrollToBottom();
     try {
       const res = await askBenchmarkAI(query, mySubmission, allSubmissions);
       setAiHistory(prev => [...prev, { question: query, ...res }]);
-    } finally { setIsAiLoading(false); }
+    } finally {
+      setIsAiLoading(false);
+      scrollToBottom();
+    }
   };
 
   if (!mySubmission || mySubmission.status === 'pending') {
@@ -208,7 +216,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
               <p className="text-indigo-100 max-w-2xl font-medium leading-relaxed">Ask me about your maturity level, automation gaps, FTE benchmarks, or how you stack up against peers.</p>
           </div>
           <div className="p-4 sm:p-6 lg:p-10">
-              <div className="space-y-8 max-h-[500px] overflow-y-auto mb-10 px-2 custom-scrollbar">
+              <div className="space-y-8 max-h-[60vh] overflow-y-auto mb-10 px-2 custom-scrollbar scroll-pb-4">
                   {aiHistory.length === 0 && (
                       <div className="py-12 text-center">
                           <img src={taxiAvatar} alt="Taxi" className="w-20 h-20 mx-auto mb-4 rounded-full shadow-lg" />
@@ -236,7 +244,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                                           <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3">Dig deeper</p>
                                           <div className="flex flex-wrap gap-2">
                                               {item.followUps.map((q: string) => (
-                                                  <button key={q} onClick={() => handleAiQuery(q)} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold hover:bg-indigo-100 transition-all border border-indigo-100">{q}</button>
+                                                  <button key={q} onClick={() => handleAiQuery(q)} className="px-4 py-2.5 bg-indigo-50 text-indigo-700 rounded-full text-xs sm:text-sm font-bold hover:bg-indigo-100 active:bg-indigo-200 transition-all border border-indigo-200 shadow-sm cursor-pointer select-none">{q}</button>
                                               ))}
                                           </div>
                                       </div>
