@@ -112,6 +112,10 @@ const Survey: React.FC = () => {
       setError('Please select at least one company profile.');
       return;
     }
+    if (activeSection === 1 && !formData.respondentRole) {
+      setError('Please select your role.');
+      return;
+    }
     if (activeSection === 2 && !formData.revenueRange) {
       setError('Please select a revenue range.');
       return;
@@ -329,11 +333,13 @@ const Survey: React.FC = () => {
         </div>
       </div>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700 font-bold text-sm">
-          <AlertCircle className="h-5 w-5 flex-shrink-0" /> {error}
-        </div>
-      )}
+      <div role="alert" aria-live="assertive">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700 font-bold text-sm">
+            <AlertCircle className="h-5 w-5 flex-shrink-0" /> {error}
+          </div>
+        )}
+      </div>
 
       <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-xl border border-gray-100 min-h-[400px]">
         <h2 className="text-2xl font-black text-gray-900 mb-2">{currentSection.title}</h2>

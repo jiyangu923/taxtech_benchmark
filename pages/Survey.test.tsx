@@ -43,6 +43,8 @@ function goToSection(target: number) {
     if (current === 1) {
       // Section 1: select at least one company profile (required)
       fireEvent.click(screen.getByText('Public company'));
+      // Section 1: respondentRole is required
+      fireEvent.click(screen.getByText('Tax Technology'));
     }
     if (current === 2) {
       // Section 2: Revenue Range is required — it is the second <select>
@@ -90,7 +92,8 @@ describe('Section 1 — Benchmarking Context', () => {
     renderSurvey();
     fireEvent.click(screen.getByText('Public company'));
     fireEvent.click(screen.getByText('Multinational'));
-    // Both selected — Continue should advance to section 2
+    fireEvent.click(screen.getByText('Tax Technology'));
+    // Both selected + role selected — Continue should advance to section 2
     fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
     expect(screen.getByText('Organizational Profile')).toBeTruthy();
   });
@@ -239,12 +242,13 @@ describe('localStorage autosave and restore', () => {
   });
 
   it('restores saved progress from localStorage on mount', () => {
-    // Pre-populate with a valid companyProfile selection
+    // Pre-populate with valid companyProfile + respondentRole
     localStorage.setItem('taxtech_survey_draft', JSON.stringify({
       companyProfile: ['public', 'multinational'],
+      respondentRole: 'tax_professionals',
     }));
     renderSurvey();
-    // The stored state has companyProfile set, so Continue should pass section 1
+    // The stored state has required fields set, so Continue should pass section 1
     fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
     expect(screen.getByText('Organizational Profile')).toBeTruthy();
   });

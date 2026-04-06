@@ -124,16 +124,15 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Email Address</label>
                 <div className="relative group">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
-                  <input 
-                    type="email" 
-                    required
-                    disabled={isLoading}
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all text-sm outline-none font-bold"
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-300" />
+                  <input
+                    type="email"
+                    readOnly
+                    className="w-full pl-12 pr-4 py-4 bg-gray-100 border border-gray-200 rounded-2xl text-sm outline-none font-bold text-gray-500 cursor-not-allowed"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
+                <p className="text-[10px] text-gray-400 font-medium ml-1">Email is linked to your authentication provider and cannot be changed here.</p>
               </div>
 
               <div className="pt-4">
