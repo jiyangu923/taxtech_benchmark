@@ -13,6 +13,13 @@
     <meta name="twitter:title" content="TaxTech Benchmark" />
     <meta name="twitter:description" content="Free, anonymous tax technology benchmarking for the community." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      /* Defensive: prevent recharts tooltip wrappers from leaking outside their chart container */
+      .recharts-wrapper:not(:hover) .recharts-tooltip-wrapper {
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+    </style>
     <title>Indirect Tax Technology Benchmark</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>

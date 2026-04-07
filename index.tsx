@@ -10,6 +10,11 @@ if (!rootElement) {
 
 // Perform all Supabase auth work before React mounts to avoid
 // StrictMode double-firing useEffect and creating lock conflicts.
+// Wipe legacy mock-store keys (contained seeded passwords + cached submissions
+// from a prior dev/mock implementation). Safe to remove unconditionally.
+['tax_benchmark_db_users', 'tax_benchmark_db_submissions', 'tax_benchmark_db_settings', 'tax_benchmark_db_user_session']
+  .forEach(k => { try { localStorage.removeItem(k); } catch {} });
+
 async function bootstrap() {
   // 1. Exchange PKCE code if returning from OAuth redirect
   const params = new URLSearchParams(window.location.search);
