@@ -31,6 +31,7 @@ function PageTitle() {
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [needsPasswordSet, setNeedsPasswordSet] = useState(false);
 
@@ -47,7 +48,10 @@ const App: React.FC = () => {
     if (initialSession?.user) {
       api.getCurrentUser().then((profile) => {
         if (profile) setUser(profile);
+        setAuthReady(true);
       });
+    } else {
+      setAuthReady(true);
     }
 
     // Listen for sign-in / sign-out (including OAuth redirects back from Google)
@@ -101,6 +105,11 @@ const App: React.FC = () => {
         )}
 
         <main className="flex-1">
+          {!authReady ? (
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
           <Routes>
             <Route path="/" element={<Home user={user} />} />
             <Route path="/direct-tax" element={<DirectTax />} />
@@ -127,6 +136,7 @@ const App: React.FC = () => {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          )}
         </main>
 
         <footer className="bg-white border-t border-gray-200 py-8 mt-auto">

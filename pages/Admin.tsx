@@ -96,10 +96,10 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
   };
 
   const handleDeleteAll = async () => {
-    if (window.confirm('DANGER: This will delete ALL submissions. Proceed?')) {
-      await api.deleteAllSubmissions();
-      await loadSubmissions();
-    }
+    if (!window.confirm('DANGER: This will permanently delete ALL submissions. Are you sure?')) return;
+    if (!window.confirm('This action CANNOT be undone. Click OK to permanently erase all data.')) return;
+    await api.deleteAllSubmissions();
+    await loadSubmissions();
   };
 
   const handleAddAdmin = async (e: React.FormEvent) => {
@@ -304,9 +304,9 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                     ) : (
                         filteredSubmissions.map((sub) => (
                             <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer group" onClick={() => setSelectedSub(sub)}>
-                                <td className="px-6 py-5 whitespace-nowrap">
-                                    <div className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors">{sub.userName}</div>
-                                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight mt-0.5">{new Date(sub.submittedAt).toLocaleDateString()}</div>
+                                <td className="px-6 py-5">
+                                    <div className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors truncate max-w-[180px]">{sub.userName}</div>
+                                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight mt-1">{new Date(sub.submittedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</div>
                                 </td>
                                 <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-600 font-medium">{getLabel(C.OPTS_RESPONDENT_ROLE, sub.respondentRole)}</td>
                                 <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-600 font-medium">{getLabel(C.OPTS_REVENUE, sub.revenueRange)}</td>
