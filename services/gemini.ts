@@ -1,19 +1,8 @@
 
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { Type, Schema } from "@google/genai";
 import { Submission } from "../types";
 import * as C from "../constants";
 import SURVEY_TOOLTIPS from "../surveyTooltips";
-
-// Initialize Gemini lazily so a missing API key doesn't crash the app on load.
-let ai: GoogleGenAI | null = null;
-function getAI(): GoogleGenAI {
-  if (!ai) {
-    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
-    ai = new GoogleGenAI({ apiKey });
-  }
-  return ai;
-}
 
 const RESPONSE_SCHEMA: Schema = {
   type: Type.OBJECT,
@@ -53,33 +42,7 @@ const RESPONSE_SCHEMA: Schema = {
   required: ["analysis", "followUps"]
 };
 
-export async function askBenchmarkAI(
-  question: string, 
-  userSubmission: Submission, 
-  allSubmissions: Submission[]
-) {
-  // Prepare context data
-  const context = {
-    currentUserData: userSubmission,
-    benchmarkData: allSubmissions,
-    metadata: {
-      totalRespondents: allSubmissions.length,
-      constants: {
-        revenueRanges: C.OPTS_REVENUE,
-        roles: C.OPTS_RESPONDENT_ROLE,
-        automation: C.OPTS_AUTOMATION,
-        budgetRanges: C.OPTS_BUDGET_RANGE,
-        decisionOwner: C.OPTS_DECISION_OWNER,
-        buildBuyExperience: C.OPTS_BUILD_BUY_EXPERIENCE
-      },
-      fieldDescriptions: SURVEY_TOOLTIPS
-    }
-  };
-
-  // Updated to the recommended model for basic text/data analysis
-  const model = "gemini-3-flash-preview";
-  
-  const systemInstruction = `
+const SYSTEM_INSTRUCTION = `
     You are **Taxi**, the AI benchmark analyst powering Taxable AI.
     You have access to a specific user's submission and the entire dataset of submissions.
 
@@ -99,25 +62,56 @@ export async function askBenchmarkAI(
     7. Always provide 2-3 relevant follow-up questions in the followUps array. These should naturally build on the current analysis and help the user dig deeper.
   `;
 
+export async function askBenchmarkAI(
+  question: string,
+  userSubmission: Submission,
+  allSubmissions: Submission[]
+) {
+  const context = {
+    currentUserData: userSubmission,
+    benchmarkData: allSubmissions,
+    metadata: {
+      totalRespondents: allSubmissions.length,
+      constants: {
+        revenueRanges: C.OPTS_REVENUE,
+        roles: C.OPTS_RESPONDENT_ROLE,
+        automation: C.OPTS_AUTOMATION,
+        budgetRanges: C.OPTS_BUDGET_RANGE,
+        decisionOwner: C.OPTS_DECISION_OWNER,
+        buildBuyExperience: C.OPTS_BUILD_BUY_EXPERIENCE
+      },
+      fieldDescriptions: SURVEY_TOOLTIPS
+    }
+  };
+
   try {
-    const response = await getAI().models.generateContent({
-      model: model,
-      contents: [
-        { role: 'user', parts: [{ text: JSON.stringify(context) }] },
-        { role: 'user', parts: [{ text: `User Question: ${question}` }] }
-      ],
-      config: {
-        systemInstruction: systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA,
-        temperature: 0.2, // Low temperature for analytical consistency
-      }
+    const response = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          { role: 'user', parts: [{ text: JSON.stringify(context) }] },
+          { role: 'user', parts: [{ text: `User Question: ${question}` }] }
+        ],
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          responseMimeType: "application/json",
+          responseSchema: RESPONSE_SCHEMA,
+          temperature: 0.2,
+        }
+      }),
     });
 
-    // Directly access the .text property (not a method call)
-    const text = response.text;
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Extract text from Gemini REST API response format
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) throw new Error("No response from AI");
-    
+
     return JSON.parse(text);
 
   } catch (error) {

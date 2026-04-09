@@ -168,14 +168,14 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
   };
 
   const getLabel = (options: { value: string; label: string }[], val?: string) => {
-    if (!val) return '-';
+    if (!val) return 'Not provided';
     return options.find(o => o.value === val)?.label || val;
   };
 
   const DetailRow = ({ label, value }: { label: string, value: any }) => (
     <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b border-gray-100 last:border-0 hover:bg-gray-50 text-sm">
         <dt className="font-medium text-gray-500">{label}</dt>
-        <dd className="mt-1 text-gray-900 sm:mt-0 sm:col-span-2 break-words">{value !== undefined && value !== null && value !== '' ? value : '-'}</dd>
+        <dd className="mt-1 text-gray-900 sm:mt-0 sm:col-span-2 break-words">{value !== undefined && value !== null && value !== '' ? value : <span className="text-gray-400 italic">Not provided</span>}</dd>
     </div>
   );
 
