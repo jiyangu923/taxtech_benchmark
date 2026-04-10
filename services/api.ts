@@ -28,9 +28,10 @@ export const api = {
     if (profile) return profile as User;
 
     // Profile row was deleted but auth user still exists — recreate it.
-    const adminEmails = await api.getAdminEmails();
+    // Use hard-coded initial admins for role check here to avoid reading
+    // the settings table (which requires admin RLS) in a non-admin context.
     const email = (authUser.email ?? '').toLowerCase();
-    const role = adminEmails.map(e => e.toLowerCase()).includes(email) ? 'admin' : 'user';
+    const role = INITIAL_ADMINS.map(e => e.toLowerCase()).includes(email) ? 'admin' : 'user';
     const name =
       authUser.user_metadata?.full_name ||
       authUser.user_metadata?.name ||
@@ -178,6 +179,29 @@ export const api = {
     const emails = await api.getAdminEmails();
     const filtered = emails.filter(e => e !== email);
     await supabase.from('settings').upsert({ key: 'adminEmails', value: JSON.stringify(filtered) });
+  },
+
+  // ─── Notify Me ───────────────────────────────────────────────────────────
+
+  async subscribeDirectTaxNotify(): Promise<void> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+    await supabase.from('notifications').upsert({
+      user_id: authUser.id,
+      type: 'directtax_launch',
+    });
+  },
+
+  async getDirectTaxNotify(): Promise<boolean> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return false;
+    const { data } = await supabase
+      .from('notifications')
+      .select('user_id')
+      .eq('user_id', authUser.id)
+      .eq('type', 'directtax_launch')
+      .single();
+    return !!data;
   },
 
   // ─── Data Portability ────────────────────────────────────────────────────

@@ -86,8 +86,11 @@ const Report: React.FC<ReportProps> = ({ user }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    try { localStorage.setItem('taxi_chat_history', JSON.stringify(aiHistory)); }
-    catch { /* ignore quota errors */ }
+    try {
+      // Keep only the most recent 50 messages to prevent unbounded localStorage growth
+      const trimmed = aiHistory.length > 50 ? aiHistory.slice(-50) : aiHistory;
+      localStorage.setItem('taxi_chat_history', JSON.stringify(trimmed));
+    } catch { /* ignore quota errors */ }
   }, [aiHistory]);
 
   const clearChat = () => {
@@ -120,7 +123,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
 
   const handleAiQuery = async (q?: string) => {
     const query = q || aiInput;
-    if (!query || !mySubmission || isAiLoading) return;
+    if (!query || (!mySubmission && !isAdmin) || isAiLoading) return;
     setIsAiLoading(true);
     setAiInput('');
     scrollToBottom();
@@ -145,9 +148,9 @@ const Report: React.FC<ReportProps> = ({ user }) => {
   }
 
   const autoData = [
-    { name: 'Calc', you: mapAuto(mySubmission.taxCalculationAutomationRange), avg: industryStats?.averages.calculation },
-    { name: 'Payment', you: mapAuto(mySubmission.taxPaymentAutomationRange), avg: industryStats?.averages.payment },
-    { name: 'Compl.', you: mapAuto(mySubmission.complianceAutomationCoverageRange), avg: industryStats?.averages.compliance },
+    { name: 'Calc', you: mapAuto(mySubmission?.taxCalculationAutomationRange), avg: industryStats?.averages.calculation },
+    { name: 'Payment', you: mapAuto(mySubmission?.taxPaymentAutomationRange), avg: industryStats?.averages.payment },
+    { name: 'Compl.', you: mapAuto(mySubmission?.complianceAutomationCoverageRange), avg: industryStats?.averages.compliance },
   ];
 
   return (

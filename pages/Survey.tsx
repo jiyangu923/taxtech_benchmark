@@ -333,13 +333,11 @@ const Survey: React.FC = () => {
         </div>
       </div>
 
-      <div role="alert" aria-live="assertive">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700 font-bold text-sm">
-            <AlertCircle className="h-5 w-5 flex-shrink-0" /> {error}
-          </div>
-        )}
-      </div>
+      {error && (
+        <div role="alert" aria-live="assertive" className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700 font-bold text-sm">
+          <AlertCircle className="h-5 w-5 flex-shrink-0" /> {error}
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-xl border border-gray-100 min-h-[400px]">
         <h2 className="text-2xl font-black text-gray-900 mb-2">{currentSection.title}</h2>
