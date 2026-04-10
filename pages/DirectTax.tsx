@@ -1,11 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Hammer, CheckCircle } from 'lucide-react';
+import { api } from '../services/api';
 
 const DirectTax: React.FC = () => {
   const [subscribed, setSubscribed] = useState(() => {
     try { return localStorage.getItem('directtax_notify') === 'true'; }
     catch { return false; }
   });
+
+  // Sync with server on mount
+  useEffect(() => {
+    api.getDirectTaxNotify().then(serverVal => {
+      if (serverVal && !subscribed) {
+        setSubscribed(true);
+        try { localStorage.setItem('directtax_notify', 'true'); } catch {}
+      }
+    }).catch(() => { /* use localStorage fallback */ });
+  }, []);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] bg-gray-50 px-4">
@@ -31,7 +42,7 @@ const DirectTax: React.FC = () => {
           </div>
         ) : (
           <button
-            onClick={() => { setSubscribed(true); try { localStorage.setItem('directtax_notify', 'true'); } catch {} }}
+            onClick={() => { setSubscribed(true); try { localStorage.setItem('directtax_notify', 'true'); } catch {} api.subscribeDirectTaxNotify().catch(() => {}); }}
             className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-indigo-900 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
           >
             Notify Me When Ready

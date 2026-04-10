@@ -5,7 +5,6 @@
       "name": "vite-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "3005"],
-      "cwd": ".",
       "port": 3005
     }
   ]
