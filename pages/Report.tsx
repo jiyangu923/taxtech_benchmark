@@ -176,8 +176,8 @@ const Report: React.FC<ReportProps> = ({ user }) => {
             <TrendingUp className="h-6 w-6 text-primary" />
             <h3 className="text-lg font-black text-gray-900">Automation Gaps</h3>
           </div>
-          <div className="h-48 sm:h-56 md:h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-48 sm:h-56 md:h-64 min-h-[192px]" role="img" aria-label="Automation Gaps bar chart comparing your automation levels to peer average">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <BarChart data={autoData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" tick={{fontSize: 10, fontWeight: 700}} axisLine={false} tickLine={false} />
@@ -196,8 +196,8 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                 <Database className="h-6 w-6 text-indigo-600" />
                 <h3 className="text-lg font-black text-gray-900">Industry Data Architecture</h3>
             </div>
-            <div className="h-48 sm:h-56 md:h-64">
-                <ResponsiveContainer width="100%" height="100%">
+            <div className="h-48 sm:h-56 md:h-64 min-h-[192px]" role="img" aria-label="Industry Data Architecture pie chart showing distribution of data architecture types">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <PieChart>
                         <Pie data={industryStats?.archData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                             {industryStats?.archData.map((_:any, i:number) => <Cell key={i} fill={COLORS.pie[i % COLORS.pie.length]} />)}
@@ -237,9 +237,9 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                                   <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-3">Taxi</p>
                                   <div className="prose prose-sm text-gray-700 font-medium leading-relaxed"><ReactMarkdown>{item.analysis}</ReactMarkdown></div>
                                   {item.chart && (
-                                      <div className="mt-8 p-6 bg-white rounded-2xl border border-gray-100 h-64 shadow-inner">
+                                      <div className="mt-8 p-6 bg-white rounded-2xl border border-gray-100 h-64 min-h-[256px] shadow-inner" role="img" aria-label={`${item.chart.title} bar chart`}>
                                           <p className="text-[10px] font-black uppercase text-gray-400 mb-4">{item.chart.title}</p>
-                                          <ResponsiveContainer width="100%" height="100%">
+                                          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                                               <BarChart data={item.chart.data}><XAxis dataKey="name" tick={{fontSize: 10}} /><YAxis tick={{fontSize: 10}} /><Tooltip /><Bar dataKey="value" fill={COLORS.primary} radius={[4, 4, 0, 0]} /></BarChart>
                                           </ResponsiveContainer>
                                       </div>
