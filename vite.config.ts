@@ -1,6 +1,7 @@
 import path from 'path';
 import { defineConfig, loadEnv, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 /** Dev-only middleware that proxies /api/gemini to the Gemini REST API
  *  so `vite dev` works without Vercel's serverless runtime. */
@@ -55,7 +56,7 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
       },
-      plugins: [react(), geminiDevProxy(env.GEMINI_API_KEY || '')],
+      plugins: [react(), tailwindcss(), geminiDevProxy(env.GEMINI_API_KEY || '')],
       // Gemini API key is now server-side only (api/gemini.ts).
       // No secrets are injected into the client bundle.
       resolve: {

@@ -9,32 +9,14 @@
     <meta property="og:description" content="Peer-to-peer benchmarking for tax technology teams. Compare FTEs, automation, AI adoption, and more." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://benchmarktax.ai" />
+    <meta property="og:image" content="https://benchmarktax.ai/favicon.svg" />
+    <link rel="canonical" href="https://benchmarktax.ai" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="TaxTech Benchmark" />
     <meta name="twitter:description" content="Free, anonymous tax technology benchmarking for the community." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <style>
-      /* Defensive: prevent recharts tooltip wrappers from leaking outside their chart container */
-      .recharts-wrapper:not(:hover) .recharts-tooltip-wrapper {
-        visibility: hidden !important;
-        pointer-events: none !important;
-      }
-    </style>
-    <title>Indirect Tax Technology Benchmark</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: '#1e3a8a', // Navy Blue
-              secondary: '#4f46e5', // Indigo
-              accent: '#0ea5e9', // Sky Blue
-            }
-          }
-        }
-      }
-    </script>
+<title>Indirect Tax Technology Benchmark</title>
+
 </head>
   <body class="bg-gray-50 text-gray-900 antialiased">
     <div id="root"></div>

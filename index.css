@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1e3a8a;
+  --color-secondary: #4f46e5;
+  --color-accent: #0ea5e9;
+}
+
+/* Prevent recharts tooltip wrappers from leaking outside their chart container */
+.recharts-wrapper:not(:hover) .recharts-tooltip-wrapper {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

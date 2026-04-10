@@ -70,6 +70,7 @@ export function calculateIndustryStats(allSubs: Submission[]) {
 }
 
 const Report: React.FC<ReportProps> = ({ user }) => {
+  const isAdmin = user?.role === 'admin';
   const [activeTab, setActiveTab] = useState<'indirect' | 'direct'>('indirect');
   const [mySubmission, setMySubmission] = useState<Submission | null>(null);
   const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
@@ -101,7 +102,8 @@ const Report: React.FC<ReportProps> = ({ user }) => {
         setAllSubmissions(subs);
         const mySub = subs.find(s => s.userId === user.id) || null;
         setMySubmission(mySub);
-        if (mySub) loadIndustryStats(subs);
+        // Load stats for admins even without personal submission
+        if (mySub || isAdmin) loadIndustryStats(subs);
       };
       loadData();
     }
@@ -131,7 +133,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
     }
   };
 
-  if (!mySubmission || mySubmission.status === 'pending') {
+  if (!isAdmin && (!mySubmission || mySubmission.status === 'pending')) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-12 bg-white rounded-3xl shadow-lg border border-gray-100">
         <Lock className="h-16 w-16 text-gray-200 mb-6" />
