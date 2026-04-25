@@ -1,20 +1,13 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { Submission, User } from '../types';
-import { 
-  Lock, FileText, CheckCircle, Sparkles, BarChart3, TrendingUp, Users,
-  BrainCircuit, Hammer, Layers, Ruler, ArrowRight, Send, Loader2,
-  MessageSquare, Lightbulb, RefreshCcw, XCircle, Database, Trash2
-} from 'lucide-react';
+import { Lock, Sparkles, TrendingUp, Users, ArrowRight, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
 import * as C from '../constants';
-import { askBenchmarkAI } from '../services/gemini';
 import taxiAvatar from '../assets/taxi-avatar-cab.svg';
 
 interface ReportProps { user: User | null; }
@@ -71,32 +64,9 @@ export function calculateIndustryStats(allSubs: Submission[]) {
 
 const Report: React.FC<ReportProps> = ({ user }) => {
   const isAdmin = user?.role === 'admin';
-  const [activeTab, setActiveTab] = useState<'indirect' | 'direct'>('indirect');
   const [mySubmission, setMySubmission] = useState<Submission | null>(null);
   const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
   const [industryStats, setIndustryStats] = useState<any>(null);
-  const [aiInput, setAiInput] = useState('');
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiHistory, setAiHistory] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem('taxi_chat_history');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    try {
-      // Keep only the most recent 50 messages to prevent unbounded localStorage growth
-      const trimmed = aiHistory.length > 50 ? aiHistory.slice(-50) : aiHistory;
-      localStorage.setItem('taxi_chat_history', JSON.stringify(trimmed));
-    } catch { /* ignore quota errors */ }
-  }, [aiHistory]);
-
-  const clearChat = () => {
-    setAiHistory([]);
-    localStorage.removeItem('taxi_chat_history');
-  };
 
   useEffect(() => {
     if (user) {
@@ -105,36 +75,14 @@ const Report: React.FC<ReportProps> = ({ user }) => {
         setAllSubmissions(subs);
         const mySub = subs.find(s => s.userId === user.id) || null;
         setMySubmission(mySub);
-        // Load stats for admins even without personal submission
-        if (mySub || isAdmin) loadIndustryStats(subs);
+        if (mySub || isAdmin) {
+          const stats = calculateIndustryStats(subs);
+          if (stats) setIndustryStats(stats);
+        }
       };
       loadData();
     }
   }, [user]);
-
-  const loadIndustryStats = (allSubs: Submission[]) => {
-    const stats = calculateIndustryStats(allSubs);
-    if (stats) setIndustryStats(stats);
-  };
-
-  const scrollToBottom = () => {
-    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-  };
-
-  const handleAiQuery = async (q?: string) => {
-    const query = q || aiInput;
-    if (!query || (!mySubmission && !isAdmin) || isAiLoading) return;
-    setIsAiLoading(true);
-    setAiInput('');
-    scrollToBottom();
-    try {
-      const res = await askBenchmarkAI(query, mySubmission, allSubmissions);
-      setAiHistory(prev => [...prev, { question: query, ...res }]);
-    } finally {
-      setIsAiLoading(false);
-      scrollToBottom();
-    }
-  };
 
   if (!isAdmin && (!mySubmission || mySubmission.status === 'pending')) {
     return (
@@ -209,76 +157,23 @@ const Report: React.FC<ReportProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Taxi AI Analyst Section */}
-      <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
-          <div className="bg-gradient-to-br from-primary to-secondary p-6 sm:p-8 lg:p-10 text-white">
-              <div className="flex items-center gap-3 mb-4">
-                  <Sparkles className="h-8 w-8 text-indigo-300" />
-                  <span className="text-xs font-black uppercase tracking-[0.2em]">Powered by Taxable AI</span>
+      {/* Taxi AI CTA */}
+      <Link to="/taxi" className="block group">
+        <div className="bg-gradient-to-br from-primary to-secondary rounded-3xl shadow-xl overflow-hidden border border-gray-100 p-8 sm:p-10 text-white hover:shadow-2xl transition-all">
+          <div className="flex items-center gap-6">
+            <img src={taxiAvatar} alt="Taxi" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full shadow-lg flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-4 w-4 text-indigo-300" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Powered by Taxable AI</span>
               </div>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black mb-2">Ask Taxi</h2>
-              <p className="text-sm text-indigo-200 font-semibold mb-3">Your AI Benchmark Analyst</p>
-              <p className="text-indigo-100 max-w-2xl font-medium leading-relaxed">Ask me about your maturity level, automation gaps, FTE benchmarks, or how you stack up against peers.</p>
+              <h2 className="text-2xl sm:text-3xl font-black mb-1">Ask Taxi</h2>
+              <p className="text-indigo-100 font-medium">Maturity level, automation gaps, FTE benchmarks — anything about your data.</p>
+            </div>
+            <ArrowRight className="h-6 w-6 text-white opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0" />
           </div>
-          <div className="p-4 sm:p-6 lg:p-10">
-              <div className="space-y-8 max-h-[60vh] overflow-y-auto mb-10 px-2 custom-scrollbar scroll-pb-4">
-                  {aiHistory.length === 0 && (
-                      <div className="py-12 text-center">
-                          <img src={taxiAvatar} alt="Taxi" className="w-20 h-20 mx-auto mb-4 rounded-full shadow-lg" />
-                          <p className="font-bold text-gray-400">Hey, I'm Taxi! Pick a question below or type your own.</p>
-                      </div>
-                  )}
-                  {aiHistory.map((item, i) => (
-                      <div key={i} className="space-y-4 animate-fadeIn">
-                          <div className="flex justify-end"><div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold max-w-[90%] sm:max-w-[80%] shadow-lg">{item.question}</div></div>
-                          <div className="flex justify-start items-start gap-3">
-                              <img src={taxiAvatar} alt="Taxi" className="w-9 h-9 rounded-full shadow-md flex-shrink-0 mt-1" />
-                              <div className="bg-gray-50 border border-gray-100 p-4 sm:p-6 lg:p-8 rounded-3xl max-w-full sm:max-w-[90%] shadow-sm">
-                                  <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-3">Taxi</p>
-                                  <div className="prose prose-sm text-gray-700 font-medium leading-relaxed"><ReactMarkdown>{item.analysis}</ReactMarkdown></div>
-                                  {item.chart && (
-                                      <div className="mt-8 p-6 bg-white rounded-2xl border border-gray-100 h-64 min-h-[256px] shadow-inner" role="img" aria-label={`${item.chart.title} bar chart`}>
-                                          <p className="text-[10px] font-black uppercase text-gray-400 mb-4">{item.chart.title}</p>
-                                          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                                              <BarChart data={item.chart.data}><XAxis dataKey="name" tick={{fontSize: 10}} /><YAxis tick={{fontSize: 10}} /><Tooltip /><Bar dataKey="value" fill={COLORS.primary} radius={[4, 4, 0, 0]} /></BarChart>
-                                          </ResponsiveContainer>
-                                      </div>
-                                  )}
-                                  {item.followUps?.length > 0 && i === aiHistory.length - 1 && (
-                                      <div className="mt-6 pt-4 border-t border-gray-200">
-                                          <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3">Dig deeper</p>
-                                          <div className="flex flex-wrap gap-2">
-                                              {item.followUps.map((q: string) => (
-                                                  <button key={q} onClick={() => handleAiQuery(q)} className="px-4 py-2.5 bg-indigo-50 text-indigo-700 rounded-full text-xs sm:text-sm font-bold hover:bg-indigo-100 active:bg-indigo-200 transition-all border border-indigo-200 shadow-sm cursor-pointer select-none">{q}</button>
-                                              ))}
-                                          </div>
-                                      </div>
-                                  )}
-                              </div>
-                          </div>
-                      </div>
-                  ))}
-                  {isAiLoading && <div className="flex items-center gap-3 text-primary animate-pulse"><img src={taxiAvatar} alt="Taxi" className="w-9 h-9 rounded-full shadow-md" /><Loader2 className="h-5 w-5 animate-spin" /><span className="text-xs font-black uppercase tracking-widest">Taxi is analyzing your data...</span></div>}
-                  <div ref={chatEndRef} />
-              </div>
-              <div className="flex items-center gap-2 mb-8">
-                  <div className="flex flex-wrap gap-2 flex-1">
-                      {["How do I compare on FTEs?", "What are the common AI use cases?", "Am I a market leader or follower?", "Where are my biggest automation gaps?", "How does my tech stack compare?"].map(s => (
-                          <button key={s} onClick={() => handleAiQuery(s)} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all border border-indigo-100">{s}</button>
-                      ))}
-                  </div>
-                  {aiHistory.length > 0 && (
-                      <button onClick={clearChat} className="flex items-center gap-1.5 px-3 py-2 text-gray-400 hover:text-red-500 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-50 transition-all" title="Clear chat">
-                          <Trash2 className="h-3.5 w-3.5" /><span>Clear</span>
-                      </button>
-                  )}
-              </div>
-              <div className="relative">
-                  <input type="text" placeholder="Ask Taxi anything about your benchmark..." className="w-full pl-4 pr-14 py-4 sm:pl-6 sm:pr-16 sm:py-5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary font-bold shadow-inner" value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyPress={e => e.key === 'Enter' && handleAiQuery()} />
-                  <button onClick={() => handleAiQuery()} className="absolute right-2 top-2 bottom-2 px-6 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all"><Send className="h-5 w-5" /></button>
-              </div>
-          </div>
-      </div>
+        </div>
+      </Link>
     </div>
   );
 };
