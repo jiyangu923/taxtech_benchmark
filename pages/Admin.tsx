@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import { Submission, User } from '../types';
 import { 
     Check, X, Eye, XCircle, RefreshCw, Trash2, 
-    FileSpreadsheet, CloudSync, ShieldAlert, Save,
+    FileSpreadsheet, CloudSync, Save,
     CheckCircle2, Users, Plus, Mail, ShieldCheck, 
     UserPlus, Database, Download, Upload, AlertTriangle,
     Activity, HardDrive, Info, Settings, Search, Filter, RotateCcw,
@@ -39,12 +39,8 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
     }
   };
 
-  useEffect(() => {
-    if (!user || user.role !== 'admin') {
-      navigate('/');
-      return;
-    }
-    const loadAll = async () => {
+  const loadAll = async () => {
+    try {
       const [subs, url, emails] = await Promise.all([
         api.getSubmissions(),
         api.getWebhookUrl(),
@@ -53,8 +49,18 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
       setSubmissions(subs);
       setWebhookUrl(url);
       setAdminEmails(emails);
-    };
+    } catch (err) {
+      console.error('Failed to load admin data:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      navigate('/');
+      return;
+    }
     loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
 
   // Combined Filtering Logic
@@ -93,13 +99,6 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
       await loadSubmissions();
       if (selectedSub && selectedSub.id === id) setSelectedSub(null);
     }
-  };
-
-  const handleDeleteAll = async () => {
-    if (!window.confirm('DANGER: This will permanently delete ALL submissions. Are you sure?')) return;
-    if (!window.confirm('This action CANNOT be undone. Click OK to permanently erase all data.')) return;
-    await api.deleteAllSubmissions();
-    await loadSubmissions();
   };
 
   const handleAddAdmin = async (e: React.FormEvent) => {
@@ -194,8 +193,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                 <p className="text-gray-500 text-sm mt-1 font-medium">Infrastructure & Governance Control Panel</p>
             </div>
             <div className="flex gap-3">
-                <button onClick={loadSubmissions} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all"><RefreshCw className="h-4 w-4" /> Refresh</button>
-                <button onClick={handleDeleteAll} className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-xl shadow-sm text-sm font-bold text-red-700 hover:bg-red-100 transition-all"><ShieldAlert className="h-4 w-4" /> Clear DB</button>
+                <button onClick={loadAll} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all"><RefreshCw className="h-4 w-4" /> Refresh</button>
             </div>
         </div>
 

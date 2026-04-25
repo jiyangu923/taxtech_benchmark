@@ -142,11 +142,6 @@ export const api = {
     if (error) throw new Error(error.message);
   },
 
-  async deleteAllSubmissions(): Promise<void> {
-    const { error } = await supabase.from('submissions').delete().not('id', 'is', null);
-    if (error) throw new Error(error.message);
-  },
-
   // ─── Settings ────────────────────────────────────────────────────────────
 
   async getWebhookUrl(): Promise<string> {
