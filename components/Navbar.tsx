@@ -30,6 +30,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) => {
     { to: '/direct-tax', label: 'Direct Tax', show: true },
     { to: '/survey', label: 'Submit Data', show: !!user },
     { to: '/report', label: 'Analytics', show: !!user },
+    { to: '/taxi', label: 'Ask Taxi', show: !!user },
     { to: '/admin', label: 'Control Panel', show: user?.role === 'admin', admin: true },
   ];
 

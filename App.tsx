@@ -7,6 +7,7 @@ import Home from './pages/Home';
 import Survey from './pages/Survey';
 import Admin from './pages/Admin';
 import Report from './pages/Report';
+import Taxi from './pages/Taxi';
 import DirectTax from './pages/DirectTax';
 import Profile from './pages/Profile';
 import { User } from './types';
@@ -17,6 +18,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/direct-tax': 'Direct Tax Benchmark | TaxTech',
   '/survey': 'Submit Data | TaxTech',
   '/report': 'Analytics | TaxTech',
+  '/taxi': 'Ask Taxi | TaxTech',
   '/admin': 'Control Panel | TaxTech',
   '/profile': 'Profile | TaxTech',
 };
@@ -122,6 +124,11 @@ const App: React.FC = () => {
             <Route
               path="/report"
               element={user ? <Report user={user} /> : <Navigate to="/" replace />}
+            />
+
+            <Route
+              path="/taxi"
+              element={user ? <Taxi user={user} /> : <Navigate to="/" replace />}
             />
 
             <Route
