@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 //
 // All chain method mocks are reset and re-wired to return `this` in beforeEach.
 
-const { profiles, submissions, settings, mockFrom, mockAuth } = vi.hoisted(() => {
+const { profiles, submissions, settings, mockFrom, mockAuth, mockRpc } = vi.hoisted(() => {
   function makeTableMock() {
     const resolveQueue: any[] = [];
 
@@ -65,11 +65,15 @@ const { profiles, submissions, settings, mockFrom, mockAuth } = vi.hoisted(() =>
     signOut:              vi.fn().mockResolvedValue({}),
   };
 
-  return { profiles, submissions, settings, mockFrom, mockAuth };
+  // SECURITY DEFINER RPCs (promote_to_admin, demote_from_admin).
+  // Default: succeeds with no error. Tests can override per-call with mockResolvedValueOnce.
+  const mockRpc = vi.fn().mockResolvedValue({ error: null });
+
+  return { profiles, submissions, settings, mockFrom, mockAuth, mockRpc };
 });
 
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: () => ({ auth: mockAuth, from: mockFrom }),
+  createClient: () => ({ auth: mockAuth, from: mockFrom, rpc: mockRpc }),
 }));
 
 beforeEach(() => {
@@ -90,6 +94,8 @@ beforeEach(() => {
   mockAuth.signInWithPassword.mockReset();
   mockAuth.signInWithOAuth.mockReset().mockResolvedValue({});
   mockAuth.signOut.mockReset().mockResolvedValue({});
+
+  mockRpc.mockReset().mockResolvedValue({ error: null });
 });
 
 // Static import is fine: vi.mock() is hoisted before module resolution.
@@ -361,12 +367,27 @@ describe('addAdminEmail', () => {
     expect(updatedList).toContain('newadmin@example.com');
   });
 
-  it('does not duplicate an already-listed admin email', async () => {
+  it('calls the promote_to_admin RPC with the lowercased email', async () => {
+    settings.single.mockResolvedValueOnce({ data: null });
+    await api.addAdminEmail('NewAdmin@Example.COM');
+    expect(mockRpc).toHaveBeenCalledWith('promote_to_admin', { target_email: 'newadmin@example.com' });
+  });
+
+  it('does not duplicate an already-listed admin email but still re-promotes', async () => {
     const existing = ['admin@taxbenchmark.com', 'jiyangu923@gmail.com'];
     settings.single.mockResolvedValueOnce({ data: { value: JSON.stringify(existing) } });
     await api.addAdminEmail('admin@taxbenchmark.com');
     // upsert should NOT be called when the email is already in the list
     expect(settings.upsert).not.toHaveBeenCalled();
+    // …but the RPC must still run so a previously-unpromoted profile gets fixed
+    expect(mockRpc).toHaveBeenCalledWith('promote_to_admin', { target_email: 'admin@taxbenchmark.com' });
+  });
+
+  it('throws when the RPC returns an error', async () => {
+    settings.single.mockResolvedValueOnce({ data: null });
+    mockRpc.mockResolvedValueOnce({ error: { message: 'Only admins can promote users' } });
+    await expect(api.addAdminEmail('newadmin@example.com'))
+      .rejects.toThrow('Only admins can promote users');
   });
 });
 
@@ -383,6 +404,12 @@ describe('removeAdminEmail', () => {
     expect(updatedList).toContain('b@x.com');
   });
 
+  it('calls the demote_from_admin RPC with the lowercased email', async () => {
+    settings.single.mockResolvedValueOnce({ data: { value: JSON.stringify(['a@x.com']) } });
+    await api.removeAdminEmail('A@X.com');
+    expect(mockRpc).toHaveBeenCalledWith('demote_from_admin', { target_email: 'a@x.com' });
+  });
+
   it('leaves the list unchanged when removing a non-existent email', async () => {
     const existing = ['a@x.com'];
     settings.single.mockResolvedValueOnce({ data: { value: JSON.stringify(existing) } });
@@ -390,5 +417,12 @@ describe('removeAdminEmail', () => {
     const upsertArg = settings.upsert.mock.calls[0][0];
     const updatedList = JSON.parse(upsertArg.value);
     expect(updatedList).toEqual(existing);
+  });
+
+  it('throws when the RPC returns an error', async () => {
+    settings.single.mockResolvedValueOnce({ data: { value: JSON.stringify(['a@x.com']) } });
+    mockRpc.mockResolvedValueOnce({ error: { message: 'Cannot demote yourself' } });
+    await expect(api.removeAdminEmail('a@x.com'))
+      .rejects.toThrow('Cannot demote yourself');
   });
 });
