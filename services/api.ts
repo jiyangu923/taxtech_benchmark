@@ -166,19 +166,31 @@ export const api = {
   },
 
   async addAdminEmail(email: string): Promise<void> {
+    const normalized = email.toLowerCase();
     const emails = await api.getAdminEmails();
-    if (!emails.includes(email)) {
-      emails.push(email);
-      await supabase.from('settings').upsert({ key: 'adminEmails', value: JSON.stringify(emails) });
-      // Upgrade role if user already exists
-      await supabase.from('profiles').update({ role: 'admin' }).eq('email', email);
+    if (!emails.map(e => e.toLowerCase()).includes(normalized)) {
+      emails.push(normalized);
+      const { error: settingsErr } = await supabase
+        .from('settings')
+        .upsert({ key: 'adminEmails', value: JSON.stringify(emails) });
+      if (settingsErr) throw new Error(settingsErr.message);
     }
+    // Promote existing profile via SECURITY DEFINER RPC. Direct UPDATE
+    // would silently affect 0 rows under non-self profiles RLS.
+    const { error: rpcErr } = await supabase.rpc('promote_to_admin', { target_email: normalized });
+    if (rpcErr) throw new Error(rpcErr.message);
   },
 
   async removeAdminEmail(email: string): Promise<void> {
+    const normalized = email.toLowerCase();
     const emails = await api.getAdminEmails();
-    const filtered = emails.filter(e => e !== email);
-    await supabase.from('settings').upsert({ key: 'adminEmails', value: JSON.stringify(filtered) });
+    const filtered = emails.filter(e => e.toLowerCase() !== normalized);
+    const { error: settingsErr } = await supabase
+      .from('settings')
+      .upsert({ key: 'adminEmails', value: JSON.stringify(filtered) });
+    if (settingsErr) throw new Error(settingsErr.message);
+    const { error: rpcErr } = await supabase.rpc('demote_from_admin', { target_email: normalized });
+    if (rpcErr) throw new Error(rpcErr.message);
   },
 
   // ─── Notify Me ───────────────────────────────────────────────────────────
