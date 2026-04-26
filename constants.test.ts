@@ -114,14 +114,19 @@ describe('OPTS_RESPONDENT_ROLE', () => {
 });
 
 describe('OPTS_REVENUE', () => {
-  it('has 5 revenue bands', () => {
-    expect(OPTS_REVENUE).toHaveLength(5);
+  it('has 6 revenue bands (including the over_100b mega-cap tier)', () => {
+    expect(OPTS_REVENUE).toHaveLength(6);
   });
 
   it('covers both smallest and largest bands', () => {
     const values = OPTS_REVENUE.map(o => o.value);
     expect(values).toContain('under_10m');
     expect(values).toContain('over_5b');
+    expect(values).toContain('over_100b');
+  });
+
+  it('keeps over_100b as the last (largest) band so the order is monotonic', () => {
+    expect(OPTS_REVENUE[OPTS_REVENUE.length - 1].value).toBe('over_100b');
   });
 });
 

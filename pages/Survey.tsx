@@ -416,6 +416,22 @@ const Survey: React.FC = () => {
 
         {activeSection === 1 && (
           <div className="space-y-6">
+            <div className="mb-4">
+              <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
+                Company Name <span className="font-medium normal-case tracking-normal text-gray-400 lowercase ml-1">(optional)</span>
+              </label>
+              <input
+                type="text"
+                maxLength={120}
+                placeholder="e.g. Acme Corp — leave blank to stay fully anonymous"
+                className="w-full rounded-xl border-gray-200 p-3 border font-bold text-sm focus:ring-primary focus:border-primary outline-none"
+                value={formData.companyName || ''}
+                onChange={(e) => handleChange('companyName', e.target.value)}
+              />
+              <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
+                Used internally for admin tracking and to give you a friendlier experience. Never shown in peer comparisons or public analytics.
+              </p>
+            </div>
             {renderCheckbox("Company Profile", "companyProfile", C.OPTS_COMPANY_PROFILE, true)}
             {renderCheckbox("Primary Goal", "participationGoal", C.OPTS_PARTICIPATION_GOAL)}
             {renderRadio("Your Role", "respondentRole", C.OPTS_RESPONDENT_ROLE, true)}

@@ -100,6 +100,7 @@ export const OPTS_REVENUE: Option[] = [
   { value: '100m_500m', label: '$100M – $500M' },
   { value: '500m_5b', label: '$500M – $5B' },
   { value: 'over_5b', label: 'Over $5B' },
+  { value: 'over_100b', label: 'Over $100B' },
 ];
 
 export const OPTS_FTE_TECH: Option[] = [
