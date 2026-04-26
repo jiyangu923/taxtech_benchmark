@@ -128,6 +128,16 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
     setTimeout(() => setSyncMessage(null), 3000);
   };
 
+  const handleCsvExport = async () => {
+    try {
+      const { count, filename } = await api.exportApprovedSubmissionsCsv();
+      setSyncMessage({ type: 'success', text: `Exported ${count} approved submission${count === 1 ? '' : 's'} → ${filename}` });
+    } catch (err: any) {
+      setSyncMessage({ type: 'error', text: err?.message || 'CSV export failed.' });
+    }
+    setTimeout(() => setSyncMessage(null), 4000);
+  };
+
   const handleRestoreClick = () => {
     fileInputRef.current?.click();
   };
@@ -367,7 +377,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                         </div>
                         <p className="text-sm text-gray-500 mb-8 leading-relaxed">Download all approved submissions in a standard CSV format for manual analysis in Excel or BI tools.</p>
                     </div>
-                    <button onClick={() => {}} className="w-full py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 active:scale-[0.98]">Download CSV Export</button>
+                    <button onClick={handleCsvExport} className="w-full py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 active:scale-[0.98]">Download CSV Export</button>
                 </div>
             </div>
         )}

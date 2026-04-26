@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Submission, User } from '../types';
+import { submissionsToCsv, downloadCsv } from './csv';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -225,6 +226,22 @@ export const api = {
       .eq('type', 'directtax_launch')
       .single();
     return !!data;
+  },
+
+  /**
+   * Downloads all *approved* submissions as a CSV file. Admin-only feature —
+   * intended for offline analysis in Excel or BI tools.
+   */
+  async exportApprovedSubmissionsCsv(): Promise<{ count: number; filename: string }> {
+    const subs = await api.getSubmissions();
+    const approved = subs.filter(s => s.status === 'approved');
+    if (approved.length === 0) {
+      throw new Error('No approved submissions to export.');
+    }
+    const csv = submissionsToCsv(approved);
+    const filename = `benchmark_submissions_${new Date().toISOString().slice(0, 10)}.csv`;
+    downloadCsv(csv, filename);
+    return { count: approved.length, filename };
   },
 
   // ─── Data Portability ────────────────────────────────────────────────────
