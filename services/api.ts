@@ -218,6 +218,60 @@ export const api = {
     if (rpcErr) throw new Error(rpcErr.message);
   },
 
+  // ─── Chat sessions (Taxi) ────────────────────────────────────────────────
+  //
+  // RLS scopes every read/write to auth.uid() = user_id, so callers don't
+  // need to pass the user id — Supabase will only return the caller's rows.
+  // Storage shape: messages is jsonb, an array of ChatMessage objects.
+
+  async getChatSessions(): Promise<import('../pages/Taxi.helpers').Session[]> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return [];
+    const { data, error } = await supabase
+      .from('chat_sessions')
+      .select('id, title, created_at, updated_at, messages')
+      .order('updated_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data || []).map(row => ({
+      id: row.id as string,
+      title: row.title as string,
+      createdAt: new Date(row.created_at as string).getTime(),
+      updatedAt: new Date(row.updated_at as string).getTime(),
+      messages: (row.messages as any[]) || [],
+    }));
+  },
+
+  async createChatSession(session: import('../pages/Taxi.helpers').Session): Promise<void> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error('Must be logged in');
+    const { error } = await supabase.from('chat_sessions').insert({
+      id: session.id,
+      user_id: authUser.id,
+      title: session.title,
+      created_at: new Date(session.createdAt).toISOString(),
+      updated_at: new Date(session.updatedAt).toISOString(),
+      messages: session.messages,
+    });
+    if (error) throw new Error(error.message);
+  },
+
+  async updateChatSession(
+    id: string,
+    patch: Partial<Pick<import('../pages/Taxi.helpers').Session, 'title' | 'messages' | 'updatedAt'>>
+  ): Promise<void> {
+    const update: Record<string, unknown> = {};
+    if (patch.title !== undefined) update.title = patch.title;
+    if (patch.messages !== undefined) update.messages = patch.messages;
+    if (patch.updatedAt !== undefined) update.updated_at = new Date(patch.updatedAt).toISOString();
+    const { error } = await supabase.from('chat_sessions').update(update).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async deleteChatSession(id: string): Promise<void> {
+    const { error } = await supabase.from('chat_sessions').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
   // ─── Notify Me ───────────────────────────────────────────────────────────
 
   async subscribeDirectTaxNotify(): Promise<void> {
