@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { ChevronRight, ChevronLeft, AlertCircle, CheckCircle2, Info, Loader2 } from 'lucide-react';
 import { api } from '../services/api';
 import { Submission, Option } from '../types';
 import * as C from '../constants';
@@ -100,6 +100,7 @@ const Survey: React.FC = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingSubmittedAt, setExistingSubmittedAt] = useState<string | null>(null);
   const [existingStatus, setExistingStatus] = useState<Submission['status'] | null>(null);
 
@@ -189,6 +190,17 @@ const Survey: React.FC = () => {
     if (pctError) { setError(pctError); return; }
 
     if (activeSection === C.SECTIONS.length) {
+      // Confirm before overwriting an existing submission so the user
+      // doesn't accidentally clobber an approved record.
+      if (existingSubmittedAt) {
+        const dateStr = new Date(existingSubmittedAt).toLocaleDateString();
+        const ok = window.confirm(
+          `This will replace your previous submission from ${dateStr} ` +
+          `and reset its status to "pending" pending admin re-approval. ` +
+          `Continue?`
+        );
+        if (!ok) return;
+      }
       handleSubmit();
     } else {
       setActiveSection(s => s + 1);
@@ -204,6 +216,8 @@ const Survey: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setError(null);
     try {
       const payload = {
         ...formData,
@@ -216,6 +230,10 @@ const Survey: React.FC = () => {
       setTimeout(() => navigate('/report'), 2000);
     } catch (e: any) {
       setError(e?.message || 'Failed to submit survey.');
+      setIsSubmitting(false);
+      // Scroll to top so the user sees the error banner instead of staring
+      // at an unchanged Submit button.
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -578,9 +596,22 @@ const Survey: React.FC = () => {
         </button>
         <button
           onClick={handleNext}
-          className="w-full sm:w-auto px-10 py-3 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-900 shadow-xl shadow-primary/20"
+          disabled={isSubmitting}
+          className="w-full sm:w-auto px-10 py-3 bg-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-900 shadow-xl shadow-primary/20 active:scale-[0.98] transition-transform disabled:opacity-70 disabled:cursor-wait disabled:hover:bg-primary"
         >
-          {activeSection === C.SECTIONS.length ? 'Submit' : 'Continue'} <ChevronRight className="h-4 w-4" />
+          {isSubmitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {existingSubmittedAt ? 'Updating…' : 'Submitting…'}
+            </>
+          ) : (
+            <>
+              {activeSection === C.SECTIONS.length
+                ? (existingSubmittedAt ? 'Update Submission' : 'Submit')
+                : 'Continue'}
+              <ChevronRight className="h-4 w-4" />
+            </>
+          )}
         </button>
       </div>
     </div>
