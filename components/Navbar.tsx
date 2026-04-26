@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, ShieldCheck, UserCircle, Settings, Menu, X } from 'lucide-react';
+import { LogOut, ShieldCheck, UserCircle, Settings, Menu, X, Sparkles } from 'lucide-react';
 import { User as UserType } from '../types';
 
 interface NavbarProps {
@@ -24,13 +24,13 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) => {
       ? "text-primary font-bold bg-indigo-50"
       : "text-gray-600 hover:text-primary hover:bg-gray-50";
 
-  type NavItem = { to: string; label: string; show: boolean; admin?: boolean };
+  type NavItem = { to: string; label: string; show: boolean; admin?: boolean; ai?: boolean };
   const links: NavItem[] = [
     { to: '/', label: 'Indirect Tax', show: true },
     { to: '/direct-tax', label: 'Direct Tax', show: true },
     { to: '/survey', label: 'Submit Data', show: !!user },
     { to: '/report', label: 'Analytics', show: !!user },
-    { to: '/taxi', label: 'Ask Taxi', show: !!user },
+    { to: '/taxi', label: 'Taxi AI', show: !!user, ai: true },
     { to: '/admin', label: 'Control Panel', show: user?.role === 'admin', admin: true },
   ];
 
@@ -50,8 +50,10 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) => {
             {/* Desktop nav */}
             <div className="hidden sm:ml-12 sm:flex sm:space-x-8 h-full">
               {links.filter(l => l.show).map(l => (
-                <Link key={l.to} to={l.to} className={`flex items-center px-1 text-sm font-semibold h-full gap-2 ${l.admin ? 'text-orange-600 ' + (location.pathname === l.to ? 'border-b-2 border-orange-600 font-bold' : 'border-b-2 border-transparent') : desktopClass(l.to)}`}>
-                  {l.admin && <Settings className="h-4 w-4" />}{l.label}
+                <Link key={l.to} to={l.to} className={`flex items-center px-1 text-sm font-semibold h-full gap-1.5 ${l.admin ? 'text-orange-600 ' + (location.pathname === l.to ? 'border-b-2 border-orange-600 font-bold' : 'border-b-2 border-transparent') : desktopClass(l.to)}`}>
+                  {l.admin && <Settings className="h-4 w-4" />}
+                  {l.ai && <Sparkles className="h-3.5 w-3.5 text-amber-acc-2" />}
+                  {l.label}
                 </Link>
               ))}
             </div>
@@ -111,7 +113,11 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) => {
           <div className="px-4 py-3 space-y-1">
             {links.filter(l => l.show).map(l => (
               <Link key={l.to} to={l.to} onClick={() => setMobileOpen(false)} className={`block px-4 py-3 rounded-xl text-sm font-semibold transition-all ${l.admin ? 'text-orange-600 ' + (location.pathname === l.to ? 'bg-orange-50 font-bold' : 'hover:bg-orange-50') : mobileClass(l.to)}`}>
-                <span className="flex items-center gap-2">{l.admin && <Settings className="h-4 w-4" />}{l.label}</span>
+                <span className="flex items-center gap-2">
+                  {l.admin && <Settings className="h-4 w-4" />}
+                  {l.ai && <Sparkles className="h-3.5 w-3.5 text-amber-acc-2" />}
+                  {l.label}
+                </span>
               </Link>
             ))}
           </div>
