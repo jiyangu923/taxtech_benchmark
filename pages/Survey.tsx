@@ -54,20 +54,48 @@ export function submissionToForm(sub: Submission): Partial<Submission> {
   return rest;
 }
 
+/**
+ * Returns true when the localStorage draft is null, unparseable, or
+ * shape-equivalent to INITIAL_FORM. Used to distinguish a real in-progress
+ * edit from the empty stub the autosave effect writes on first mount.
+ * Exported for unit testing.
+ */
+export function isEmptyDraft(raw: string | null): boolean {
+  if (!raw) return true;
+  try {
+    const parsed = JSON.parse(raw);
+    return JSON.stringify(parsed) === JSON.stringify(INITIAL_FORM);
+  } catch {
+    return true;
+  }
+}
+
 const Survey: React.FC = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState(1);
 
-  // Restore draft from localStorage on first render. The localStorage draft
-  // takes precedence over the server submission since it represents the
-  // user's most recent in-progress edit.
+  // Capture the localStorage draft ONCE at mount time, before any effect
+  // runs. The autosave effect below writes JSON.stringify(formData) on every
+  // formData change — including the very first render with an empty
+  // INITIAL_FORM — so reading localStorage inside an effect would race with
+  // that write and always look like "there's a draft." Capturing it via a
+  // lazy useState initializer guarantees the value reflects what was on disk
+  // before this component mounted.
+  const [initialDraftRaw] = useState<string | null>(() => {
+    try { return localStorage.getItem(DRAFT_KEY); } catch { return null; }
+  });
+
+  // Restore draft from localStorage on first render. localStorage takes
+  // precedence over the server submission since it represents the user's
+  // most recent in-progress edit. If the captured draft is empty/equivalent
+  // to INITIAL_FORM, the prefill effect below will overwrite it from the
+  // server.
   const [formData, setFormData] = useState<Partial<Submission>>(() => {
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      return saved ? { ...INITIAL_FORM, ...JSON.parse(saved) } : INITIAL_FORM;
-    } catch {
-      return INITIAL_FORM;
+    if (initialDraftRaw) {
+      try { return { ...INITIAL_FORM, ...JSON.parse(initialDraftRaw) }; }
+      catch { return INITIAL_FORM; }
     }
+    return INITIAL_FORM;
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -75,25 +103,23 @@ const Survey: React.FC = () => {
   const [existingSubmittedAt, setExistingSubmittedAt] = useState<string | null>(null);
   const [existingStatus, setExistingStatus] = useState<Submission['status'] | null>(null);
 
-  // On mount, if the user has an existing submission AND no in-progress
-  // localStorage draft, prefill the form from it.
+  // On mount, if the user has an existing submission AND the captured
+  // draft snapshot is empty (no real in-progress edit), prefill the form
+  // from the server.
   useEffect(() => {
     let cancelled = false;
-    const draftRaw = (() => {
-      try { return localStorage.getItem(DRAFT_KEY); } catch { return null; }
-    })();
     api.getMySubmission()
       .then(sub => {
         if (cancelled || !sub) return;
         setExistingSubmittedAt(sub.submittedAt);
         setExistingStatus(sub.status);
-        if (!draftRaw) {
+        if (isEmptyDraft(initialDraftRaw)) {
           setFormData({ ...INITIAL_FORM, ...submissionToForm(sub) });
         }
       })
       .catch(err => console.error('[Survey] failed to load existing submission:', err));
     return () => { cancelled = true; };
-  }, []);
+  }, [initialDraftRaw]);
 
   // Autosave draft on every change
   useEffect(() => {

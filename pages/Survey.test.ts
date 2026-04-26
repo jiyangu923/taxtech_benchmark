@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeArrayField, submissionToForm } from './Survey';
+import { normalizeArrayField, submissionToForm, isEmptyDraft } from './Survey';
 import { Submission } from '../types';
 
 // ─── normalizeArrayField ──────────────────────────────────────────────────────
@@ -96,5 +96,66 @@ describe('submissionToForm', () => {
     const sub = { ...fullSub };
     submissionToForm(sub);
     expect(sub).toEqual(fullSub);
+  });
+});
+
+// ─── isEmptyDraft ─────────────────────────────────────────────────────────────
+//
+// Regression: the autosave effect writes JSON.stringify(formData) on every
+// formData change, including the very first render with an empty INITIAL_FORM.
+// A naive truthy check on the localStorage string treated the just-written
+// empty stub as a "real draft" and skipped the server prefill, so returning
+// users always saw a blank form even though their previous answers existed
+// in the database.
+
+describe('isEmptyDraft', () => {
+  it('returns true when raw is null', () => {
+    expect(isEmptyDraft(null)).toBe(true);
+  });
+
+  it('returns true when raw is an empty string', () => {
+    expect(isEmptyDraft('')).toBe(true);
+  });
+
+  it('returns true when raw is unparseable JSON', () => {
+    expect(isEmptyDraft('{not json')).toBe(true);
+  });
+
+  it('returns true for the JSON-stringified INITIAL_FORM (the autosave-on-mount stub)', () => {
+    // The exact value the autosave effect writes on first render with no user input.
+    const emptyStub = JSON.stringify({
+      companyProfile: [],
+      participationGoal: [],
+      respondentRole: '',
+      ownedTaxFunctions: [],
+      organizationScope: '',
+      revenueRange: '',
+      taxTechDecisionOwner: '',
+      buildVsBuyExperience: [],
+      annualTaxTechBudgetRange: '',
+      vatSalesTaxAutomationRange: '',
+      eInvoicingAutomationRange: '',
+      customsDutiesAutomationRange: '',
+      aiAdopted: false,
+      taxTechSkillMixFrontendPercent: 0,
+      taxTechSkillMixBackendPercent: 0,
+      taxTechSkillMixDataEngineeringPercent: 0,
+      taxTechSkillMixDevOpsPercent: 0,
+      taxTechSkillMixOtherPercent: 0,
+      planningSpecialistsPercent: 0,
+      complianceSpecialistsPercent: 0,
+      auditSpecialistsPercent: 0,
+      provisionSpecialistsPercent: 0,
+      otherSpecialistsPercent: 0,
+    });
+    expect(isEmptyDraft(emptyStub)).toBe(true);
+  });
+
+  it('returns false when raw contains any user-entered field', () => {
+    expect(isEmptyDraft(JSON.stringify({ companyProfile: ['public'] }))).toBe(false);
+  });
+
+  it('returns false when raw contains a non-default scalar', () => {
+    expect(isEmptyDraft(JSON.stringify({ revenueRange: '500m_5b' }))).toBe(false);
   });
 });
