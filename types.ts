@@ -22,6 +22,7 @@ export interface Submission {
   submittedAt: string;
   
   // Section 1: Context & Respondent Info
+  companyName?: string;
   companyProfile: string[];
   participationGoal: string[];
   respondentRole: 'tax_professionals' | 'tax_technology' | '';
