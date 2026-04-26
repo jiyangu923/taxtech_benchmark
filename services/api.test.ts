@@ -308,6 +308,31 @@ describe('getMySubmission', () => {
   });
 });
 
+// ─── getPublicStats ───────────────────────────────────────────────────────────
+
+describe('getPublicStats', () => {
+  it('calls the get_public_stats RPC and returns the row', async () => {
+    const stats = { totalSubmissions: 12, distinctIndustries: 5, totalRevenue: 3_400_000_000 };
+    mockRpc.mockResolvedValueOnce({ data: stats, error: null });
+    expect(await api.getPublicStats()).toEqual(stats);
+    expect(mockRpc).toHaveBeenCalledWith('get_public_stats');
+  });
+
+  it('returns zeros when the RPC returns null (e.g. empty table)', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: null });
+    expect(await api.getPublicStats()).toEqual({
+      totalSubmissions: 0,
+      distinctIndustries: 0,
+      totalRevenue: 0,
+    });
+  });
+
+  it('throws when the RPC returns an error', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'function does not exist' } });
+    await expect(api.getPublicStats()).rejects.toThrow('function does not exist');
+  });
+});
+
 // ─── updateSubmissionStatus ───────────────────────────────────────────────────
 
 describe('updateSubmissionStatus', () => {

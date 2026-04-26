@@ -149,6 +149,19 @@ export const api = {
     return (data as Submission) || null;
   },
 
+  /**
+   * Public aggregate stats for the Home page hero — total approved
+   * submissions, distinct industries, and total revenue covered (USD).
+   * Calls a SECURITY DEFINER RPC so anonymous visitors can read aggregates
+   * without exposing individual rows or PII.
+   */
+  async getPublicStats(): Promise<{ totalSubmissions: number; distinctIndustries: number; totalRevenue: number }> {
+    const { data, error } = await supabase.rpc('get_public_stats');
+    if (error) throw new Error(error.message);
+    // RPC returns a JSON object; default to zeros if Supabase returns null.
+    return (data as any) || { totalSubmissions: 0, distinctIndustries: 0, totalRevenue: 0 };
+  },
+
   async updateSubmissionStatus(id: string, status: 'approved' | 'rejected'): Promise<void> {
     const { error } = await supabase.from('submissions').update({ status }).eq('id', id);
     if (error) throw new Error(error.message);
