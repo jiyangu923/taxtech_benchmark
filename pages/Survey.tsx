@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, AlertCircle, CheckCircle2, Info, Loader2 } from 'lucide-react';
 import { api } from '../services/api';
@@ -111,14 +111,28 @@ const Survey: React.FC = () => {
   const existingSubmittedAt = existingSub?.submittedAt ?? null;
   const existingStatus = existingSub?.status ?? null;
 
+  // Race protection: if the user starts typing BEFORE the cached existingSub
+  // arrives, we must NOT clobber their input when prefill resolves. This ref
+  // flips to true on the very first user mutation (handleChange or
+  // toggleArrayValue) and is checked by the prefill effect below. A ref
+  // (not state) so reading it doesn't trigger re-renders or stale closures.
+  const userEditedRef = useRef(false);
+
   // When the existing submission arrives AND the captured draft snapshot
-  // is empty (no real in-progress edit), prefill the form from the server.
-  // Track whether we've prefilled so the effect doesn't re-fire on every
-  // formData change (which would clobber typing).
+  // is empty AND the user hasn't started typing, prefill from the server.
+  // Track whether prefill ran via state so the effect doesn't re-fire on
+  // every existingSub identity change (also blocks clobber from later
+  // refetches via window-focus revalidation).
   const [prefilled, setPrefilled] = useState(false);
   useEffect(() => {
     if (prefilled) return;
     if (!existingSub) return;
+    // The user started typing before the server responded — keep their input,
+    // don't prefill. Mark prefilled so we don't keep re-evaluating.
+    if (userEditedRef.current) {
+      setPrefilled(true);
+      return;
+    }
     if (isEmptyDraft(initialDraftRaw)) {
       setFormData({ ...INITIAL_FORM, ...submissionToForm(existingSub) });
     }
@@ -131,10 +145,12 @@ const Survey: React.FC = () => {
   }, [formData]);
 
   const handleChange = (field: keyof Submission, value: any) => {
+    userEditedRef.current = true;
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const toggleArrayValue = (field: keyof Submission, value: string) => {
+    userEditedRef.current = true;
     setFormData(prev => {
       const current = (prev[field] as string[]) || [];
       const next = current.includes(value)
