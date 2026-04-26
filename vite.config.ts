@@ -55,6 +55,7 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        strictPort: true,
       },
       plugins: [react(), tailwindcss(), geminiDevProxy(env.GEMINI_API_KEY || '')],
       // Gemini API key is now server-side only (api/gemini.ts).
