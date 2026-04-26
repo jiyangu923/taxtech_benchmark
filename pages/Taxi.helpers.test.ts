@@ -4,10 +4,13 @@ import {
   LEGACY_HISTORY_KEY,
   SESSIONS_KEY,
   appendMessage,
+  deleteSession,
   loadSessions,
   makeFreshSession,
   makeSessionId,
+  pickActiveAfterDelete,
   pickInitialActiveId,
+  renameSession,
   sortByRecent,
   titleFromQuestion,
 } from './Taxi.helpers';
@@ -192,5 +195,81 @@ describe('storage key constants', () => {
     expect(SESSIONS_KEY).toBe('taxi_sessions');
     expect(ACTIVE_SESSION_KEY).toBe('taxi_active_session');
     expect(LEGACY_HISTORY_KEY).toBe('taxi_chat_history');
+  });
+});
+
+describe('deleteSession', () => {
+  const mk = (id: string) => ({ id, title: id, createdAt: 1, updatedAt: 1, messages: [] });
+
+  it('removes the matching session and leaves others untouched', () => {
+    const sessions = [mk('a'), mk('b'), mk('c')];
+    const out = deleteSession(sessions, 'b');
+    expect(out.map(s => s.id)).toEqual(['a', 'c']);
+    expect(out[0]).toBe(sessions[0]);
+    expect(out[1]).toBe(sessions[2]);
+  });
+
+  it('is a no-op for unknown ids', () => {
+    const sessions = [mk('a'), mk('b')];
+    expect(deleteSession(sessions, 'missing').map(s => s.id)).toEqual(['a', 'b']);
+  });
+
+  it('returns an empty array when deleting the last session', () => {
+    expect(deleteSession([mk('a')], 'a')).toEqual([]);
+  });
+});
+
+describe('renameSession', () => {
+  const mk = (id: string, title: string) => ({ id, title, createdAt: 1, updatedAt: 1, messages: [] });
+
+  it('updates the title of the matching session', () => {
+    const sessions = [mk('a', 'Old'), mk('b', 'Other')];
+    const out = renameSession(sessions, 'a', 'New name');
+    expect(out[0].title).toBe('New name');
+    expect(out[1]).toBe(sessions[1]);
+  });
+
+  it('collapses internal whitespace and trims edges', () => {
+    const sessions = [mk('a', 'Old')];
+    expect(renameSession(sessions, 'a', '  hello   world  ')[0].title).toBe('hello world');
+  });
+
+  it('caps overly long titles with an ellipsis', () => {
+    const sessions = [mk('a', 'Old')];
+    const long = 'B'.repeat(80);
+    const out = renameSession(sessions, 'a', long);
+    expect(out[0].title.endsWith('…')).toBe(true);
+    expect(out[0].title.length).toBeLessThanOrEqual(61);
+  });
+
+  it('refuses empty titles (returns sessions unchanged)', () => {
+    const sessions = [mk('a', 'Old')];
+    expect(renameSession(sessions, 'a', '   ')).toBe(sessions);
+  });
+
+  it('preserves all non-title fields', () => {
+    const sessions = [{ id: 'a', title: 'Old', createdAt: 100, updatedAt: 200, messages: [{ question: 'q', analysis: 'r' }] }];
+    const out = renameSession(sessions, 'a', 'Renamed')[0];
+    expect(out.createdAt).toBe(100);
+    expect(out.updatedAt).toBe(200);
+    expect(out.messages).toBe(sessions[0].messages);
+  });
+});
+
+describe('pickActiveAfterDelete', () => {
+  const mk = (id: string, updatedAt: number) => ({ id, title: id, createdAt: 1, updatedAt, messages: [] });
+
+  it('keeps the current active id when a different session is deleted', () => {
+    const remaining = [mk('a', 100), mk('c', 300)];
+    expect(pickActiveAfterDelete(remaining, 'b', 'a')).toBe('a');
+  });
+
+  it('falls back to the most recently updated when active is deleted', () => {
+    const remaining = [mk('a', 100), mk('c', 300), mk('b', 200)];
+    expect(pickActiveAfterDelete(remaining, 'x', 'x')).toBe('c');
+  });
+
+  it('returns empty string when nothing is left', () => {
+    expect(pickActiveAfterDelete([], 'a', 'a')).toBe('');
   });
 });

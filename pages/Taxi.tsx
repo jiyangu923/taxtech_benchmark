@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Send, Loader2, Lock, Plus, MessageSquare } from 'lucide-react';
+import { Sparkles, Send, Loader2, Lock, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, Menu, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -15,9 +15,12 @@ import {
   Session,
   ChatMessage,
   appendMessage,
+  deleteSession,
   loadSessions,
   makeFreshSession,
+  pickActiveAfterDelete,
   pickInitialActiveId,
+  renameSession,
   sortByRecent,
 } from './Taxi.helpers';
 
@@ -56,7 +59,29 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
 
   const [aiInput, setAiInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [menuOpenForId, setMenuOpenForId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (renamingId && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [renamingId]);
+
+  useEffect(() => {
+    if (!menuOpenForId) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (!target.closest('[data-session-menu]')) setMenuOpenForId(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpenForId]);
 
   useEffect(() => {
     try {
@@ -92,6 +117,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   };
 
   const handleNewChat = () => {
+    setMobileDrawerOpen(false);
     if (activeSession && activeSession.messages.length === 0) return;
     const fresh = makeFreshSession();
     setChat(prev => ({ sessions: [fresh, ...prev.sessions], activeId: fresh.id }));
@@ -99,9 +125,48 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   };
 
   const handleSelectSession = (id: string) => {
+    setMobileDrawerOpen(false);
     if (id === activeId) return;
     setChat(prev => ({ ...prev, activeId: id }));
     setAiInput('');
+  };
+
+  const handleStartRename = (s: Session) => {
+    setMenuOpenForId(null);
+    setRenamingId(s.id);
+    setRenameDraft(s.title);
+  };
+
+  const handleCommitRename = () => {
+    if (!renamingId) return;
+    const id = renamingId;
+    const draft = renameDraft;
+    setRenamingId(null);
+    setRenameDraft('');
+    setChat(prev => ({ ...prev, sessions: renameSession(prev.sessions, id, draft) }));
+  };
+
+  const handleCancelRename = () => {
+    setRenamingId(null);
+    setRenameDraft('');
+  };
+
+  const handleDeleteSession = (id: string) => {
+    setMenuOpenForId(null);
+    const target = sessions.find(s => s.id === id);
+    if (target && target.messages.length > 0) {
+      const ok = window.confirm(`Delete "${target.title}"? This cannot be undone.`);
+      if (!ok) return;
+    }
+    setChat(prev => {
+      const remaining = deleteSession(prev.sessions, id);
+      const nextActive = pickActiveAfterDelete(remaining, id, prev.activeId);
+      if (remaining.length === 0) {
+        const fresh = makeFreshSession();
+        return { sessions: [fresh], activeId: fresh.id };
+      }
+      return { sessions: remaining, activeId: nextActive };
+    });
   };
 
   if (!isAdmin && (!mySubmission || mySubmission.status === 'pending')) {
@@ -118,21 +183,43 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-gray-50">
-      {/* Sidebar — desktop only */}
+    <div className="flex h-[calc(100vh-4rem)] bg-gray-50 relative">
+      {/* Mobile backdrop */}
+      {mobileDrawerOpen && (
+        <div
+          onClick={() => setMobileDrawerOpen(false)}
+          className="fixed inset-0 top-16 bg-black/30 z-30 lg:hidden"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar — slide-in drawer on mobile, static panel on desktop */}
       <aside
         aria-label="Chat sessions"
-        className="hidden lg:flex flex-col w-64 xl:w-72 border-r border-gray-200 bg-white flex-shrink-0"
+        className={`flex flex-col w-72 sm:w-80 lg:w-64 xl:w-72 border-r border-gray-200 bg-white flex-shrink-0
+          fixed top-16 bottom-0 left-0 z-40 transform transition-transform duration-200
+          lg:relative lg:top-auto lg:bottom-auto lg:z-auto lg:translate-x-0 lg:transition-none
+          ${mobileDrawerOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'}
+        `}
       >
         <div className="px-4 pt-4 pb-3 border-b border-gray-200">
-          <Link to="/" className="flex items-center gap-2.5 group mb-4">
-            <div className="w-7 h-7 border-[1.5px] border-gray-900 rounded-md grid place-items-center font-mono text-[12px] font-semibold text-gray-900 group-hover:border-primary group-hover:text-primary transition-colors">
-              b
-            </div>
-            <span className="font-display text-[16px] font-semibold tracking-tight text-gray-900">
-              benchmarktax<span className="text-amber-acc">.</span>ai
-            </span>
-          </Link>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <Link to="/" className="flex items-center gap-2.5 group min-w-0">
+              <div className="w-7 h-7 border-[1.5px] border-gray-900 rounded-md grid place-items-center font-mono text-[12px] font-semibold text-gray-900 group-hover:border-primary group-hover:text-primary transition-colors flex-shrink-0">
+                b
+              </div>
+              <span className="font-display text-[16px] font-semibold tracking-tight text-gray-900 truncate">
+                benchmarktax<span className="text-amber-acc">.</span>ai
+              </span>
+            </Link>
+            <button
+              onClick={() => setMobileDrawerOpen(false)}
+              className="lg:hidden p-1.5 rounded-md text-gray-500 hover:bg-gray-100 flex-shrink-0"
+              aria-label="Close sessions"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
           <button
             onClick={handleNewChat}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-500 text-white rounded-xl font-bold shadow-sm hover:bg-indigo-600 active:scale-[0.98] transition-all"
@@ -150,26 +237,93 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
               {sortedSessions.map(s => {
                 const isActive = s.id === activeId;
                 const isEmpty = s.messages.length === 0;
+                const isRenaming = renamingId === s.id;
+                const isMenuOpen = menuOpenForId === s.id;
                 return (
-                  <li key={s.id}>
-                    <button
-                      onClick={() => handleSelectSession(s.id)}
-                      className={`w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-2 transition-all ${
-                        isActive
-                          ? 'bg-indigo-50 text-indigo-900 border border-indigo-100'
-                          : 'text-gray-700 hover:bg-gray-50 border border-transparent'
-                      }`}
-                      title={s.title}
-                    >
-                      <MessageSquare
-                        className={`h-4 w-4 mt-0.5 flex-shrink-0 ${
-                          isActive ? 'text-indigo-500' : 'text-gray-400'
+                  <li key={s.id} className="group relative">
+                    {isRenaming ? (
+                      <form
+                        onSubmit={(e) => { e.preventDefault(); handleCommitRename(); }}
+                        className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-white border border-indigo-300 ring-2 ring-indigo-100"
+                      >
+                        <MessageSquare className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+                        <input
+                          ref={renameInputRef}
+                          type="text"
+                          value={renameDraft}
+                          onChange={e => setRenameDraft(e.target.value)}
+                          onBlur={handleCommitRename}
+                          onKeyDown={e => {
+                            if (e.key === 'Escape') { e.preventDefault(); handleCancelRename(); }
+                          }}
+                          className="flex-1 min-w-0 text-sm font-semibold bg-transparent outline-none text-gray-900"
+                          maxLength={80}
+                          aria-label="Rename session"
+                        />
+                      </form>
+                    ) : (
+                      <div
+                        className={`flex items-stretch rounded-lg border transition-colors ${
+                          isActive
+                            ? 'bg-indigo-50 border-indigo-100'
+                            : 'border-transparent hover:bg-gray-50'
                         }`}
-                      />
-                      <span className={`text-sm truncate min-w-0 flex-1 ${isEmpty ? 'italic font-medium text-gray-500' : 'font-semibold'}`}>
-                        {s.title}
-                      </span>
-                    </button>
+                      >
+                        <button
+                          onClick={() => handleSelectSession(s.id)}
+                          className="flex-1 min-w-0 text-left px-3 py-2.5 flex items-start gap-2"
+                          title={s.title}
+                        >
+                          <MessageSquare
+                            className={`h-4 w-4 mt-0.5 flex-shrink-0 ${
+                              isActive ? 'text-indigo-500' : 'text-gray-400'
+                            }`}
+                          />
+                          <span className={`text-sm truncate min-w-0 flex-1 ${
+                            isEmpty
+                              ? 'italic font-medium text-gray-500'
+                              : isActive ? 'font-semibold text-indigo-900' : 'font-semibold text-gray-700'
+                          }`}>
+                            {s.title}
+                          </span>
+                        </button>
+                        <button
+                          data-session-menu
+                          onClick={(e) => { e.stopPropagation(); setMenuOpenForId(isMenuOpen ? null : s.id); }}
+                          className={`flex-shrink-0 px-2 rounded-r-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200/60 transition-opacity ${
+                            isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
+                          }`}
+                          aria-label={`Options for ${s.title}`}
+                          aria-expanded={isMenuOpen}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                    {isMenuOpen && (
+                      <div
+                        data-session-menu
+                        role="menu"
+                        className="absolute right-2 top-full mt-1 z-20 w-36 bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+                      >
+                        <button
+                          role="menuitem"
+                          onClick={() => handleStartRename(s)}
+                          className="w-full text-left px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Rename
+                        </button>
+                        <button
+                          role="menuitem"
+                          onClick={() => handleDeleteSession(s.id)}
+                          className="w-full text-left px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -181,9 +335,16 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
       {/* Chat column */}
       <div className="flex flex-col flex-1 min-w-0">
         {/* Header */}
-        <header className="bg-gradient-to-br from-indigo-500 to-indigo-400 text-white px-6 py-5 sm:px-10 sm:py-6 shadow-md">
+        <header className="bg-gradient-to-br from-indigo-500 to-indigo-400 text-white px-4 py-5 sm:px-10 sm:py-6 shadow-md">
           <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 min-w-0">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <button
+                onClick={() => setMobileDrawerOpen(true)}
+                className="lg:hidden p-2 -ml-1 rounded-lg text-white hover:bg-white/10 transition-colors flex-shrink-0"
+                aria-label="Open chat sessions"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
               <img src={taxiAvatar} alt="Taxi" className="w-12 h-12 rounded-full shadow-lg flex-shrink-0" />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">

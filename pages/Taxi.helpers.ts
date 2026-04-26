@@ -102,3 +102,26 @@ export function pickInitialActiveId(sessions: Session[], stored: string | null):
   if (sessions.length === 0) return '';
   return sortByRecent(sessions)[0].id;
 }
+
+export function deleteSession(sessions: Session[], id: string): Session[] {
+  return sessions.filter(s => s.id !== id);
+}
+
+const RENAME_MAX = 60;
+
+export function renameSession(sessions: Session[], id: string, newTitle: string): Session[] {
+  const trimmed = newTitle.trim().replace(/\s+/g, ' ');
+  if (!trimmed) return sessions;
+  const capped = trimmed.length > RENAME_MAX ? trimmed.slice(0, RENAME_MAX).trimEnd() + '…' : trimmed;
+  return sessions.map(s => (s.id === id ? { ...s, title: capped } : s));
+}
+
+export function pickActiveAfterDelete(
+  remaining: Session[],
+  deletedId: string,
+  currentActiveId: string
+): string {
+  if (deletedId !== currentActiveId) return currentActiveId;
+  if (remaining.length === 0) return '';
+  return sortByRecent(remaining)[0].id;
+}
