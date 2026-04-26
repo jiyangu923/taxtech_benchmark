@@ -179,6 +179,7 @@ export const OPTS_DATA_FLOW: Option[] = [
   { value: 'event_driven', label: 'Event-Driven (Real-time)' },
   { value: 'real_time_streaming', label: 'Real-time Streaming' },
   { value: 'manual', label: 'Manual Transfers' },
+  { value: 'hybrid', label: 'Hybrid (Mix of the above)' },
 ];
 
 export const OPTS_LANGUAGES: Option[] = [
