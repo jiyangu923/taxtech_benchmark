@@ -24,7 +24,7 @@ const DirectTax: React.FC = () => {
         <div className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-indigo-50 mb-8 animate-pulse">
           <Hammer className="h-12 w-12 text-secondary" />
         </div>
-        <h1 className="font-display text-3xl sm:text-4xl font-normal tracking-tight text-gray-900 mb-4">Direct Tax Benchmark</h1>
+        <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-gray-900 mb-4">Direct Tax Benchmark</h1>
         <div className="h-1 w-20 bg-secondary mx-auto mb-6 rounded-full"></div>
         <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-8 leading-relaxed">
           We are actively building the benchmark survey and analytics for <span className="font-semibold text-gray-800">Direct Tax</span> (Corporate Income Tax, Transfer Pricing, and Provision).

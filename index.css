@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Geist+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Geist+Mono:wght@400;500;600&display=swap");
 
 @import "tailwindcss";
 
@@ -8,20 +8,28 @@
   --color-secondary: #4f46e5;
   --color-accent: #0ea5e9;
 
-  /* New: warm off-white canvas (replaces gray-50 page bg) */
+  /* Warm off-white canvas (replaces gray-50 page bg) */
   --color-canvas: #FAFAF9;
 
-  /* New: muted amber accent — used for eyebrow micro-labels only */
+  /* Muted amber accent — used for eyebrow micro-labels only */
   --color-amber-acc: #C28A3D;
   --color-amber-acc-2: #A8772E;
 
-  /* New: Fraunces serif for display headings; Geist Mono for numerics */
-  --font-display: "Fraunces", Georgia, serif;
+  /* Typography
+     - display: Inter Display (the variable Inter at large optical sizes).
+       Reads as institutional / instrument-like (Linear, Stripe, Mercury).
+       Replaced Fraunces serif which read as too editorial/casual for a
+       survey context.
+     - sans: same Inter variable, used by body + UI.
+     - mono: Geist Mono, for numerics and labels. */
+  --font-display: "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
 }
 
 body {
   background-color: var(--color-canvas);
+  font-family: var(--font-sans);
 }
 
 /* Prevent recharts tooltip wrappers from leaking outside their chart container */

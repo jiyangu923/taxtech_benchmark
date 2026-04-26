@@ -53,7 +53,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
           <ArrowLeft className="h-6 w-6" />
         </Link>
         <div>
-          <h1 className="font-display text-3xl font-normal text-gray-900 tracking-tight">Account Profile</h1>
+          <h1 className="font-display text-3xl font-semibold text-gray-900 tracking-tight">Account Profile</h1>
           <p className="text-gray-500 font-medium">Manage your personal settings and identity</p>
         </div>
       </div>

@@ -4,43 +4,18 @@ import { ArrowRight, CheckCircle2, TrendingUp, Users, Heart, ShieldCheck, Eye } 
 import { User } from '../types';
 
 interface HomeProps {
-    user: User | null;
+  user: User | null;
 }
 
 const Home: React.FC<HomeProps> = ({ user }) => {
   return (
-    <div className="bg-gray-50 min-h-screen">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden bg-primary pb-24 pt-12 sm:pb-32 sm:pt-16 lg:pb-40 lg:pt-24">
-        <div className="relative mx-auto max-w-7xl px-4 sm:static sm:px-6 lg:px-8">
-          <div className="sm:max-w-lg">
-            <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-amber-acc-2 mb-4 inline-block px-3 py-1 bg-white/10 rounded-full">Indirect Tax · Benchmark Edition v1</p>
-            <h1 className="font-display font-normal text-3xl sm:text-4xl tracking-tight text-white sm:text-6xl leading-tight">
-              Indirect Tax Technology Benchmark
-            </h1>
-            <p className="mt-4 text-lg sm:text-xl text-indigo-100">
-              Compare your organizational model, automation rates, and AI adoption against industry peers.
-            </p>
-            <div className="mt-10">
-              {!user ? (
-                <div className="inline-block rounded-md border border-transparent bg-secondary px-8 py-3 text-center font-medium text-white hover:bg-indigo-600">
-                  Login to Participate
-                </div>
-              ) : (
-                <Link
-                  to="/survey"
-                  className="inline-flex items-center gap-2 rounded-md border border-transparent bg-white px-8 py-3 text-center font-medium text-primary hover:bg-gray-100"
-                >
-                  Start Survey <ArrowRight className="h-4 w-4" />
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="bg-canvas min-h-screen">
+      <Hero user={user} />
 
-      {/* Feature Grid */}
-      <div className="relative -mt-24 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
+      {/* Feature grid — pulled up via -mt-24 to overlap the hero's indigo deck.
+          Creates the same "tray" effect as the original full-bleed hero
+          without the heavy color block. */}
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12 -mt-24">
         <div className="grid grid-cols-1 gap-4 sm:gap-6 md:gap-8 md:grid-cols-3">
           {[
             { icon: <TrendingUp className="h-6 w-6" />, title: 'Automation Metrics', desc: 'Benchmark your tax calculation, payment, and compliance automation rates against the market.' },
@@ -50,14 +25,14 @@ const Home: React.FC<HomeProps> = ({ user }) => {
             <Link
               key={card.title}
               to={user ? '/survey' : '/'}
-              className="rounded-2xl bg-white p-8 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all group"
+              className="rounded-2xl bg-white p-8 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group border border-gray-100"
             >
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-secondary">
+              <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-50 text-primary group-hover:bg-indigo-100 transition-colors">
                 {card.icon}
               </div>
-              <h3 className="font-display text-xl font-medium text-gray-900 group-hover:text-primary transition-colors">{card.title}</h3>
-              <p className="mt-2 text-gray-600">{card.desc}</p>
-              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-secondary opacity-0 group-hover:opacity-100 transition-opacity">
+              <h3 className="font-display text-2xl font-medium text-gray-900 group-hover:text-primary transition-colors">{card.title}</h3>
+              <p className="mt-3 text-base text-gray-600 leading-relaxed">{card.desc}</p>
+              <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary group-hover:gap-2.5 transition-all">
                 {user ? 'Start Survey' : 'Sign in to participate'} <ArrowRight className="h-4 w-4" />
               </span>
             </Link>
@@ -65,38 +40,109 @@ const Home: React.FC<HomeProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* How It Works / Trust Section */}
+      {/* Trust section */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="text-center mb-10">
-          <h2 className="font-display text-3xl font-normal tracking-tight text-gray-900">Built for the Community</h2>
-          <p className="mt-2 text-gray-500 max-w-2xl mx-auto">This benchmark is a non-profit, community-driven initiative. Your data helps everyone make better decisions.</p>
+        <div className="text-center mb-12">
+          <h2 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight text-gray-900">Built for the Community</h2>
+          <p className="mt-3 text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">This benchmark is a non-profit, community-driven initiative. Your data helps everyone make better decisions.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-          <div className="text-center p-6">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50 text-green-600 mb-4">
-              <Heart className="h-7 w-7" />
-            </div>
-            <h3 className="font-display font-medium text-gray-900 text-lg">Non-Profit</h3>
-            <p className="mt-2 text-gray-500 text-sm">This is a free, community resource. No commercial agenda — just honest industry data to help tax teams improve.</p>
-          </div>
-          <div className="text-center p-6">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-4">
-              <ShieldCheck className="h-7 w-7" />
-            </div>
-            <h3 className="font-display font-medium text-gray-900 text-lg">Anonymous & Reviewed</h3>
-            <p className="mt-2 text-gray-500 text-sm">All submissions are anonymous. Every response goes through a review and approval process before entering the dataset.</p>
-          </div>
-          <div className="text-center p-6">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 mb-4">
-              <Eye className="h-7 w-7" />
-            </div>
-            <h3 className="font-display font-medium text-gray-900 text-lg">Equal Access</h3>
-            <p className="mt-2 text-gray-500 text-sm">Once approved, everyone gets the same access to survey data and analytics — participants and admins alike.</p>
-          </div>
+          <TrustCard
+            icon={<Heart className="h-6 w-6" />}
+            iconClass="bg-emerald-50 text-emerald-700"
+            title="Non-Profit"
+            desc="A free, community resource. No commercial agenda — just honest industry data to help tax teams improve."
+          />
+          <TrustCard
+            icon={<ShieldCheck className="h-6 w-6" />}
+            iconClass="bg-amber-acc-tint text-amber-acc-2"
+            title="Anonymous & Reviewed"
+            desc="Every submission is anonymized. Each response goes through a completeness review before entering the dataset."
+          />
+          <TrustCard
+            icon={<Eye className="h-6 w-6" />}
+            iconClass="bg-sky-50 text-sky-700"
+            title="Equal Access"
+            desc="Once approved, every participant gets the same access to survey data and analytics — no premium tiers, no admin advantage."
+          />
         </div>
       </div>
     </div>
   );
 };
+
+const TrustCard: React.FC<{ icon: React.ReactNode; iconClass: string; title: string; desc: string }> = ({ icon, iconClass, title, desc }) => (
+  <div className="text-center p-6">
+    <div className={`inline-flex h-12 w-12 items-center justify-center rounded-lg mb-4 ${iconClass}`}>{icon}</div>
+    <h3 className="font-display font-medium text-gray-900 text-xl">{title}</h3>
+    <p className="mt-3 text-base text-gray-600 leading-relaxed">{desc}</p>
+  </div>
+);
+
+// ─── Hero ────────────────────────────────────────────────────────────────────
+
+/**
+ * Editorial hero with indigo "deck" continuity.
+ * - Top: off-white canvas with sans-serif headline + stat strip on the right.
+ * - Bottom: full-width indigo band that the feature cards overlap into via
+ *   the parent's -mt-24 negative margin. Replicates the visual "tray" of the
+ *   original full-bleed indigo hero without the heavy full-section color.
+ * - Thin indigo "publication spine" along the very top edge.
+ */
+const Hero: React.FC<{ user: User | null }> = ({ user }) => (
+  <div className="relative">
+    <div className="absolute inset-x-0 top-0 h-[3px] bg-primary z-10" />
+
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 lg:pt-28 pb-16 lg:pb-20 grid lg:grid-cols-12 gap-12 items-end">
+      <div className="lg:col-span-7">
+        <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-amber-acc-2 mb-6">
+          Indirect Tax · Benchmark Edition v1
+        </p>
+        <h1 className="font-display font-semibold text-4xl sm:text-5xl lg:text-6xl tracking-tight text-gray-900 leading-[1.05]">
+          Indirect Tax Technology <span className="text-primary">Benchmark</span>
+        </h1>
+        <p className="mt-6 text-lg text-gray-700 max-w-2xl leading-relaxed">
+          A community-built peer comparison for in-house tax-technology functions. Anonymous data, equal access, no vendor agenda.
+        </p>
+        <HeroCTAs user={user} />
+      </div>
+      <div className="lg:col-span-5">
+        <div className="bg-white border border-gray-200 rounded-xl p-8 grid grid-cols-2 gap-x-6 gap-y-8 shadow-sm">
+          <Stat n="147"   label="Anonymous benchmarks contributed" />
+          <Stat n="38"    label="Industries represented" />
+          <Stat n="$4.2T" label="Combined revenue covered" />
+          <Stat n="100%"  label="Free · non-profit · open access" />
+        </div>
+      </div>
+    </div>
+
+    {/* Indigo deck — feature cards in the parent component overlap into this band. */}
+    <div className="bg-primary h-40 sm:h-48" />
+  </div>
+);
+
+const HeroCTAs: React.FC<{ user: User | null }> = ({ user }) => (
+  <div className="mt-10 flex flex-wrap gap-3">
+    {!user ? (
+      <button className="inline-flex items-center gap-2 px-7 py-3.5 bg-primary text-white rounded-md text-base font-semibold hover:bg-indigo-900 transition-colors shadow-sm">
+        Sign in to participate <ArrowRight className="h-4 w-4" />
+      </button>
+    ) : (
+      <Link to="/survey" className="inline-flex items-center gap-2 px-7 py-3.5 bg-primary text-white rounded-md text-base font-semibold hover:bg-indigo-900 transition-colors shadow-sm">
+        Start the survey <ArrowRight className="h-4 w-4" />
+      </Link>
+    )}
+    <Link to="/report" className="inline-flex items-center gap-2 px-7 py-3.5 bg-white border border-gray-300 text-gray-900 rounded-md text-base font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors">
+      View benchmark
+    </Link>
+  </div>
+);
+
+const Stat: React.FC<{ n: string; label: string }> = ({ n, label }) => (
+  <div>
+    <div className="font-mono text-3xl font-semibold tabular-nums text-primary leading-none">{n}</div>
+    <div className="mt-2.5 text-sm text-gray-700 leading-snug">{label}</div>
+  </div>
+);
 
 export default Home;

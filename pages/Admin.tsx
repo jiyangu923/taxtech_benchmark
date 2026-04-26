@@ -197,7 +197,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
       <div className="px-4 py-6 sm:px-0">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-                <h1 className="font-display text-3xl font-normal text-gray-900 tracking-tight flex items-center gap-3">
+                <h1 className="font-display text-3xl font-semibold text-gray-900 tracking-tight flex items-center gap-3">
                    <Settings className="h-8 w-8 text-primary" /> Admin Central
                 </h1>
                 <p className="text-gray-500 text-sm mt-1 font-medium">Infrastructure & Governance Control Panel</p>
