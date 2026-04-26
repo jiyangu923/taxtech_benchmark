@@ -171,9 +171,18 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
   };
 
   const saveWebhook = async () => {
-    await api.setWebhookUrl(webhookUrl);
-    setSyncMessage({ type: 'success', text: 'Integration settings saved.' });
-    setTimeout(() => setSyncMessage(null), 3000);
+    try {
+      await api.setWebhookUrl(webhookUrl);
+      setSyncMessage({ type: 'success', text: 'Integration settings saved.' });
+    } catch (err: any) {
+      // Previously this threw silently — Save click looked like a no-op when
+      // upsert failed (RLS, network). Without surfacing the error, users
+      // navigated away thinking their webhook URL was saved when it wasn't,
+      // then on next load the input was blank and they thought it
+      // "disappeared." This makes failures visible.
+      setSyncMessage({ type: 'error', text: err?.message || 'Failed to save webhook URL.' });
+    }
+    setTimeout(() => setSyncMessage(null), 4000);
   };
 
   const getLabel = (options: { value: string; label: string }[], val?: string) => {
