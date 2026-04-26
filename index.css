@@ -1,9 +1,27 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Geist+Mono:wght@400;500;600&display=swap");
+
 @import "tailwindcss";
 
 @theme {
+  /* Existing brand */
   --color-primary: #1e3a8a;
   --color-secondary: #4f46e5;
   --color-accent: #0ea5e9;
+
+  /* New: warm off-white canvas (replaces gray-50 page bg) */
+  --color-canvas: #FAFAF9;
+
+  /* New: muted amber accent — used for eyebrow micro-labels only */
+  --color-amber-acc: #C28A3D;
+  --color-amber-acc-2: #A8772E;
+
+  /* New: Fraunces serif for display headings; Geist Mono for numerics */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+}
+
+body {
+  background-color: var(--color-canvas);
 }
 
 /* Prevent recharts tooltip wrappers from leaking outside their chart container */

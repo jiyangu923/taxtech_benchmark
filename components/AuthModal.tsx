@@ -83,7 +83,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
         <div className="px-8 py-10">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+              <h2 className="font-display text-2xl font-normal text-gray-900 tracking-tight">
                 {mode === 'login' ? 'Welcome Back' : 'Create Account'}
               </h2>
               <p className="text-sm text-gray-500 mt-1 font-medium">
@@ -102,7 +102,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
               <div className="bg-blue-100 p-4 rounded-full mb-4">
                 <Mail className="h-12 w-12 text-blue-600" />
               </div>
-              <h3 className="text-xl font-black text-gray-900">Check your email</h3>
+              <h3 className="font-display text-xl font-medium text-gray-900">Check your email</h3>
               <p className="text-gray-500 text-sm mt-2 font-medium text-center">
                 We sent a confirmation link to <span className="font-black text-gray-700">{email}</span>.<br />
                 Click it to activate your account.
@@ -114,7 +114,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
               <div className="bg-green-100 p-4 rounded-full mb-4">
                 <CheckCircle2 className="h-12 w-12 text-green-600" />
               </div>
-              <h3 className="text-xl font-black text-gray-900">Successfully Verified</h3>
+              <h3 className="font-display text-xl font-medium text-gray-900">Successfully Verified</h3>
               <p className="text-gray-500 text-sm mt-1 font-medium">Preparing your insights...</p>
             </div>
           ) : (

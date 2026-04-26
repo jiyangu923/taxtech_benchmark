@@ -299,7 +299,7 @@ const Survey: React.FC = () => {
       <div className="max-w-3xl mx-auto py-24 px-4 flex flex-col items-center text-center">
         <div className="bg-green-50 border border-green-100 rounded-3xl p-12 shadow-xl">
           <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-6" />
-          <h2 className="text-2xl font-black text-gray-900">Survey Submitted</h2>
+          <h2 className="font-display text-2xl font-normal text-gray-900">Survey Submitted</h2>
           <p className="text-gray-500 mt-2 max-w-sm">
             Your responses have been received and are awaiting admin review.
             You'll be redirected to the analytics page shortly.
@@ -326,7 +326,7 @@ const Survey: React.FC = () => {
       )}
 
       <div className="mb-10 text-center">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">Benchmark Survey</h1>
+        <h1 className="font-display text-xl sm:text-2xl lg:text-3xl font-normal text-gray-900 tracking-tight">Benchmark Survey</h1>
         <p className="text-gray-500 text-sm mt-1">Step {activeSection} of {C.SECTIONS.length}</p>
         <div className="mt-6 w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
           <div className="bg-primary h-full transition-all duration-500" style={{ width: `${progress}%` }} />
@@ -340,7 +340,7 @@ const Survey: React.FC = () => {
       )}
 
       <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-xl border border-gray-100 min-h-[400px]">
-        <h2 className="text-2xl font-black text-gray-900 mb-2">{currentSection.title}</h2>
+        <h2 className="font-display text-2xl font-normal text-gray-900 mb-2">{currentSection.title}</h2>
         <p className="text-gray-400 text-sm mb-8 pb-6 border-b border-gray-50">{currentSection.description}</p>
 
         {activeSection === 1 && (

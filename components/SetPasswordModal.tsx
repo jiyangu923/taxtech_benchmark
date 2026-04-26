@@ -46,7 +46,7 @@ const SetPasswordModal: React.FC<SetPasswordModalProps> = ({ onComplete }) => {
       <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
         <div className="px-8 py-10">
           <div className="mb-8">
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Set Your Password</h2>
+            <h2 className="font-display text-2xl font-normal text-gray-900 tracking-tight">Set Your Password</h2>
             <p className="text-sm text-gray-500 mt-1 font-medium">
               Welcome! Please create a password to secure your account.
             </p>
@@ -57,7 +57,7 @@ const SetPasswordModal: React.FC<SetPasswordModalProps> = ({ onComplete }) => {
               <div className="bg-green-100 p-4 rounded-full mb-4">
                 <CheckCircle2 className="h-12 w-12 text-green-600" />
               </div>
-              <h3 className="text-xl font-black text-gray-900">Password Set!</h3>
+              <h3 className="font-display text-xl font-medium text-gray-900">Password Set!</h3>
               <p className="text-gray-500 text-sm mt-1 font-medium">Taking you to your account...</p>
             </div>
           ) : (

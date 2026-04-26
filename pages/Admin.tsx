@@ -187,7 +187,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
       <div className="px-4 py-6 sm:px-0">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                <h1 className="font-display text-3xl font-normal text-gray-900 tracking-tight flex items-center gap-3">
                    <Settings className="h-8 w-8 text-primary" /> Admin Central
                 </h1>
                 <p className="text-gray-500 text-sm mt-1 font-medium">Infrastructure & Governance Control Panel</p>
@@ -470,14 +470,14 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                                 <HardDrive className="h-5 w-5 text-gray-400" />
                                 <span className="text-sm font-bold text-gray-700">Submissions Pool</span>
                             </div>
-                            <span className="text-xl font-black text-primary">{submissions.length}</span>
+                            <span className="font-mono text-xl font-semibold text-primary tabular-nums">{submissions.length}</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <Users className="h-5 w-5 text-gray-400" />
                                 <span className="text-sm font-bold text-gray-700">Privileged Seats</span>
                             </div>
-                            <span className="text-xl font-black text-primary">{adminEmails.length}</span>
+                            <span className="font-mono text-xl font-semibold text-primary tabular-nums">{adminEmails.length}</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -521,7 +521,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
             <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden animate-bounceIn">
                 <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <div>
-                        <h3 className="text-xl font-black text-gray-900">Detail Analysis</h3>
+                        <h3 className="font-display text-xl font-medium text-gray-900">Detail Analysis</h3>
                         <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-0.5">Submission ID: {selectedSub.id}</p>
                     </div>
                     <button onClick={() => setSelectedSub(null)} className="text-gray-400 hover:text-gray-900 transition-colors"><XCircle className="h-8 w-8" /></button>
