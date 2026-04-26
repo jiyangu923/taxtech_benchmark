@@ -36,6 +36,7 @@ const { profiles, submissions, settings, mockFrom, mockAuth, mockRpc } = vi.hois
           t[m].mockReturnValue(t);
         }
         t.single.mockReset();
+        t.maybeSingle.mockReset();
       },
     };
 
@@ -43,6 +44,7 @@ const { profiles, submissions, settings, mockFrom, mockAuth, mockRpc } = vi.hois
       t[m] = vi.fn(() => t);
     }
     t.single = vi.fn();
+    t.maybeSingle = vi.fn();
     return t;
   }
 
@@ -274,6 +276,35 @@ describe('getSubmissions', () => {
   it('throws on a database error', async () => {
     submissions.select.mockResolvedValueOnce({ data: null, error: { message: 'DB error' } });
     await expect(api.getSubmissions()).rejects.toThrow('DB error');
+  });
+});
+
+// ─── getMySubmission ──────────────────────────────────────────────────────────
+
+describe('getMySubmission', () => {
+  it('returns null when there is no active session', async () => {
+    mockAuth.getUser.mockResolvedValueOnce({ data: { user: null } });
+    expect(await api.getMySubmission()).toBeNull();
+  });
+
+  it('returns the submission row scoped to the current user', async () => {
+    const row = { id: 's1', userId: 'u1', companyProfile: ['public'] };
+    mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
+    submissions.maybeSingle.mockResolvedValueOnce({ data: row, error: null });
+    expect(await api.getMySubmission()).toEqual(row);
+    expect(submissions.eq).toHaveBeenCalledWith('userId', 'u1');
+  });
+
+  it('returns null when the user has no submission yet', async () => {
+    mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
+    submissions.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    expect(await api.getMySubmission()).toBeNull();
+  });
+
+  it('throws on a database error', async () => {
+    mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
+    submissions.maybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'RLS denied' } });
+    await expect(api.getMySubmission()).rejects.toThrow('RLS denied');
   });
 });
 

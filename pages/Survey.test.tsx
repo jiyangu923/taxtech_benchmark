@@ -8,7 +8,12 @@ import Survey from './Survey';
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 vi.mock('../services/api', () => ({
-  api: { createSubmission: vi.fn() },
+  api: {
+    createSubmission: vi.fn(),
+    // Default: no existing submission so the form starts blank in most tests.
+    // Tests that need an existing submission can override per-test.
+    getMySubmission: vi.fn().mockResolvedValue(null),
+  },
 }));
 
 const mockNavigate = vi.fn();
