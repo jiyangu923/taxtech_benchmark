@@ -6,11 +6,12 @@ import { User as UserType } from '../types';
 
 interface NavbarProps {
   user: UserType | null;
+  authReady: boolean;
   onLogout: () => void;
   onOpenLogin: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, authReady, onLogout, onOpenLogin }) => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -28,10 +29,10 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) => {
   const links: NavItem[] = [
     { to: '/', label: 'Indirect Tax', show: true },
     { to: '/direct-tax', label: 'Direct Tax', show: true },
-    { to: '/survey', label: 'Submit Data', show: !!user },
-    { to: '/report', label: 'Analytics', show: !!user },
-    { to: '/taxi', label: 'Taxi AI', show: !!user, ai: true },
-    { to: '/admin', label: 'Control Panel', show: user?.role === 'admin', admin: true },
+    { to: '/survey', label: 'Submit Data', show: authReady && !!user },
+    { to: '/report', label: 'Analytics', show: authReady && !!user },
+    { to: '/taxi', label: 'Taxi AI', show: authReady && !!user, ai: true },
+    { to: '/admin', label: 'Control Panel', show: authReady && user?.role === 'admin', admin: true },
   ];
 
   return (
@@ -59,7 +60,9 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {user ? (
+            {!authReady ? (
+              <div className="h-10 w-24" aria-hidden="true" />
+            ) : user ? (
               <div className="flex items-center gap-3 sm:gap-4">
                 <Link to="/profile" className="block hover:opacity-90 transition-opacity">
                   <div className={`flex items-center gap-2.5 px-3 sm:px-4 py-2 rounded-2xl border transition-all ${user.role === 'admin' ? 'bg-orange-50 border-orange-200 text-orange-800 shadow-sm' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
