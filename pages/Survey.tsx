@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, AlertCircle, CheckCircle2, Info, Loader2 } from 'lucide-react';
 import { api } from '../services/api';
 import { Submission, Option } from '../types';
+import { useMySubmission, useCreateSubmission } from '../services/queries';
 import * as C from '../constants';
 import SURVEY_TOOLTIPS from '../surveyTooltips';
 
@@ -101,26 +102,28 @@ const Survey: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [existingSubmittedAt, setExistingSubmittedAt] = useState<string | null>(null);
-  const [existingStatus, setExistingStatus] = useState<Submission['status'] | null>(null);
 
-  // On mount, if the user has an existing submission AND the captured
-  // draft snapshot is empty (no real in-progress edit), prefill the form
-  // from the server.
+  // Prefill from cache if present. The cache is shared with /report and
+  // other pages, so re-opening the survey is instant after the first fetch.
+  const { data: existingSub } = useMySubmission();
+  const createSubmissionMutation = useCreateSubmission();
+
+  const existingSubmittedAt = existingSub?.submittedAt ?? null;
+  const existingStatus = existingSub?.status ?? null;
+
+  // When the existing submission arrives AND the captured draft snapshot
+  // is empty (no real in-progress edit), prefill the form from the server.
+  // Track whether we've prefilled so the effect doesn't re-fire on every
+  // formData change (which would clobber typing).
+  const [prefilled, setPrefilled] = useState(false);
   useEffect(() => {
-    let cancelled = false;
-    api.getMySubmission()
-      .then(sub => {
-        if (cancelled || !sub) return;
-        setExistingSubmittedAt(sub.submittedAt);
-        setExistingStatus(sub.status);
-        if (isEmptyDraft(initialDraftRaw)) {
-          setFormData({ ...INITIAL_FORM, ...submissionToForm(sub) });
-        }
-      })
-      .catch(err => console.error('[Survey] failed to load existing submission:', err));
-    return () => { cancelled = true; };
-  }, [initialDraftRaw]);
+    if (prefilled) return;
+    if (!existingSub) return;
+    if (isEmptyDraft(initialDraftRaw)) {
+      setFormData({ ...INITIAL_FORM, ...submissionToForm(existingSub) });
+    }
+    setPrefilled(true);
+  }, [existingSub, initialDraftRaw, prefilled]);
 
   // Autosave draft on every change
   useEffect(() => {
@@ -224,7 +227,7 @@ const Survey: React.FC = () => {
         companyProfile: normalizeArrayField(formData.companyProfile as any),
         participationGoal: normalizeArrayField(formData.participationGoal as any),
       };
-      await api.createSubmission(payload as any);
+      await createSubmissionMutation.mutateAsync(payload as any);
       localStorage.removeItem(DRAFT_KEY);
       setSubmitted(true);
       setTimeout(() => navigate('/report'), 2000);

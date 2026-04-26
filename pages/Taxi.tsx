@@ -6,6 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { api } from '../services/api';
+import { useSubmissions } from '../services/queries';
 import { askBenchmarkAI } from '../services/gemini';
 import { Submission, User } from '../types';
 import taxiAvatar from '../assets/taxi-avatar-cab.svg';
@@ -22,8 +23,12 @@ const SUGGESTED_PROMPTS = [
 
 const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const isAdmin = user?.role === 'admin';
-  const [mySubmission, setMySubmission] = useState<Submission | null>(null);
-  const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
+  // Submissions come from the shared cache — no separate fetch needed.
+  const { data: allSubmissions = [] } = useSubmissions({ enabled: !!user });
+  const mySubmission = React.useMemo(
+    () => allSubmissions.find(s => s.userId === user?.id) || null,
+    [allSubmissions, user?.id]
+  );
   const [aiInput, setAiInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiHistory, setAiHistory] = useState<any[]>(() => {
@@ -41,13 +46,6 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     } catch { /* ignore quota errors */ }
   }, [aiHistory]);
 
-  useEffect(() => {
-    if (!user) return;
-    api.getSubmissions().then(subs => {
-      setAllSubmissions(subs);
-      setMySubmission(subs.find(s => s.userId === user.id) || null);
-    });
-  }, [user]);
 
   const scrollToBottom = () => {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
