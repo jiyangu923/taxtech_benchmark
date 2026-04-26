@@ -5,23 +5,29 @@ import ReactMarkdown from 'react-markdown';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { useSubmissions } from '../services/queries';
+import {
+  useSubmissions,
+  useChatSessions,
+  useCreateChatSession,
+  useUpdateChatSession,
+  useDeleteChatSession,
+} from '../services/queries';
 import { askBenchmarkAI } from '../services/gemini';
 import { User } from '../types';
 import taxiAvatar from '../assets/taxi-avatar-cab.svg';
 import {
   ACTIVE_SESSION_KEY,
+  LEGACY_HISTORY_KEY,
+  MAX_MESSAGES_PER_SESSION,
   SESSIONS_KEY,
   Session,
   ChatMessage,
-  appendMessage,
-  deleteSession,
   loadSessions,
   makeFreshSession,
   pickActiveAfterDelete,
   pickInitialActiveId,
-  renameSession,
   sortByRecent,
+  titleFromQuestion,
 } from './Taxi.helpers';
 
 interface TaxiProps { user: User | null; }
@@ -34,15 +40,6 @@ const SUGGESTED_PROMPTS = [
   'How does my tech stack compare?',
 ];
 
-interface ChatState { sessions: Session[]; activeId: string; }
-
-function getInitialChat(): ChatState {
-  const loaded = loadSessions();
-  const sessions = loaded.length > 0 ? loaded : [makeFreshSession()];
-  const activeId = pickInitialActiveId(sessions, localStorage.getItem(ACTIVE_SESSION_KEY));
-  return { sessions, activeId };
-}
-
 const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const isAdmin = user?.role === 'admin';
   const { data: allSubmissions = [] } = useSubmissions({ enabled: !!user });
@@ -51,12 +48,19 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     [allSubmissions, user?.id]
   );
 
-  const [chat, setChat] = useState<ChatState>(getInitialChat);
-  const { sessions, activeId } = chat;
-  const activeSession = sessions.find(s => s.id === activeId) || sessions[0];
-  const aiHistory = activeSession?.messages || [];
-  const sortedSessions = React.useMemo(() => sortByRecent(sessions), [sessions]);
+  // Persisted sessions live in Supabase; React Query owns the cache.
+  // Empty sessions stay in-memory until a first message creates the row,
+  // matching the ChatGPT/Claude UX of "no sidebar entry until you type".
+  const sessionsQuery = useChatSessions({ enabled: !!user });
+  const persistedSessions = sessionsQuery.data || [];
+  const createSession = useCreateChatSession();
+  const updateSession = useUpdateChatSession();
+  const deleteSessionMutation = useDeleteChatSession();
 
+  const [pendingSession, setPendingSession] = useState<Session | null>(null);
+  const [activeId, setActiveId] = useState<string>(() =>
+    localStorage.getItem(ACTIVE_SESSION_KEY) || ''
+  );
   const [aiInput, setAiInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [menuOpenForId, setMenuOpenForId] = useState<string | null>(null);
@@ -65,6 +69,66 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const migrationRanRef = useRef(false);
+
+  // Combined view: pending (if any) prepended to persisted, sorted by recency.
+  const sessionsForDisplay = React.useMemo(() => {
+    const sorted = sortByRecent(persistedSessions);
+    return pendingSession ? [pendingSession, ...sorted] : sorted;
+  }, [persistedSessions, pendingSession]);
+
+  const activeSession =
+    sessionsForDisplay.find(s => s.id === activeId) ||
+    sessionsForDisplay[0] ||
+    null;
+  const aiHistory = activeSession?.messages || [];
+
+  // One-time migration: if the user has localStorage sessions from v1/v2 and
+  // an empty Supabase, push them up then clear localStorage. We rely on
+  // loadSessions() which also handles the older taxi_chat_history shape.
+  useEffect(() => {
+    if (migrationRanRef.current) return;
+    if (!user || sessionsQuery.isLoading) return;
+    if (persistedSessions.length > 0) {
+      migrationRanRef.current = true;
+      localStorage.removeItem(SESSIONS_KEY);
+      localStorage.removeItem(LEGACY_HISTORY_KEY);
+      return;
+    }
+    const local = loadSessions().filter(s => s.messages.length > 0);
+    if (local.length === 0) {
+      migrationRanRef.current = true;
+      return;
+    }
+    migrationRanRef.current = true;
+    Promise.all(local.map(s => createSession.mutateAsync(s)))
+      .then(() => {
+        localStorage.removeItem(SESSIONS_KEY);
+      })
+      .catch((err) => {
+        console.error('[Taxi] migration to Supabase failed:', err);
+        migrationRanRef.current = false; // allow retry on next mount
+      });
+  }, [user, sessionsQuery.isLoading, persistedSessions.length, createSession]);
+
+  // Spawn a pending empty session if there's nothing to land on after the
+  // initial query settles.
+  useEffect(() => {
+    if (sessionsQuery.isLoading) return;
+    if (persistedSessions.length > 0) return;
+    if (pendingSession) return;
+    const fresh = makeFreshSession();
+    setPendingSession(fresh);
+    setActiveId(fresh.id);
+  }, [sessionsQuery.isLoading, persistedSessions.length, pendingSession]);
+
+  // Once we have data, snap activeId to a valid id (stored or newest).
+  useEffect(() => {
+    if (sessionsQuery.isLoading) return;
+    if (sessionsForDisplay.length === 0) return;
+    if (sessionsForDisplay.some(s => s.id === activeId)) return;
+    setActiveId(pickInitialActiveId(persistedSessions, localStorage.getItem(ACTIVE_SESSION_KEY)));
+  }, [sessionsQuery.isLoading, sessionsForDisplay, activeId, persistedSessions]);
 
   useEffect(() => {
     if (renamingId && renameInputRef.current) {
@@ -82,13 +146,6 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [menuOpenForId]);
-
-  useEffect(() => {
-    try {
-      const persistable = sessions.filter(s => s.messages.length > 0);
-      localStorage.setItem(SESSIONS_KEY, JSON.stringify(persistable));
-    } catch { /* ignore quota errors */ }
-  }, [sessions]);
 
   useEffect(() => {
     if (activeId) {
@@ -109,7 +166,28 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     try {
       const res = await askBenchmarkAI(query, mySubmission, allSubmissions);
       const newMsg: ChatMessage = { question: query, ...res };
-      setChat(prev => ({ ...prev, sessions: appendMessage(prev.sessions, activeSession.id, newMsg) }));
+      const isPendingActive = pendingSession?.id === activeSession.id;
+      const isFirst = activeSession.messages.length === 0;
+      const nextMessages = [...activeSession.messages, newMsg].slice(-MAX_MESSAGES_PER_SESSION);
+      const nextTitle = isFirst ? titleFromQuestion(query) : activeSession.title;
+
+      if (isPendingActive) {
+        // First-ever message in this conversation — create the row, then
+        // drop the in-memory pending session. activeId stays the same.
+        const newSession: Session = {
+          ...activeSession,
+          messages: nextMessages,
+          title: nextTitle,
+          updatedAt: Date.now(),
+        };
+        await createSession.mutateAsync(newSession);
+        setPendingSession(null);
+      } else {
+        await updateSession.mutateAsync({
+          id: activeSession.id,
+          patch: { messages: nextMessages, title: nextTitle, updatedAt: Date.now() },
+        });
+      }
     } finally {
       setIsAiLoading(false);
       scrollToBottom();
@@ -118,16 +196,21 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
 
   const handleNewChat = () => {
     setMobileDrawerOpen(false);
-    if (activeSession && activeSession.messages.length === 0) return;
-    const fresh = makeFreshSession();
-    setChat(prev => ({ sessions: [fresh, ...prev.sessions], activeId: fresh.id }));
     setAiInput('');
+    if (pendingSession && activeId === pendingSession.id) return;
+    const fresh = makeFreshSession();
+    setPendingSession(fresh);
+    setActiveId(fresh.id);
   };
 
   const handleSelectSession = (id: string) => {
     setMobileDrawerOpen(false);
     if (id === activeId) return;
-    setChat(prev => ({ ...prev, activeId: id }));
+    if (pendingSession && pendingSession.id !== id) {
+      // Discard the empty in-memory session when navigating away from it.
+      setPendingSession(null);
+    }
+    setActiveId(id);
     setAiInput('');
   };
 
@@ -140,10 +223,18 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const handleCommitRename = () => {
     if (!renamingId) return;
     const id = renamingId;
-    const draft = renameDraft;
+    const draft = renameDraft.trim().replace(/\s+/g, ' ');
     setRenamingId(null);
     setRenameDraft('');
-    setChat(prev => ({ ...prev, sessions: renameSession(prev.sessions, id, draft) }));
+    if (!draft) return;
+    const capped = draft.length > 60 ? draft.slice(0, 60).trimEnd() + '…' : draft;
+    if (pendingSession && pendingSession.id === id) {
+      setPendingSession({ ...pendingSession, title: capped });
+      return;
+    }
+    const target = persistedSessions.find(s => s.id === id);
+    if (!target || target.title === capped) return;
+    updateSession.mutate({ id, patch: { title: capped } });
   };
 
   const handleCancelRename = () => {
@@ -153,20 +244,22 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
 
   const handleDeleteSession = (id: string) => {
     setMenuOpenForId(null);
-    const target = sessions.find(s => s.id === id);
-    if (target && target.messages.length > 0) {
+    if (pendingSession && pendingSession.id === id) {
+      setPendingSession(null);
+      // Active id will be re-snapped by the effect; if no persisted exist,
+      // a new pending will be spawned.
+      return;
+    }
+    const target = persistedSessions.find(s => s.id === id);
+    if (!target) return;
+    if (target.messages.length > 0) {
       const ok = window.confirm(`Delete "${target.title}"? This cannot be undone.`);
       if (!ok) return;
     }
-    setChat(prev => {
-      const remaining = deleteSession(prev.sessions, id);
-      const nextActive = pickActiveAfterDelete(remaining, id, prev.activeId);
-      if (remaining.length === 0) {
-        const fresh = makeFreshSession();
-        return { sessions: [fresh], activeId: fresh.id };
-      }
-      return { sessions: remaining, activeId: nextActive };
-    });
+    const remaining = persistedSessions.filter(s => s.id !== id);
+    const nextActive = pickActiveAfterDelete(remaining, id, activeId);
+    if (nextActive) setActiveId(nextActive);
+    deleteSessionMutation.mutate(id);
   };
 
   if (!isAdmin && (!mySubmission || mySubmission.status === 'pending')) {
@@ -230,11 +323,17 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-3">
           <p className="px-2 mb-2 text-[10px] font-black uppercase text-gray-400 tracking-widest">Recent</p>
-          {sortedSessions.length === 0 || (sortedSessions.length === 1 && sortedSessions[0].messages.length === 0) ? (
+          {sessionsQuery.isLoading ? (
+            <div className="px-2 space-y-2" aria-label="Loading sessions">
+              <div className="h-9 bg-gray-100 rounded-lg animate-pulse" />
+              <div className="h-9 bg-gray-100 rounded-lg animate-pulse w-4/5" />
+              <div className="h-9 bg-gray-100 rounded-lg animate-pulse w-3/5" />
+            </div>
+          ) : sessionsForDisplay.length === 0 || (sessionsForDisplay.length === 1 && sessionsForDisplay[0].messages.length === 0) ? (
             <p className="px-2 text-xs text-gray-400 font-medium">No conversations yet. Start chatting below.</p>
           ) : (
             <ul className="space-y-1">
-              {sortedSessions.map(s => {
+              {sessionsForDisplay.map(s => {
                 const isActive = s.id === activeId;
                 const isEmpty = s.messages.length === 0;
                 const isRenaming = renamingId === s.id;

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { api } from './api';
 import { Submission } from '../types';
+import { Session, ChatMessage } from '../pages/Taxi.helpers';
 
 /**
  * Centralized React Query keys + hooks. Components import these instead of
@@ -14,6 +15,7 @@ export const queryKeys = {
   webhookUrl: ['settings', 'webhookUrl'] as const,
   adminEmails: ['settings', 'adminEmails'] as const,
   publicStats: ['publicStats'] as const,
+  chatSessions: ['chatSessions'] as const,
 };
 
 // ─── Reads ───────────────────────────────────────────────────────────────────
@@ -118,3 +120,88 @@ export function useRemoveAdminEmail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.adminEmails }),
   });
 }
+
+// ─── Chat sessions (Taxi) ────────────────────────────────────────────────────
+//
+// Optimistic updates on every mutation: the UI reflects the change instantly
+// while the network request is in flight. On error, React Query rolls the
+// cache back to the snapshot we captured in onMutate.
+
+export function useChatSessions(opts?: Omit<UseQueryOptions<Session[]>, 'queryKey' | 'queryFn'>) {
+  return useQuery<Session[]>({
+    queryKey: queryKeys.chatSessions,
+    queryFn: () => api.getChatSessions(),
+    ...opts,
+  });
+}
+
+type CacheCtx = { previous: Session[] | undefined };
+
+function snapshotAndOptimistic(
+  qc: ReturnType<typeof useQueryClient>,
+  updater: (prev: Session[]) => Session[]
+): CacheCtx {
+  const previous = qc.getQueryData<Session[]>(queryKeys.chatSessions);
+  qc.setQueryData<Session[]>(queryKeys.chatSessions, prev => updater(prev || []));
+  return { previous };
+}
+
+function rollbackOnError(qc: ReturnType<typeof useQueryClient>, ctx: CacheCtx | undefined) {
+  if (ctx?.previous !== undefined) qc.setQueryData(queryKeys.chatSessions, ctx.previous);
+}
+
+export function useCreateChatSession() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, Session, CacheCtx>({
+    mutationFn: (session) => api.createChatSession(session),
+    onMutate: (session) => snapshotAndOptimistic(qc, prev => [session, ...prev]),
+    onError: (_err, _vars, ctx) => rollbackOnError(qc, ctx),
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.chatSessions }),
+  });
+}
+
+export function useUpdateChatSession() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, { id: string; patch: Partial<Pick<Session, 'title' | 'messages' | 'updatedAt'>> }, CacheCtx>({
+    mutationFn: ({ id, patch }) => api.updateChatSession(id, patch),
+    onMutate: ({ id, patch }) => snapshotAndOptimistic(qc, prev =>
+      prev.map(s => (s.id === id ? { ...s, ...patch } : s))
+    ),
+    onError: (_err, _vars, ctx) => rollbackOnError(qc, ctx),
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.chatSessions }),
+  });
+}
+
+export function useDeleteChatSession() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, string, CacheCtx>({
+    mutationFn: (id) => api.deleteChatSession(id),
+    onMutate: (id) => snapshotAndOptimistic(qc, prev => prev.filter(s => s.id !== id)),
+    onError: (_err, _vars, ctx) => rollbackOnError(qc, ctx),
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.chatSessions }),
+  });
+}
+
+// Convenience: append a message to a session, bumping updatedAt and (if first
+// message) auto-titling. Mirrors the local appendMessage helper but writes
+// through to Supabase via useUpdateChatSession.
+export function useAppendChatMessage() {
+  const update = useUpdateChatSession();
+  return {
+    ...update,
+    appendTo: (session: Session, msg: ChatMessage) => {
+      const isFirst = session.messages.length === 0;
+      const nextMessages = [...session.messages, msg].slice(-50);
+      const patch: Partial<Pick<Session, 'title' | 'messages' | 'updatedAt'>> = {
+        messages: nextMessages,
+        updatedAt: Date.now(),
+      };
+      if (isFirst) {
+        const t = msg.question.trim().replace(/\s+/g, ' ');
+        patch.title = t.length > 40 ? t.slice(0, 40).trimEnd() + '…' : t || 'New chat';
+      }
+      return update.mutateAsync({ id: session.id, patch });
+    },
+  };
+}
+
