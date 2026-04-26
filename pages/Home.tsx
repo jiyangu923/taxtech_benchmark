@@ -1,16 +1,47 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, TrendingUp, Users, Heart, ShieldCheck, Eye } from 'lucide-react';
 import { User } from '../types';
+import { api } from '../services/api';
 
 interface HomeProps {
   user: User | null;
 }
 
+interface PublicStats {
+  totalSubmissions: number;
+  distinctIndustries: number;
+  totalRevenue: number;
+}
+
+/**
+ * Formats a USD revenue number into a friendly hero-strip label.
+ * Examples: 4_287_500_000_000 → "$4.3T", 35_600_000_000 → "$35.6B".
+ * Exported for unit testing.
+ */
+export function formatRevenue(usd: number): string {
+  if (!usd || usd <= 0) return '$0';
+  if (usd >= 1e12) return `$${(usd / 1e12).toFixed(1)}T`;
+  if (usd >= 1e9)  return `$${(usd / 1e9).toFixed(1)}B`;
+  if (usd >= 1e6)  return `$${(usd / 1e6).toFixed(1)}M`;
+  if (usd >= 1e3)  return `$${(usd / 1e3).toFixed(0)}K`;
+  return `$${usd}`;
+}
+
 const Home: React.FC<HomeProps> = ({ user }) => {
+  const [stats, setStats] = useState<PublicStats | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getPublicStats()
+      .then(s => { if (!cancelled) setStats(s); })
+      .catch(err => console.error('[Home] failed to load public stats:', err));
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div className="bg-canvas min-h-screen">
-      <Hero user={user} />
+      <Hero user={user} stats={stats} />
 
       {/* Feature grid — pulled up via -mt-24 to overlap the hero's indigo deck.
           Creates the same "tray" effect as the original full-bleed hero
@@ -89,7 +120,7 @@ const TrustCard: React.FC<{ icon: React.ReactNode; iconClass: string; title: str
  *   original full-bleed indigo hero without the heavy full-section color.
  * - Thin indigo "publication spine" along the very top edge.
  */
-const Hero: React.FC<{ user: User | null }> = ({ user }) => (
+const Hero: React.FC<{ user: User | null; stats: PublicStats | null }> = ({ user, stats }) => (
   <div className="relative">
     <div className="absolute inset-x-0 top-0 h-[3px] bg-primary z-10" />
 
@@ -108,10 +139,10 @@ const Hero: React.FC<{ user: User | null }> = ({ user }) => (
       </div>
       <div className="lg:col-span-5">
         <div className="bg-white border border-gray-200 rounded-xl p-8 grid grid-cols-2 gap-x-6 gap-y-8 shadow-sm">
-          <Stat n="147"   label="Anonymous benchmarks contributed" />
-          <Stat n="38"    label="Industries represented" />
-          <Stat n="$4.2T" label="Combined revenue covered" />
-          <Stat n="100%"  label="Free · non-profit · open access" />
+          <Stat n={stats ? String(stats.totalSubmissions)        : '—'} label="Approved benchmarks contributed" />
+          <Stat n={stats ? String(stats.distinctIndustries)      : '—'} label="Industries represented" />
+          <Stat n={stats ? formatRevenue(stats.totalRevenue)     : '—'} label="Combined revenue covered" />
+          <Stat n="100%" label="Free · non-profit · open access" />
         </div>
       </div>
     </div>
