@@ -44,7 +44,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) => {
                 b
               </div>
               <span className="font-display text-[19px] font-semibold tracking-tight text-gray-900">
-                benchmarktax<span className="text-amber-acc">.</span>ai
+                taxbenchmark<span className="text-amber-acc">.</span>ai
               </span>
             </Link>
             {/* Desktop nav */}

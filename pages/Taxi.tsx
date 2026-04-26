@@ -302,7 +302,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
                 b
               </div>
               <span className="font-display text-[16px] font-semibold tracking-tight text-gray-900 truncate">
-                benchmarktax<span className="text-amber-acc">.</span>ai
+                taxbenchmark<span className="text-amber-acc">.</span>ai
               </span>
             </Link>
             <button
