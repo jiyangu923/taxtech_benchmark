@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import SetPasswordModal from './components/SetPasswordModal';
@@ -12,6 +13,32 @@ import DirectTax from './pages/DirectTax';
 import Profile from './pages/Profile';
 import { User } from './types';
 import { supabase, api } from './services/api';
+
+/**
+ * One QueryClient for the whole app — created once at module load (not per
+ * render) so the cache survives component re-mounts.
+ *
+ * staleTime: 60s — most data here (submissions, settings, public stats)
+ *   doesn't change minute-to-minute, so we don't need to re-fetch on every
+ *   navigation. After 60s a navigation triggers a background revalidation
+ *   while showing the cached data immediately.
+ * gcTime: 10 min — keep cached entries even when no component is observing,
+ *   so navigating away and back is instant.
+ * refetchOnWindowFocus: true — when the user comes back to the tab, quietly
+ *   revalidate so they don't see stale numbers after a long break.
+ * retry: 1 — one quick retry on failure, then surface the error. Network
+ *   blips shouldn't fail loud, but persistent errors should.
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 10 * 60_000,
+      refetchOnWindowFocus: true,
+      retry: 1,
+    },
+  },
+});
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Indirect Tax Benchmark | benchmarktax.ai',
@@ -87,6 +114,7 @@ const App: React.FC = () => {
   };
 
   return (
+    <QueryClientProvider client={queryClient}>
     <HashRouter>
       <PageTitle />
       <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -157,6 +185,7 @@ const App: React.FC = () => {
         </footer>
       </div>
     </HashRouter>
+    </QueryClientProvider>
   );
 };
 

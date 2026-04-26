@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, cleanup, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Survey from './Survey';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
@@ -30,10 +31,18 @@ const { api } = await import('../services/api');
 
 const renderSurvey = () => {
   const user = userEvent.setup();
+  // Fresh QueryClient per render so tests don't share cache state.
+  // retry: false makes mutation/query failures surface immediately instead of
+  // waiting for retries to play out under fake or sped-up time.
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   render(
-    <MemoryRouter>
-      <Survey />
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <Survey />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
   return user;
 };
