@@ -109,7 +109,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-12 bg-white rounded-3xl shadow-lg border border-gray-100">
         <Lock className="h-16 w-16 text-gray-200 mb-6" />
-        <h2 className="font-display text-2xl font-normal text-gray-900">Analysis Restricted</h2>
+        <h2 className="font-display text-2xl font-semibold text-gray-900">Analysis Restricted</h2>
         <p className="text-gray-500 mt-2 max-w-sm">Please submit your survey and await admin approval to unlock industry benchmarking.</p>
         <Link to="/survey" className="mt-8 px-8 py-3 bg-primary text-white rounded-xl font-bold">Start Survey</Link>
       </div>
@@ -124,7 +124,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-amber-acc-2 mb-2">Q{Math.floor((new Date().getMonth() / 3)) + 1} {new Date().getFullYear()} · Benchmark</p>
-          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-normal text-gray-900 tracking-tight leading-tight">Benchmark Analytics</h1>
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold text-gray-900 tracking-tight leading-tight">Benchmark Analytics</h1>
           <p className="text-gray-500 font-medium mt-1">Peer-to-peer maturity comparisons</p>
         </div>
         <div className="bg-indigo-50 p-3 sm:p-4 rounded-2xl flex items-center gap-4">
