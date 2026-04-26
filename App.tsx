@@ -14,19 +14,19 @@ import { User } from './types';
 import { supabase, api } from './services/api';
 
 const PAGE_TITLES: Record<string, string> = {
-  '/': 'Indirect Tax Benchmark | TaxTech',
-  '/direct-tax': 'Direct Tax Benchmark | TaxTech',
-  '/survey': 'Submit Data | TaxTech',
-  '/report': 'Analytics | TaxTech',
-  '/taxi': 'Ask Taxi | TaxTech',
-  '/admin': 'Control Panel | TaxTech',
-  '/profile': 'Profile | TaxTech',
+  '/': 'Indirect Tax Benchmark | benchmarktax.ai',
+  '/direct-tax': 'Direct Tax Benchmark | benchmarktax.ai',
+  '/survey': 'Submit Data | benchmarktax.ai',
+  '/report': 'Analytics | benchmarktax.ai',
+  '/taxi': 'Ask Taxi | benchmarktax.ai',
+  '/admin': 'Control Panel | benchmarktax.ai',
+  '/profile': 'Profile | benchmarktax.ai',
 };
 
 function PageTitle() {
   const { pathname } = useLocation();
   useEffect(() => {
-    document.title = PAGE_TITLES[pathname] || 'TaxTech Benchmark';
+    document.title = PAGE_TITLES[pathname] || 'benchmarktax.ai';
   }, [pathname]);
   return null;
 }
@@ -148,7 +148,7 @@ const App: React.FC = () => {
 
         <footer className="bg-white border-t border-gray-200 py-8 mt-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-500">
-            <span>&copy; {new Date().getFullYear()} TaxTech Benchmark. All rights reserved.</span>
+            <span>&copy; {new Date().getFullYear()} benchmarktax.ai. All rights reserved.</span>
             <div className="flex gap-6">
               <a href="mailto:jiyangu923@gmail.com" className="hover:text-primary transition-colors">Contact</a>
               <Link to="/" className="hover:text-primary transition-colors">Home</Link>
