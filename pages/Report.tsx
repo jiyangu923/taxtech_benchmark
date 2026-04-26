@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { api } from '../services/api';
 import { Submission, User } from '../types';
+import { useSubmissions } from '../services/queries';
 import { Lock, Sparkles, TrendingUp, Users, ArrowRight, Database, DollarSign, Brain, Layers, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -84,26 +85,23 @@ const TABS: Array<{ key: TabKey; label: string; icon: React.ReactNode }> = [
 
 const Report: React.FC<ReportProps> = ({ user }) => {
   const isAdmin = user?.role === 'admin';
-  const [mySubmission, setMySubmission] = useState<Submission | null>(null);
-  const [allSubmissions, setAllSubmissions] = useState<Submission[]>([]);
-  const [industryStats, setIndustryStats] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
 
-  useEffect(() => {
-    if (user) {
-      const loadData = async () => {
-        const subs = await api.getSubmissions();
-        setAllSubmissions(subs);
-        const mySub = subs.find(s => s.userId === user.id) || null;
-        setMySubmission(mySub);
-        if (mySub || isAdmin) {
-          const stats = calculateIndustryStats(subs);
-          if (stats) setIndustryStats(stats);
-        }
-      };
-      loadData();
-    }
-  }, [user]);
+  // All submissions come from the shared cache. Any other page mutating
+  // submissions invalidates this query, so /report stays fresh without
+  // polling. Cache is populated on first visit and reused on subsequent
+  // navigations within staleTime.
+  const { data: allSubmissions = [] } = useSubmissions({ enabled: !!user });
+
+  const mySubmission = useMemo(
+    () => allSubmissions.find(s => s.userId === user?.id) || null,
+    [allSubmissions, user?.id]
+  );
+
+  const industryStats = useMemo(() => {
+    if (!mySubmission && !isAdmin) return null;
+    return calculateIndustryStats(allSubmissions);
+  }, [allSubmissions, mySubmission, isAdmin]);
 
   if (!isAdmin && (!mySubmission || mySubmission.status === 'pending')) {
     return (

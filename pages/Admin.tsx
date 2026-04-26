@@ -1,66 +1,79 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { api } from '../services/api';
 import { Submission, User } from '../types';
-import { 
-    Check, X, Eye, XCircle, RefreshCw, Trash2, 
+import {
+    Check, X, Eye, XCircle, RefreshCw, Trash2,
     FileSpreadsheet, CloudSync, Save,
-    CheckCircle2, Users, Plus, Mail, ShieldCheck, 
+    CheckCircle2, Users, Plus, Mail, ShieldCheck,
     UserPlus, Database, Download, Upload, AlertTriangle,
     Activity, HardDrive, Info, Settings, Search, Filter, RotateCcw,
     ChevronDown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as C from '../constants';
+import {
+  useSubmissions, useWebhookUrl, useAdminEmails,
+  useSetWebhookUrl, useAddAdminEmail, useRemoveAdminEmail,
+  useUpdateSubmissionStatus, useDeleteSubmission,
+} from '../services/queries';
+import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '../services/queries';
 
 const Admin: React.FC<{ user: User | null }> = ({ user }) => {
   const [activeTab, setActiveTab] = useState<'submissions' | 'sync' | 'admins' | 'system'>('submissions');
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
-  
+  const qc = useQueryClient();
+
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [industryFilter, setIndustryFilter] = useState<string>('all');
 
+  // Server-cached data via React Query — survives navigation, auto-revalidates
+  // on focus, and refetches on mutation invalidation.
+  const { data: submissions = [] } = useSubmissions({ enabled: !!user && user.role === 'admin' });
+  const { data: serverWebhookUrl = '' } = useWebhookUrl();
+  const { data: adminEmails = [] } = useAdminEmails();
+
+  // Local-only UI state for the webhook input — we mirror the server value
+  // into a local string so the user can edit without writing on every keystroke.
+  // The "unsaved" indicator is derived from comparing the two.
   const [webhookUrl, setWebhookUrl] = useState('');
-  const [adminEmails, setAdminEmails] = useState<string[]>([]);
+  const [webhookHydrated, setWebhookHydrated] = useState(false);
+  useEffect(() => {
+    // Only hydrate the local input from the server value once on first arrival.
+    // After that, the user owns the input — don't clobber their edits.
+    if (!webhookHydrated && serverWebhookUrl !== '') {
+      setWebhookUrl(serverWebhookUrl);
+      setWebhookHydrated(true);
+    }
+  }, [serverWebhookUrl, webhookHydrated]);
+  const webhookDirty = webhookUrl !== serverWebhookUrl;
+
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error' | 'warning', text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  const loadSubmissions = async () => {
-    try {
-      const subs = await api.getSubmissions();
-      setSubmissions(subs);
-    } catch (err) {
-      console.error('Failed to load submissions:', err);
-    }
-  };
+  // Mutations
+  const setWebhookMutation = useSetWebhookUrl();
+  const addAdminMutation = useAddAdminEmail();
+  const removeAdminMutation = useRemoveAdminEmail();
+  const updateStatusMutation = useUpdateSubmissionStatus();
+  const deleteSubmissionMutation = useDeleteSubmission();
 
-  const loadAll = async () => {
-    try {
-      const [subs, url, emails] = await Promise.all([
-        api.getSubmissions(),
-        api.getWebhookUrl(),
-        api.getAdminEmails(),
-      ]);
-      setSubmissions(subs);
-      setWebhookUrl(url);
-      setAdminEmails(emails);
-    } catch (err) {
-      console.error('Failed to load admin data:', err);
-    }
+  const loadAll = () => {
+    // Force-refresh button — invalidates all admin-relevant queries.
+    qc.invalidateQueries({ queryKey: queryKeys.submissions });
+    qc.invalidateQueries({ queryKey: queryKeys.webhookUrl });
+    qc.invalidateQueries({ queryKey: queryKeys.adminEmails });
   };
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
       navigate('/');
-      return;
     }
-    loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
 
   // Combined Filtering Logic
@@ -84,8 +97,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
       e.preventDefault();
       e.stopPropagation();
     }
-    await api.updateSubmissionStatus(id, status);
-    await loadSubmissions();
+    await updateStatusMutation.mutateAsync({ id, status });
     if (selectedSub && selectedSub.id === id) setSelectedSub(null);
   };
 
@@ -95,8 +107,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
       e.stopPropagation();
     }
     if (window.confirm('PERMANENTLY delete this submission?')) {
-      await api.deleteSubmission(id);
-      await loadSubmissions();
+      await deleteSubmissionMutation.mutateAsync(id);
       if (selectedSub && selectedSub.id === id) setSelectedSub(null);
     }
   };
@@ -104,10 +115,13 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAdminEmail || !newAdminEmail.includes('@')) return;
-    await api.addAdminEmail(newAdminEmail);
-    setAdminEmails(await api.getAdminEmails());
-    setNewAdminEmail('');
-    setSyncMessage({ type: 'success', text: 'Admin authorized.' });
+    try {
+      await addAdminMutation.mutateAsync(newAdminEmail);
+      setNewAdminEmail('');
+      setSyncMessage({ type: 'success', text: 'Admin authorized.' });
+    } catch (err: any) {
+      setSyncMessage({ type: 'error', text: err?.message || 'Failed to authorize admin.' });
+    }
     setTimeout(() => setSyncMessage(null), 3000);
   };
 
@@ -117,8 +131,12 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
       return;
     }
     if (window.confirm(`Remove admin access for ${email}?`)) {
-      await api.removeAdminEmail(email);
-      setAdminEmails(await api.getAdminEmails());
+      try {
+        await removeAdminMutation.mutateAsync(email);
+      } catch (err: any) {
+        setSyncMessage({ type: 'error', text: err?.message || 'Failed to remove admin.' });
+        setTimeout(() => setSyncMessage(null), 3000);
+      }
     }
   };
 
@@ -172,14 +190,13 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
 
   const saveWebhook = async () => {
     try {
-      await api.setWebhookUrl(webhookUrl);
+      await setWebhookMutation.mutateAsync(webhookUrl);
       setSyncMessage({ type: 'success', text: 'Integration settings saved.' });
     } catch (err: any) {
       // Previously this threw silently — Save click looked like a no-op when
-      // upsert failed (RLS, network). Without surfacing the error, users
-      // navigated away thinking their webhook URL was saved when it wasn't,
-      // then on next load the input was blank and they thought it
-      // "disappeared." This makes failures visible.
+      // upsert failed (RLS, network). The mutation hook also invalidates
+      // the webhookUrl cache on success so the next read reflects the new
+      // value without manual refetch.
       setSyncMessage({ type: 'error', text: err?.message || 'Failed to save webhook URL.' });
     }
     setTimeout(() => setSyncMessage(null), 4000);
@@ -362,10 +379,17 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                     </div>
                     <div className="space-y-6">
                         <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Webhook Endpoint URL</label>
+                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                              <span>Webhook Endpoint URL</span>
+                              {webhookDirty && (
+                                <span className="text-amber-acc-2 normal-case tracking-normal text-[11px] font-semibold">· unsaved</span>
+                              )}
+                            </label>
                             <div className="flex gap-3">
                                 <input type="text" className="flex-1 rounded-xl border-gray-200 shadow-sm p-3 border text-sm focus:ring-primary focus:border-primary outline-none" placeholder="https://script.google.com/macros/s/..." value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} />
-                                <button onClick={saveWebhook} className="inline-flex items-center px-6 py-3 border border-gray-200 rounded-xl bg-white hover:bg-gray-50 text-sm font-bold shadow-sm transition-all"><Save className="h-4 w-4 mr-2" /> Save</button>
+                                <button onClick={saveWebhook} disabled={!webhookDirty || setWebhookMutation.isPending} className={`inline-flex items-center px-6 py-3 border rounded-xl text-sm font-bold shadow-sm transition-all ${(!webhookDirty || setWebhookMutation.isPending) ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed' : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'}`}>
+                                  <Save className="h-4 w-4 mr-2" /> {setWebhookMutation.isPending ? 'Saving…' : 'Save'}
+                                </button>
                             </div>
                             <p className="mt-3 text-xs text-gray-400 leading-relaxed">
                                 Deploy an App Script Webhook to receive benchmark data in real-time. Use the <code>doPost(e)</code> trigger in your spreadsheet script.

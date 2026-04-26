@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, AlertCircle, CheckCircle2, Info, Loader2 } from 'lucide-react';
 import { api } from '../services/api';
 import { Submission, Option } from '../types';
+import { useMySubmission, useCreateSubmission } from '../services/queries';
 import * as C from '../constants';
 import SURVEY_TOOLTIPS from '../surveyTooltips';
 
@@ -101,26 +102,42 @@ const Survey: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [existingSubmittedAt, setExistingSubmittedAt] = useState<string | null>(null);
-  const [existingStatus, setExistingStatus] = useState<Submission['status'] | null>(null);
 
-  // On mount, if the user has an existing submission AND the captured
-  // draft snapshot is empty (no real in-progress edit), prefill the form
-  // from the server.
+  // Prefill from cache if present. The cache is shared with /report and
+  // other pages, so re-opening the survey is instant after the first fetch.
+  const { data: existingSub } = useMySubmission();
+  const createSubmissionMutation = useCreateSubmission();
+
+  const existingSubmittedAt = existingSub?.submittedAt ?? null;
+  const existingStatus = existingSub?.status ?? null;
+
+  // Race protection: if the user starts typing BEFORE the cached existingSub
+  // arrives, we must NOT clobber their input when prefill resolves. This ref
+  // flips to true on the very first user mutation (handleChange or
+  // toggleArrayValue) and is checked by the prefill effect below. A ref
+  // (not state) so reading it doesn't trigger re-renders or stale closures.
+  const userEditedRef = useRef(false);
+
+  // When the existing submission arrives AND the captured draft snapshot
+  // is empty AND the user hasn't started typing, prefill from the server.
+  // Track whether prefill ran via state so the effect doesn't re-fire on
+  // every existingSub identity change (also blocks clobber from later
+  // refetches via window-focus revalidation).
+  const [prefilled, setPrefilled] = useState(false);
   useEffect(() => {
-    let cancelled = false;
-    api.getMySubmission()
-      .then(sub => {
-        if (cancelled || !sub) return;
-        setExistingSubmittedAt(sub.submittedAt);
-        setExistingStatus(sub.status);
-        if (isEmptyDraft(initialDraftRaw)) {
-          setFormData({ ...INITIAL_FORM, ...submissionToForm(sub) });
-        }
-      })
-      .catch(err => console.error('[Survey] failed to load existing submission:', err));
-    return () => { cancelled = true; };
-  }, [initialDraftRaw]);
+    if (prefilled) return;
+    if (!existingSub) return;
+    // The user started typing before the server responded — keep their input,
+    // don't prefill. Mark prefilled so we don't keep re-evaluating.
+    if (userEditedRef.current) {
+      setPrefilled(true);
+      return;
+    }
+    if (isEmptyDraft(initialDraftRaw)) {
+      setFormData({ ...INITIAL_FORM, ...submissionToForm(existingSub) });
+    }
+    setPrefilled(true);
+  }, [existingSub, initialDraftRaw, prefilled]);
 
   // Autosave draft on every change
   useEffect(() => {
@@ -128,10 +145,12 @@ const Survey: React.FC = () => {
   }, [formData]);
 
   const handleChange = (field: keyof Submission, value: any) => {
+    userEditedRef.current = true;
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const toggleArrayValue = (field: keyof Submission, value: string) => {
+    userEditedRef.current = true;
     setFormData(prev => {
       const current = (prev[field] as string[]) || [];
       const next = current.includes(value)
@@ -224,7 +243,7 @@ const Survey: React.FC = () => {
         companyProfile: normalizeArrayField(formData.companyProfile as any),
         participationGoal: normalizeArrayField(formData.participationGoal as any),
       };
-      await api.createSubmission(payload as any);
+      await createSubmissionMutation.mutateAsync(payload as any);
       localStorage.removeItem(DRAFT_KEY);
       setSubmitted(true);
       setTimeout(() => navigate('/report'), 2000);

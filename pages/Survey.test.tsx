@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, cleanup, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Survey from './Survey';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
@@ -30,10 +31,18 @@ const { api } = await import('../services/api');
 
 const renderSurvey = () => {
   const user = userEvent.setup();
+  // Fresh QueryClient per render so tests don't share cache state.
+  // retry: false makes mutation/query failures surface immediately instead of
+  // waiting for retries to play out under fake or sped-up time.
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
   render(
-    <MemoryRouter>
-      <Survey />
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <Survey />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
   return user;
 };
@@ -322,5 +331,103 @@ describe('Form submission', () => {
     expect(screen.queryByText('Survey Submitted')).toBeNull();
     // The form is still rendered
     expect(screen.getByRole('button', { name: /^Submit$/i })).toBeTruthy();
+  });
+});
+
+// ─── Prefill race protection ──────────────────────────────────────────────────
+//
+// When the user revisits /survey, the form prefills from their existing
+// submission. With React Query (PR #57), the cache fetch is async — could
+// take 200ms+ on slow networks. If the user starts typing immediately on
+// page load, we must NOT clobber their input when the prefill resolves.
+// The userEditedRef guard inside Survey.tsx handles this; these tests pin
+// down the contract.
+
+describe('Prefill race protection', () => {
+  it('prefills from existing submission when user has not typed yet', async () => {
+    const existing = {
+      id: 'sub-1',
+      userId: 'u-1',
+      userName: 'Alice',
+      status: 'approved',
+      submittedAt: '2026-04-01T00:00:00Z',
+      companyName: 'Acme Corp',
+      companyProfile: ['public'],
+      participationGoal: [],
+      respondentRole: 'tax_technology',
+      ownedTaxFunctions: [],
+      organizationScope: '',
+      revenueRange: '',
+      aiAdopted: false,
+    };
+    vi.mocked(api.getMySubmission).mockResolvedValueOnce(existing as any);
+
+    renderSurvey();
+
+    // Wait for the async prefill to resolve and update the input.
+    await waitFor(() => {
+      const input = screen.getByPlaceholderText(/leave blank to stay fully anonymous/i) as HTMLInputElement;
+      expect(input.value).toBe('Acme Corp');
+    });
+  });
+
+  it('does NOT clobber user input if they typed before prefill resolved', async () => {
+    // Simulate a slow server: getMySubmission resolves only when we choose to.
+    let resolveExisting: (sub: any) => void = () => {};
+    vi.mocked(api.getMySubmission).mockImplementationOnce(
+      () => new Promise(r => { resolveExisting = r; })
+    );
+
+    renderSurvey();
+
+    // User types BEFORE the server responds.
+    const input = screen.getByPlaceholderText(/leave blank to stay fully anonymous/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'My Co' } });
+    expect(input.value).toBe('My Co');
+
+    // NOW the server response arrives with different data.
+    await act(async () => {
+      resolveExisting({
+        id: 'sub-1', userId: 'u-1', userName: 'Alice',
+        status: 'approved', submittedAt: '2026-04-01T00:00:00Z',
+        companyName: 'Acme Corp (server)',
+        companyProfile: [], participationGoal: [], respondentRole: '',
+        ownedTaxFunctions: [], organizationScope: '', revenueRange: '',
+        aiAdopted: false,
+      });
+      // Yield so promise then-callbacks + effects run.
+      await Promise.resolve();
+    });
+
+    // The user's typed value MUST survive — the prefill should have detected
+    // the user-edited state and skipped the overwrite.
+    expect(input.value).toBe('My Co');
+  });
+
+  it('does not prefill when localStorage already has a draft', async () => {
+    // Pre-existing draft from a prior session.
+    localStorage.setItem('taxtech_survey_draft', JSON.stringify({
+      ...{ companyProfile: [], participationGoal: [], respondentRole: '',
+           ownedTaxFunctions: [], organizationScope: '', revenueRange: '',
+           aiAdopted: false },
+      companyName: 'Draft Co',
+    }));
+
+    vi.mocked(api.getMySubmission).mockResolvedValueOnce({
+      id: 'sub-1', userId: 'u-1', userName: 'Alice',
+      status: 'approved', submittedAt: '2026-04-01T00:00:00Z',
+      companyName: 'Server Co',
+      companyProfile: [], participationGoal: [], respondentRole: '',
+      ownedTaxFunctions: [], organizationScope: '', revenueRange: '',
+      aiAdopted: false,
+    } as any);
+
+    renderSurvey();
+
+    // Draft wins — never overwritten by the server fetch.
+    await waitFor(() => {
+      const input = screen.getByPlaceholderText(/leave blank to stay fully anonymous/i) as HTMLInputElement;
+      expect(input.value).toBe('Draft Co');
+    });
   });
 });

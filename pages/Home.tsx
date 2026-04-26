@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, TrendingUp, Users, Heart, ShieldCheck, Eye } from 'lucide-react';
 import { User } from '../types';
-import { api } from '../services/api';
+import { usePublicStats } from '../services/queries';
 
 interface HomeProps {
   user: User | null;
@@ -29,15 +29,7 @@ export function formatRevenue(usd: number): string {
 }
 
 const Home: React.FC<HomeProps> = ({ user }) => {
-  const [stats, setStats] = useState<PublicStats | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    api.getPublicStats()
-      .then(s => { if (!cancelled) setStats(s); })
-      .catch(err => console.error('[Home] failed to load public stats:', err));
-    return () => { cancelled = true; };
-  }, []);
+  const { data: stats = null } = usePublicStats();
 
   return (
     <div className="bg-canvas min-h-screen">
