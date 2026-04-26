@@ -44,11 +44,23 @@ const INITIAL_FORM: Partial<Submission> = {
   otherSpecialistsPercent: 0,
 };
 
+/**
+ * Strips server-only fields (id, userId, etc.) from a Submission so the
+ * remaining shape can seed the form state cleanly.
+ * Exported for unit testing.
+ */
+export function submissionToForm(sub: Submission): Partial<Submission> {
+  const { id: _id, userId: _u, userName: _n, status: _s, submittedAt: _t, ...rest } = sub;
+  return rest;
+}
+
 const Survey: React.FC = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState(1);
 
-  // Restore draft from localStorage on first render
+  // Restore draft from localStorage on first render. The localStorage draft
+  // takes precedence over the server submission since it represents the
+  // user's most recent in-progress edit.
   const [formData, setFormData] = useState<Partial<Submission>>(() => {
     try {
       const saved = localStorage.getItem(DRAFT_KEY);
@@ -60,6 +72,28 @@ const Survey: React.FC = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [existingSubmittedAt, setExistingSubmittedAt] = useState<string | null>(null);
+  const [existingStatus, setExistingStatus] = useState<Submission['status'] | null>(null);
+
+  // On mount, if the user has an existing submission AND no in-progress
+  // localStorage draft, prefill the form from it.
+  useEffect(() => {
+    let cancelled = false;
+    const draftRaw = (() => {
+      try { return localStorage.getItem(DRAFT_KEY); } catch { return null; }
+    })();
+    api.getMySubmission()
+      .then(sub => {
+        if (cancelled || !sub) return;
+        setExistingSubmittedAt(sub.submittedAt);
+        setExistingStatus(sub.status);
+        if (!draftRaw) {
+          setFormData({ ...INITIAL_FORM, ...submissionToForm(sub) });
+        }
+      })
+      .catch(err => console.error('[Survey] failed to load existing submission:', err));
+    return () => { cancelled = true; };
+  }, []);
 
   // Autosave draft on every change
   useEffect(() => {
@@ -332,6 +366,17 @@ const Survey: React.FC = () => {
           <div className="bg-primary h-full transition-all duration-500" style={{ width: `${progress}%` }} />
         </div>
       </div>
+
+      {existingSubmittedAt && (
+        <div className="mb-6 px-4 py-3 bg-amber-acc/10 border border-amber-acc/30 rounded-xl flex items-center gap-3 text-sm">
+          <Info className="h-4 w-4 text-amber-acc-2 flex-shrink-0" />
+          <span className="text-gray-700">
+            Editing your submission from <strong>{new Date(existingSubmittedAt).toLocaleDateString()}</strong>
+            {existingStatus && <> — current status: <strong className="capitalize">{existingStatus}</strong></>}
+            . Submitting again will replace it and reset status to <strong>pending</strong>.
+          </span>
+        </div>
+      )}
 
       {error && (
         <div role="alert" aria-live="assertive" className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700 font-bold text-sm">

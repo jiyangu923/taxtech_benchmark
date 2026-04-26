@@ -132,6 +132,22 @@ export const api = {
     return (data as Submission[]) || [];
   },
 
+  /**
+   * Returns the current user's own submission (if any) so the survey can
+   * pre-populate fields when re-opening it.
+   */
+  async getMySubmission(): Promise<Submission | null> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return null;
+    const { data, error } = await supabase
+      .from('submissions')
+      .select('*')
+      .eq('userId', authUser.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return (data as Submission) || null;
+  },
+
   async updateSubmissionStatus(id: string, status: 'approved' | 'rejected'): Promise<void> {
     const { error } = await supabase.from('submissions').update({ status }).eq('id', id);
     if (error) throw new Error(error.message);
