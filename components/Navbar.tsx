@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LogOut, BarChart3, ShieldCheck, UserCircle, Settings, Menu, X } from 'lucide-react';
+import { LogOut, ShieldCheck, UserCircle, Settings, Menu, X } from 'lucide-react';
 import { User as UserType } from '../types';
 
 interface NavbarProps {
@@ -39,11 +39,13 @@ const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onOpenLogin }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0 flex items-center gap-3 group">
-              <div className="bg-primary p-2 rounded-xl shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
-                <BarChart3 className="h-6 w-6 text-white" />
+            <Link to="/" className="flex-shrink-0 flex items-center gap-2.5 group">
+              <div className="w-8 h-8 border-[1.5px] border-gray-900 rounded-md grid place-items-center font-mono text-[13px] font-semibold text-gray-900 group-hover:border-primary group-hover:text-primary transition-colors">
+                b
               </div>
-              <span className="font-black text-2xl text-primary tracking-tighter">TAX<span className="text-secondary">TECH</span></span>
+              <span className="font-display text-[19px] font-semibold tracking-tight text-gray-900">
+                benchmarktax<span className="text-amber-acc">.</span>ai
+              </span>
             </Link>
             {/* Desktop nav */}
             <div className="hidden sm:ml-12 sm:flex sm:space-x-8 h-full">
