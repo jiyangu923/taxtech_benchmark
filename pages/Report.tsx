@@ -109,7 +109,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-12 bg-white rounded-3xl shadow-lg border border-gray-100">
         <Lock className="h-16 w-16 text-gray-200 mb-6" />
-        <h2 className="text-2xl font-black text-gray-900">Analysis Restricted</h2>
+        <h2 className="font-display text-2xl font-normal text-gray-900">Analysis Restricted</h2>
         <p className="text-gray-500 mt-2 max-w-sm">Please submit your survey and await admin approval to unlock industry benchmarking.</p>
         <Link to="/survey" className="mt-8 px-8 py-3 bg-primary text-white rounded-xl font-bold">Start Survey</Link>
       </div>
@@ -123,13 +123,14 @@ const Report: React.FC<ReportProps> = ({ user }) => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">Benchmark Analytics</h1>
-          <p className="text-gray-500 font-medium">Peer-to-peer maturity comparisons</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-amber-acc-2 mb-2">Q{Math.floor((new Date().getMonth() / 3)) + 1} {new Date().getFullYear()} · Benchmark</p>
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-normal text-gray-900 tracking-tight leading-tight">Benchmark Analytics</h1>
+          <p className="text-gray-500 font-medium mt-1">Peer-to-peer maturity comparisons</p>
         </div>
         <div className="bg-indigo-50 p-3 sm:p-4 rounded-2xl flex items-center gap-4">
           <div className="text-right">
-            <p className="text-[10px] font-black uppercase text-indigo-400">Sample Size</p>
-            <p className="text-sm font-black text-indigo-900">{approvedPeers.length} Entities</p>
+            <p className="text-[10px] font-mono uppercase tracking-wider text-amber-acc-2">Sample Size</p>
+            <p className="font-mono text-sm font-semibold text-indigo-900 tabular-nums">{approvedPeers.length} Entities</p>
           </div>
           <Users className="h-6 w-6 text-indigo-600" />
         </div>
@@ -170,7 +171,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
                 <Sparkles className="h-4 w-4 text-indigo-300" />
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Powered by Taxable AI</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black mb-1">Ask Taxi</h2>
+              <h2 className="font-display text-xl sm:text-2xl font-medium mb-1">Ask Taxi</h2>
               <p className="text-sm text-indigo-100 font-medium">Get a personalized read on any of these reports.</p>
             </div>
             <ArrowRight className="h-5 w-5 text-white opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0" />
@@ -190,7 +191,7 @@ const Card: React.FC<{ icon: React.ReactNode; title: string; subtitle?: string; 
     <div className="flex items-start justify-between mb-6">
       <div className="flex items-center gap-3">
         {icon}
-        <h3 className="text-lg font-black text-gray-900">{title}</h3>
+        <h3 className="font-display text-xl font-medium text-gray-900">{title}</h3>
       </div>
     </div>
     {subtitle && <p className="text-sm text-gray-500 -mt-4 mb-4 font-medium">{subtitle}</p>}
@@ -407,8 +408,8 @@ const AiTab: React.FC<{ subs: Submission[] }> = ({ subs }) => {
 
 const KpiCard: React.FC<{ label: string; value: string; delta?: string }> = ({ label, value, delta }) => (
   <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-    <div className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">{label}</div>
-    <div className="text-2xl font-black text-gray-900 leading-none">{value}</div>
+    <div className="font-mono text-[10px] uppercase tracking-wider text-amber-acc-2 mb-2">{label}</div>
+    <div className="font-mono text-2xl font-semibold text-gray-900 leading-none tabular-nums">{value}</div>
     {delta && <div className="text-xs text-gray-500 mt-2 font-medium">{delta}</div>}
   </div>
 );

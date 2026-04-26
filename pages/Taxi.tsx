@@ -79,7 +79,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
       <div className="max-w-2xl mx-auto py-20 px-4">
         <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-3xl shadow-lg border border-gray-100">
           <Lock className="h-16 w-16 text-gray-200 mb-6" />
-          <h2 className="text-2xl font-black text-gray-900">Taxi is Restricted</h2>
+          <h2 className="font-display text-2xl font-normal text-gray-900">Taxi is Restricted</h2>
           <p className="text-gray-500 mt-2 max-w-sm">Submit your survey and await admin approval to chat with Taxi.</p>
           <Link to="/survey" className="mt-8 px-8 py-3 bg-primary text-white rounded-xl font-bold">Start Survey</Link>
         </div>
@@ -99,7 +99,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
                 <Sparkles className="h-4 w-4 text-indigo-300" />
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Powered by Taxable AI</span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black truncate">Ask Taxi</h1>
+              <h1 className="font-display text-xl sm:text-2xl font-medium truncate">Ask Taxi</h1>
             </div>
           </div>
           {aiHistory.length > 0 && (
@@ -120,7 +120,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
           {aiHistory.length === 0 && (
             <div className="py-12 text-center">
               <img src={taxiAvatar} alt="Taxi" className="w-24 h-24 mx-auto mb-6 rounded-full shadow-xl" />
-              <h2 className="text-xl font-black text-gray-700 mb-2">Hey, I'm Taxi.</h2>
+              <h2 className="font-display text-xl font-medium text-gray-700 mb-2">Hey, I'm Taxi.</h2>
               <p className="text-gray-500 font-medium max-w-md mx-auto">Ask me about your maturity level, automation gaps, FTE benchmarks, or how you stack up against peers.</p>
             </div>
           )}
