@@ -120,6 +120,7 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Navbar
           user={user}
+          authReady={authReady}
           onOpenLogin={() => setIsAuthModalOpen(true)}
           onLogout={handleLogout}
         />
