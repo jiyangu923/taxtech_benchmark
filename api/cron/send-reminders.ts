@@ -92,7 +92,7 @@ function bearerOk(req: VercelRequest, secret: string): boolean {
   return auth === `Bearer ${secret}`;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function runHandler(req: VercelRequest, res: VercelResponse) {
   // Optional auth gate
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && !bearerOk(req, cronSecret)) {
@@ -199,6 +199,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     breakdown,
     errors: errors.slice(0, 10),
   });
+}
+
+/**
+ * Top-level wrapper: catches any unhandled error and returns it as JSON.
+ * Without this, an exception (or a top-level import failure) surfaces as
+ * Vercel's opaque "FUNCTION_INVOCATION_FAILED" 500 with no detail in the
+ * response body — debuggable only via Vercel function logs.
+ */
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  try {
+    return await runHandler(req, res);
+  } catch (e: any) {
+    return res.status(500).json({
+      error: 'Cron handler crashed',
+      message: e?.message || 'unknown',
+      stack: process.env.NODE_ENV === 'production' ? undefined : e?.stack,
+    });
+  }
 }
 
 // Exported for tests — pure logic separated from the handler

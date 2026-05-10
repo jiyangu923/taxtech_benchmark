@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findCandidates, ProfileRow, SubmissionRow } from './send-reminders';
+import { findCandidates, ProfileRow, SubmissionRow } from '../../../api/cron/send-reminders';
 
 const profile = (overrides: Partial<ProfileRow> = {}): ProfileRow => ({
   id: 'u',
