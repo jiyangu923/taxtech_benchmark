@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { api } from '../services/api';
 import { Submission, User } from '../types';
 import { useSubmissions } from '../services/queries';
-import { Lock, Sparkles, TrendingUp, Users, ArrowRight, Database, DollarSign, Brain, Layers, BarChart3 } from 'lucide-react';
+import { Lock, Sparkles, TrendingUp, Users, ArrowRight, Database, DollarSign, Brain, Layers, BarChart3, Activity } from 'lucide-react';
+import ReportTrends from './Report.Trends';
 import { Link } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -74,13 +75,14 @@ export function calculateIndustryStats(allSubs: Submission[]) {
   };
 }
 
-type TabKey = 'overview' | 'automation' | 'cost' | 'ai';
+type TabKey = 'overview' | 'automation' | 'cost' | 'ai' | 'trends';
 
 const TABS: Array<{ key: TabKey; label: string; icon: React.ReactNode }> = [
   { key: 'overview',   label: 'Overview',         icon: <BarChart3 className="h-4 w-4" /> },
   { key: 'automation', label: 'Automation',       icon: <TrendingUp className="h-4 w-4" /> },
   { key: 'cost',       label: 'Cost & Resources', icon: <DollarSign className="h-4 w-4" /> },
   { key: 'ai',         label: 'AI Maturity',      icon: <Brain className="h-4 w-4" /> },
+  { key: 'trends',     label: 'Trends',           icon: <Activity className="h-4 w-4" /> },
 ];
 
 const Report: React.FC<ReportProps> = ({ user }) => {
@@ -158,6 +160,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
       {activeTab === 'automation' && <AutomationTab subs={approvedPeers} mySub={mySubmission} />}
       {activeTab === 'cost'       && <CostTab       subs={approvedPeers} mySub={mySubmission} />}
       {activeTab === 'ai'         && <AiTab         subs={approvedPeers} />}
+      {activeTab === 'trends'     && <ReportTrends />}
 
       {/* Persistent Taxi CTA */}
       <Link to="/taxi" className="block group">
