@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { api } from './api';
-import { Submission } from '../types';
+import { Submission, User } from '../types';
 import { Session, ChatMessage } from '../pages/Taxi.helpers';
 
 /**
@@ -18,6 +18,7 @@ export const queryKeys = {
   publicStats: ['publicStats'] as const,
   chatSessions: ['chatSessions'] as const,
   currentSurveyVersion: ['settings', 'currentSurveyVersion'] as const,
+  allProfiles: ['profiles', 'all'] as const,
 };
 
 // ─── Reads ───────────────────────────────────────────────────────────────────
@@ -161,7 +162,15 @@ export function useMarkRemindersSent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (userIds: string[]) => api.markRemindersSent(userIds),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.submissions }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.allProfiles }),
+  });
+}
+
+export function useAllProfiles(opts?: Omit<UseQueryOptions<User[]>, 'queryKey' | 'queryFn'>) {
+  return useQuery<User[]>({
+    queryKey: queryKeys.allProfiles,
+    queryFn: () => api.getAllProfiles(),
+    ...opts,
   });
 }
 
