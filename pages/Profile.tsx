@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { User as UserIcon, Mail, ShieldCheck, Save, CheckCircle2, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { User as UserIcon, Mail, ShieldCheck, Save, CheckCircle2, AlertCircle, Loader2, ArrowLeft, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { User } from '../types';
+import { useUpdateEmailReminderPref } from '../services/queries';
 
 interface ProfileProps {
   user: User;
@@ -15,11 +16,29 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Default-true: profiles row defaults to email_reminders_enabled = true,
+  // and any pre-migration row that lacks the column is also treated as opted-in.
+  const [emailReminders, setEmailReminders] = useState(user.email_reminders_enabled !== false);
+  const [reminderError, setReminderError] = useState<string | null>(null);
+  const updatePref = useUpdateEmailReminderPref();
 
   useEffect(() => {
     setName(user.name);
     setEmail(user.email);
+    setEmailReminders(user.email_reminders_enabled !== false);
   }, [user]);
+
+  const handleToggleReminders = (next: boolean) => {
+    const previous = emailReminders;
+    setEmailReminders(next); // optimistic
+    setReminderError(null);
+    updatePref.mutate(next, {
+      onError: (e: any) => {
+        setEmailReminders(previous); // revert
+        setReminderError(e?.message || 'Could not update preference. Try again.');
+      },
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,7 +156,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
               </div>
 
               <div className="pt-4">
-                <button 
+                <button
                   type="submit"
                   disabled={isLoading}
                   className="w-full flex items-center justify-center gap-2 py-4 bg-primary text-white rounded-2xl font-bold hover:bg-indigo-900 transition-all shadow-xl shadow-primary/20 active:scale-[0.98] disabled:opacity-70"
@@ -146,6 +165,46 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
                 </button>
               </div>
             </form>
+          </div>
+
+          {/* Notifications */}
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 sm:p-10 mt-8">
+            <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-3">
+              <Bell className="h-5 w-5 text-primary" /> Notifications
+            </h3>
+
+            {reminderError && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-sm text-red-700">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                {reminderError}
+              </div>
+            )}
+
+            <label className="flex items-start justify-between gap-6 cursor-pointer">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900">Email reminders</p>
+                <p className="text-sm text-gray-500 font-medium mt-1 leading-relaxed">
+                  We'll occasionally email you to finish your survey, update your data when the survey changes, or refresh your numbers each quarter so the benchmark stays current. Turn this off to opt out of all reminder emails.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={emailReminders}
+                onClick={() => handleToggleReminders(!emailReminders)}
+                disabled={updatePref.isPending}
+                className={`relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-colors mt-1 ${
+                  emailReminders ? 'bg-primary' : 'bg-gray-300'
+                } ${updatePref.isPending ? 'opacity-50 cursor-wait' : ''}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                    emailReminders ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </label>
           </div>
         </div>
       </div>

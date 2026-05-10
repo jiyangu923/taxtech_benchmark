@@ -5,6 +5,8 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  email_reminders_enabled?: boolean;
+  last_reminder_sent_at?: string | null;
 }
 
 // Internal record for auth simulation
@@ -20,6 +22,8 @@ export interface Submission {
   userName: string;
   status: SubmissionStatus;
   submittedAt: string;
+  is_current?: boolean;
+  survey_version?: number;
   
   // Section 1: Context & Respondent Info
   companyName?: string;
