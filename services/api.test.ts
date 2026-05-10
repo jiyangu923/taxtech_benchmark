@@ -218,27 +218,31 @@ describe('createSubmission', () => {
     await expect(api.createSubmission({} as any)).rejects.toThrow('Profile not found');
   });
 
-  it('deletes the previous submission and inserts a new one', async () => {
+  it('soft-archives the previous submission and inserts a new one with is_current=true', async () => {
     const profile = { id: 'u1', name: 'Alice' };
-    const newSub  = { id: 's1', userId: 'u1', userName: 'Alice', status: 'pending' };
+    const newSub  = { id: 's1', userId: 'u1', userName: 'Alice', status: 'pending', is_current: true, survey_version: 1 };
     mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
     profiles.single.mockResolvedValueOnce({ data: profile });
+    settings.maybeSingle.mockResolvedValueOnce({ data: { value: '1' }, error: null });
     submissions.single.mockResolvedValueOnce({ data: newSub, error: null });
 
     const result = await api.createSubmission({ revenueRange: '100m_500m' } as any);
 
-    expect(submissions.delete).toHaveBeenCalled();
+    // History is preserved via update(is_current:false) instead of delete()
+    expect(submissions.update).toHaveBeenCalledWith({ is_current: false });
+    expect(submissions.delete).not.toHaveBeenCalled();
     expect(submissions.insert).toHaveBeenCalled();
     expect(result.status).toBe('pending');
     expect(result.userName).toBe('Alice');
   });
 
-  it('stamps the submission with the correct userId and userName', async () => {
+  it('stamps the submission with userId, userName, is_current, and survey_version', async () => {
     const profile = { id: 'uid-99', name: 'Bob' };
     mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'uid-99' } } });
     profiles.single.mockResolvedValueOnce({ data: profile });
+    settings.maybeSingle.mockResolvedValueOnce({ data: { value: '3' }, error: null });
     submissions.single.mockResolvedValueOnce({
-      data: { id: 's2', userId: 'uid-99', userName: 'Bob', status: 'pending' },
+      data: { id: 's2', userId: 'uid-99', userName: 'Bob', status: 'pending', is_current: true, survey_version: 3 },
       error: null,
     });
 
@@ -248,12 +252,29 @@ describe('createSubmission', () => {
     expect(insertArg.userId).toBe('uid-99');
     expect(insertArg.userName).toBe('Bob');
     expect(insertArg.status).toBe('pending');
+    expect(insertArg.is_current).toBe(true);
+    expect(insertArg.survey_version).toBe(3);
     expect(result.userId).toBe('uid-99');
+  });
+
+  it('falls back to survey_version 1 when settings row is missing', async () => {
+    mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
+    profiles.single.mockResolvedValueOnce({ data: { id: 'u1', name: 'Alice' } });
+    settings.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    submissions.single.mockResolvedValueOnce({
+      data: { id: 's', userId: 'u1', userName: 'Alice', status: 'pending', is_current: true, survey_version: 1 },
+      error: null,
+    });
+
+    await api.createSubmission({} as any);
+    const insertArg = submissions.insert.mock.calls[0][0];
+    expect(insertArg.survey_version).toBe(1);
   });
 
   it('throws when the database insert fails', async () => {
     mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
     profiles.single.mockResolvedValueOnce({ data: { id: 'u1', name: 'Alice' } });
+    settings.maybeSingle.mockResolvedValueOnce({ data: { value: '1' }, error: null });
     submissions.single.mockResolvedValueOnce({ data: null, error: { message: 'Insert failed' } });
     await expect(api.createSubmission({} as any)).rejects.toThrow('Insert failed');
   });
@@ -262,19 +283,20 @@ describe('createSubmission', () => {
 // ─── getSubmissions ───────────────────────────────────────────────────────────
 
 describe('getSubmissions', () => {
-  it('returns the array of submissions from the database', async () => {
+  it('filters to is_current = true and returns the array', async () => {
     const rows = [{ id: 's1' }, { id: 's2' }];
-    submissions.select.mockResolvedValueOnce({ data: rows, error: null });
+    submissions.mockResolveWith({ data: rows, error: null });
     expect(await api.getSubmissions()).toEqual(rows);
+    expect(submissions.eq).toHaveBeenCalledWith('is_current', true);
   });
 
   it('returns an empty array when there are no rows', async () => {
-    submissions.select.mockResolvedValueOnce({ data: null, error: null });
+    submissions.mockResolveWith({ data: null, error: null });
     expect(await api.getSubmissions()).toEqual([]);
   });
 
   it('throws on a database error', async () => {
-    submissions.select.mockResolvedValueOnce({ data: null, error: { message: 'DB error' } });
+    submissions.mockResolveWith({ data: null, error: { message: 'DB error' } });
     await expect(api.getSubmissions()).rejects.toThrow('DB error');
   });
 });

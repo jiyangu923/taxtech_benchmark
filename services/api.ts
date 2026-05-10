@@ -95,7 +95,7 @@ export const api = {
 
   // ─── Submissions ─────────────────────────────────────────────────────────
 
-  async createSubmission(data: Omit<Submission, 'id' | 'userId' | 'userName' | 'status' | 'submittedAt'>): Promise<Submission> {
+  async createSubmission(data: Omit<Submission, 'id' | 'userId' | 'userName' | 'status' | 'submittedAt' | 'is_current' | 'survey_version'>): Promise<Submission> {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) throw new Error('Must be logged in');
 
@@ -106,8 +106,19 @@ export const api = {
       .single();
     if (!profile) throw new Error('Profile not found');
 
-    // Replace any prior submission from this user
-    await supabase.from('submissions').delete().eq('userId', profile.id);
+    // Soft-archive any prior current submission so historical data is
+    // preserved for trend analysis. We don't delete — we flip is_current
+    // so the new row becomes the active one and the old one survives in
+    // the table for time-series queries.
+    await supabase
+      .from('submissions')
+      .update({ is_current: false })
+      .eq('userId', profile.id)
+      .eq('is_current', true);
+
+    // Tag the new submission with the current survey version so we can
+    // detect outdated submissions later when admin bumps the version.
+    const surveyVersion = await api.getCurrentSurveyVersion();
 
     const { data: sub, error } = await supabase
       .from('submissions')
@@ -117,6 +128,8 @@ export const api = {
         userName: profile.name,
         status: 'pending',
         submittedAt: new Date().toISOString(),
+        is_current: true,
+        survey_version: surveyVersion,
       })
       .select()
       .single();
