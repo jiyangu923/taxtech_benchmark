@@ -1,6 +1,105 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { renderReminderEmail, ReminderKind } from '../../services/emailTemplates';
+
+// ─── Email templates (inlined) ────────────────────────────────────────────────
+//
+// Inlined into this file rather than imported from `services/emailTemplates.ts`
+// because Vercel's serverless bundler with `"type": "module"` in package.json
+// fails to resolve relative TS imports outside the `/api/` directory at
+// runtime — the function 500s with FUNCTION_INVOCATION_FAILED before it ever
+// runs. Keeping all dependencies inside `/api/` (or as npm packages) is the
+// safe pattern, matching `api/gemini.ts` which has zero relative imports.
+
+type ReminderKind = 'incomplete' | 'stale' | 'outdated';
+
+interface RenderInput {
+  name: string;
+  siteUrl: string;
+  lastSubmittedAt?: string | null;
+}
+
+interface RenderedEmail {
+  subject: string;
+  text: string;
+  html: string;
+}
+
+const baseStyles = {
+  body:    'font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: #1f2937; max-width: 560px; margin: 0 auto; padding: 24px; line-height: 1.6;',
+  h1:      'color: #1e3a8a; font-size: 22px; font-weight: 600; margin: 0 0 16px;',
+  p:       'margin: 0 0 16px; font-size: 16px;',
+  cta:     'display: inline-block; padding: 12px 24px; background: #1e3a8a; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 8px 0 24px;',
+  small:   'color: #6b7280; font-size: 12px; line-height: 1.5;',
+  divider: 'border: 0; border-top: 1px solid #e5e7eb; margin: 32px 0 16px;',
+};
+
+function firstName(name: string): string {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return 'there';
+  return trimmed.split(/\s+/)[0];
+}
+
+function daysSince(iso?: string | null): number | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return null;
+  return Math.floor((Date.now() - t) / (24 * 60 * 60 * 1000));
+}
+
+function renderShared(greeting: string, body: string, ctaLabel: string, ctaPath: string, input: RenderInput): { text: string; html: string } {
+  const url = `${input.siteUrl}${ctaPath}`;
+  const unsub = `${input.siteUrl}/#/profile`;
+
+  const text = [
+    `Hi ${firstName(input.name)},`,
+    '',
+    body,
+    '',
+    `${ctaLabel}: ${url}`,
+    '',
+    '--',
+    `taxbenchmark.ai — community-built peer comparison for in-house tax-tech functions.`,
+    `To stop these reminders, visit ${unsub} and toggle off email reminders.`,
+  ].join('\n');
+
+  const html = `<!doctype html>
+<html><body style="${baseStyles.body}">
+  <h1 style="${baseStyles.h1}">${greeting}</h1>
+  <p style="${baseStyles.p}">${body}</p>
+  <a href="${url}" style="${baseStyles.cta}">${ctaLabel}</a>
+  <hr style="${baseStyles.divider}" />
+  <p style="${baseStyles.small}">
+    taxbenchmark.ai — community-built peer comparison for in-house tax-tech functions.<br />
+    To stop these reminders, <a href="${unsub}" style="color:#1e3a8a;">manage your email preferences</a>.
+  </p>
+</body></html>`;
+
+  return { text, html };
+}
+
+function renderReminderEmail(kind: ReminderKind, input: RenderInput): RenderedEmail {
+  if (kind === 'incomplete') {
+    const greeting = `${firstName(input.name)}, your benchmark is two clicks away`;
+    const body = `You signed up to benchmark your tax-tech function against industry peers but didn't finish the survey. It takes about 10 minutes — once approved, you unlock automation, FTE, AI adoption, and trend comparisons against the rest of the community.`;
+    const shared = renderShared(greeting, body, 'Finish the survey', '/#/survey', input);
+    return { subject: `Finish your tax-tech benchmark, ${firstName(input.name)}`, ...shared };
+  }
+  if (kind === 'stale') {
+    const days = daysSince(input.lastSubmittedAt);
+    const dayPhrase = days != null ? `${days} days ago` : `more than a quarter ago`;
+    const greeting = `Quarterly check-in: refresh your benchmark`;
+    const body = `Your last benchmark was ${dayPhrase}. A lot can change in a quarter — new automation rollouts, AI tooling, headcount shifts. Resubmitting takes a couple of minutes and keeps your peer comparison (and the industry trend lines you contribute to) accurate.`;
+    const shared = renderShared(greeting, body, 'Update your benchmark', '/#/survey', input);
+    return { subject: `Time to refresh your tax-tech benchmark`, ...shared };
+  }
+  // outdated
+  const greeting = `New questions in the benchmark — please update`;
+  const body = `We added new questions to the survey since you last submitted. To keep your peer comparison apples-to-apples, please take a couple of minutes to fill in the new fields. Your previous answers are pre-filled — you only need to address what's new.`;
+  const shared = renderShared(greeting, body, 'Update your benchmark', '/#/survey', input);
+  return { subject: `Survey updated — please refresh your responses`, ...shared };
+}
+
+// ─── Cron handler ─────────────────────────────────────────────────────────────
 
 /**
  * Vercel Cron handler — runs daily and sends reminder emails to candidates.
@@ -220,5 +319,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 // Exported for tests — pure logic separated from the handler
-export { findCandidates };
-export type { ProfileRow, SubmissionRow, Candidate };
+export { findCandidates, renderReminderEmail };
+export type { ProfileRow, SubmissionRow, Candidate, ReminderKind, RenderInput, RenderedEmail };
