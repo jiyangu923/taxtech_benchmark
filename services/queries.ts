@@ -11,11 +11,13 @@ import { Session, ChatMessage } from '../pages/Taxi.helpers';
 
 export const queryKeys = {
   submissions: ['submissions'] as const,
+  submissionsHistory: ['submissions', 'history'] as const,
   mySubmission: ['mySubmission'] as const,
   webhookUrl: ['settings', 'webhookUrl'] as const,
   adminEmails: ['settings', 'adminEmails'] as const,
   publicStats: ['publicStats'] as const,
   chatSessions: ['chatSessions'] as const,
+  currentSurveyVersion: ['settings', 'currentSurveyVersion'] as const,
 };
 
 // ─── Reads ───────────────────────────────────────────────────────────────────
@@ -118,6 +120,48 @@ export function useRemoveAdminEmail() {
   return useMutation({
     mutationFn: (email: string) => api.removeAdminEmail(email),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.adminEmails }),
+  });
+}
+
+// ─── Reminders v1 ────────────────────────────────────────────────────────────
+
+export function useSubmissionsHistory(opts?: Omit<UseQueryOptions<Submission[]>, 'queryKey' | 'queryFn'>) {
+  return useQuery<Submission[]>({
+    queryKey: queryKeys.submissionsHistory,
+    queryFn: () => api.getAllSubmissionsIncludingHistory(),
+    ...opts,
+  });
+}
+
+export function useCurrentSurveyVersion() {
+  return useQuery<number>({
+    queryKey: queryKeys.currentSurveyVersion,
+    queryFn: () => api.getCurrentSurveyVersion(),
+  });
+}
+
+export function useSetCurrentSurveyVersion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (version: number) => api.setCurrentSurveyVersion(version),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.currentSurveyVersion });
+      qc.invalidateQueries({ queryKey: queryKeys.submissions });
+    },
+  });
+}
+
+export function useUpdateEmailReminderPref() {
+  return useMutation({
+    mutationFn: (enabled: boolean) => api.updateMyEmailReminderPref(enabled),
+  });
+}
+
+export function useMarkRemindersSent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userIds: string[]) => api.markRemindersSent(userIds),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.submissions }),
   });
 }
 

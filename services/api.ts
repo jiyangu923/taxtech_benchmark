@@ -125,6 +125,23 @@ export const api = {
   },
 
   async getSubmissions(): Promise<Submission[]> {
+    // Return only the latest version of each user's submission. Historical
+    // rows (is_current = false) are kept for trend analysis but excluded
+    // from peer comparisons and the admin dashboard's default view.
+    const { data, error } = await supabase
+      .from('submissions')
+      .select('*')
+      .eq('is_current', true);
+    if (error) throw new Error(error.message);
+    return (data as Submission[]) || [];
+  },
+
+  /**
+   * Admin-only: returns every submission ever made (current + historical).
+   * Used by trend analysis. Falls back to current-only on environments
+   * where the migration hasn't run.
+   */
+  async getAllSubmissionsIncludingHistory(): Promise<Submission[]> {
     const { data, error } = await supabase.from('submissions').select('*');
     if (error) throw new Error(error.message);
     return (data as Submission[]) || [];
@@ -132,7 +149,8 @@ export const api = {
 
   /**
    * Returns the current user's own submission (if any) so the survey can
-   * pre-populate fields when re-opening it.
+   * pre-populate fields when re-opening it. Filters to is_current = true
+   * so a user with prior versions still gets just the latest prefill.
    */
   async getMySubmission(): Promise<Submission | null> {
     const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -141,9 +159,64 @@ export const api = {
       .from('submissions')
       .select('*')
       .eq('userId', authUser.id)
+      .eq('is_current', true)
       .maybeSingle();
     if (error) throw new Error(error.message);
     return (data as Submission) || null;
+  },
+
+  // ─── Survey versioning + reminder candidates ─────────────────────────────
+
+  async getCurrentSurveyVersion(): Promise<number> {
+    const { data } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'current_survey_version')
+      .maybeSingle();
+    const parsed = parseInt(data?.value ?? '1', 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  },
+
+  async setCurrentSurveyVersion(version: number): Promise<void> {
+    if (!Number.isFinite(version) || version < 1) {
+      throw new Error('Survey version must be a positive integer');
+    }
+    const { error } = await supabase
+      .from('settings')
+      .upsert({ key: 'current_survey_version', value: String(version) });
+    if (error) throw new Error(error.message);
+  },
+
+  async updateMyEmailReminderPref(enabled: boolean): Promise<void> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error('Must be logged in');
+    const { error } = await supabase
+      .from('profiles')
+      .update({ email_reminders_enabled: enabled })
+      .eq('id', authUser.id);
+    if (error) throw new Error(error.message);
+  },
+
+  async markRemindersSent(userIds: string[]): Promise<void> {
+    if (userIds.length === 0) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ last_reminder_sent_at: new Date().toISOString() })
+      .in('id', userIds);
+    if (error) throw new Error(error.message);
+  },
+
+  /**
+   * Admin-only (RLS enforced server-side via "Admins can view all profiles"
+   * policy). Used by the reminders tab to identify users who registered
+   * but never submitted.
+   */
+  async getAllProfiles(): Promise<User[]> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, email, role, email_reminders_enabled, last_reminder_sent_at');
+    if (error) throw new Error(error.message);
+    return (data as User[]) || [];
   },
 
   /**
