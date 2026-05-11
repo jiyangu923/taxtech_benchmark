@@ -125,7 +125,7 @@ function renderReminderEmail(kind: ReminderKind, input: RenderInput): RenderedEm
  * with a release announcement). The cron stays conservative.
  */
 
-const COOLDOWN_DAYS = 14;
+const COOLDOWN_DAYS = 7;
 const STALE_DAYS = 90;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 

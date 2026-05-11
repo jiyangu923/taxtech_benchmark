@@ -92,14 +92,14 @@ describe('findCandidates — opt-out + admin filtering', () => {
   });
 });
 
-describe('findCandidates — 14-day cooldown', () => {
-  it('skips users reminded within the last 14 days', () => {
-    const profiles = [profile({ id: 'a', last_reminder_sent_at: new Date(NOW - days(7)).toISOString() })];
+describe('findCandidates — 7-day cooldown', () => {
+  it('skips users reminded within the last 7 days', () => {
+    const profiles = [profile({ id: 'a', last_reminder_sent_at: new Date(NOW - days(3)).toISOString() })];
     expect(findCandidates(profiles, [], NOW)).toEqual([]);
   });
 
-  it('includes users reminded 14+ days ago', () => {
-    const profiles = [profile({ id: 'a', last_reminder_sent_at: new Date(NOW - days(20)).toISOString() })];
+  it('includes users reminded 7+ days ago', () => {
+    const profiles = [profile({ id: 'a', last_reminder_sent_at: new Date(NOW - days(10)).toISOString() })];
     const out = findCandidates(profiles, [], NOW);
     expect(out).toHaveLength(1);
   });
