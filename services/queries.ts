@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { api } from './api';
-import { Submission, User } from '../types';
+import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission } from '../types';
 import { Session, ChatMessage } from '../pages/Taxi.helpers';
 
 /**
@@ -19,6 +19,7 @@ export const queryKeys = {
   chatSessions: ['chatSessions'] as const,
   currentSurveyVersion: ['settings', 'currentSurveyVersion'] as const,
   allProfiles: ['profiles', 'all'] as const,
+  feedback: ['feedback'] as const,
 };
 
 // ─── Reads ───────────────────────────────────────────────────────────────────
@@ -171,6 +172,41 @@ export function useAllProfiles(opts?: Omit<UseQueryOptions<User[]>, 'queryKey' |
     queryKey: queryKeys.allProfiles,
     queryFn: () => api.getAllProfiles(),
     ...opts,
+  });
+}
+
+// ─── Feedback ────────────────────────────────────────────────────────────────
+
+export function useSubmitFeedback() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (s: FeedbackSubmission) => api.submitFeedback(s),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.feedback }),
+  });
+}
+
+export function useAllFeedback(opts?: Omit<UseQueryOptions<Feedback[]>, 'queryKey' | 'queryFn'>) {
+  return useQuery<Feedback[]>({
+    queryKey: queryKeys.feedback,
+    queryFn: () => api.getAllFeedback(),
+    ...opts,
+  });
+}
+
+export function useUpdateFeedbackStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: FeedbackStatus }) =>
+      api.updateFeedbackStatus(id, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.feedback }),
+  });
+}
+
+export function useDeleteFeedback() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteFeedback(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.feedback }),
   });
 }
 
