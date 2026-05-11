@@ -116,3 +116,31 @@ export interface SectionDef {
   title: string;
   description: string;
 }
+
+export type FeedbackType = 'bug' | 'feature' | 'general';
+export type FeedbackStatus = 'new' | 'triaged' | 'resolved' | 'archived';
+
+export interface Feedback {
+  id: string;
+  user_id: string | null;
+  user_email: string | null;
+  user_name: string | null;
+  type: FeedbackType;
+  message: string;
+  page_path: string | null;
+  user_agent: string | null;
+  status: FeedbackStatus;
+  admin_notes: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+/** Payload for the public feedback widget — what the user submits. */
+export interface FeedbackSubmission {
+  type: FeedbackType;
+  message: string;
+  user_email?: string;
+  user_name?: string;
+  page_path?: string;
+  user_agent?: string;
+}

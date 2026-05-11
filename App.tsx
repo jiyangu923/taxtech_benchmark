@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import SetPasswordModal from './components/SetPasswordModal';
+import FeedbackWidget from './components/FeedbackWidget';
 import Home from './pages/Home';
 import Survey from './pages/Survey';
 import Admin from './pages/Admin';
@@ -174,6 +175,8 @@ const App: React.FC = () => {
           </Routes>
           )}
         </main>
+
+        <FeedbackWidget user={user} />
 
         <footer className="bg-white border-t border-gray-200 py-8 mt-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-500">

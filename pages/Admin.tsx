@@ -7,9 +7,10 @@ import {
     CheckCircle2, Users, Plus, Mail, ShieldCheck,
     UserPlus, Database, Download, Upload, AlertTriangle,
     Activity, HardDrive, Info, Settings, Search, Filter, RotateCcw,
-    ChevronDown, Bell
+    ChevronDown, Bell, MessageSquare
 } from 'lucide-react';
 import AdminReminders from './Admin.Reminders';
+import AdminFeedback from './Admin.Feedback';
 import { useNavigate } from 'react-router-dom';
 import * as C from '../constants';
 import {
@@ -21,7 +22,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../services/queries';
 
 const Admin: React.FC<{ user: User | null }> = ({ user }) => {
-  const [activeTab, setActiveTab] = useState<'submissions' | 'reminders' | 'sync' | 'admins' | 'system'>('submissions');
+  const [activeTab, setActiveTab] = useState<'submissions' | 'reminders' | 'feedback' | 'sync' | 'admins' | 'system'>('submissions');
   const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
   const qc = useQueryClient();
 
@@ -239,6 +240,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
             <nav className="-mb-px flex space-x-3 sm:space-x-6 md:space-x-10 overflow-x-auto">
                 <button onClick={() => setActiveTab('submissions')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'submissions' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Eye className="h-4 w-4" /> Submissions</button>
                 <button onClick={() => setActiveTab('reminders')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'reminders' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Bell className="h-4 w-4" /> Reminders</button>
+                <button onClick={() => setActiveTab('feedback')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'feedback' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><MessageSquare className="h-4 w-4" /> Feedback</button>
                 <button onClick={() => setActiveTab('sync')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'sync' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><CloudSync className="h-4 w-4" /> Integration</button>
                 <button onClick={() => setActiveTab('admins')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'admins' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Users className="h-4 w-4" /> Team Access</button>
                 <button onClick={() => setActiveTab('system')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'system' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Database className="h-4 w-4" /> System & Data</button>
@@ -246,6 +248,8 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
         </div>
         
         {activeTab === 'reminders' && <AdminReminders />}
+
+        {activeTab === 'feedback' && <AdminFeedback />}
 
         {activeTab === 'submissions' && (
           <div className="space-y-6 animate-fadeIn">

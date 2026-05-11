@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Submission, User } from '../types';
+import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission } from '../types';
 import { submissionsToCsv, downloadCsv } from './csv';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -216,6 +216,69 @@ export const api = {
       .from('profiles')
       .update({ last_reminder_sent_at: new Date().toISOString() })
       .in('id', userIds);
+    if (error) throw new Error(error.message);
+  },
+
+  // ─── Feedback widget ─────────────────────────────────────────────────────
+  //
+  // Anyone (even unauthenticated visitors) can submit feedback. Reads/updates
+  // are admin-only via RLS — the helpers below assume the caller is an admin
+  // when invoking get/update/delete and let Supabase reject non-admins server-
+  // side. The widget itself only ever calls submitFeedback().
+
+  /**
+   * Public submission from the floating feedback widget. Auto-attaches the
+   * current authenticated user's id/name/email if logged in; works fine
+   * anonymously otherwise.
+   */
+  async submitFeedback(s: FeedbackSubmission): Promise<void> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    let userId: string | null = null;
+    let userName: string | null = s.user_name ?? null;
+    let userEmail: string | null = s.user_email ?? null;
+    if (authUser) {
+      userId = authUser.id;
+      // Pull the profile so we have a name to show in the admin UI even if
+      // the widget didn't ask for one (logged-in users skip those fields).
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name, email')
+        .eq('id', authUser.id)
+        .maybeSingle();
+      if (profile?.name && !userName)  userName  = profile.name as string;
+      if (profile?.email && !userEmail) userEmail = profile.email as string;
+    }
+    const { error } = await supabase.from('feedback').insert({
+      user_id:    userId,
+      user_name:  userName,
+      user_email: userEmail,
+      type:       s.type,
+      message:    s.message,
+      page_path:  s.page_path ?? null,
+      user_agent: s.user_agent ?? null,
+    });
+    if (error) throw new Error(error.message);
+  },
+
+  async getAllFeedback(): Promise<Feedback[]> {
+    const { data, error } = await supabase
+      .from('feedback')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data as Feedback[]) || [];
+  },
+
+  async updateFeedbackStatus(id: string, status: FeedbackStatus): Promise<void> {
+    const patch: Record<string, unknown> = { status };
+    if (status === 'resolved') patch.resolved_at = new Date().toISOString();
+    if (status !== 'resolved') patch.resolved_at = null;
+    const { error } = await supabase.from('feedback').update(patch).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async deleteFeedback(id: string): Promise<void> {
+    const { error } = await supabase.from('feedback').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
 
