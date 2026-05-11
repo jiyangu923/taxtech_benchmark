@@ -170,7 +170,7 @@ const LetterEditor: React.FC<EditorProps> = ({ letterId, letters, onClose }) => 
 
   const handleSend = async (mode: 'test' | 'broadcast') => {
     if (mode === 'broadcast') {
-      const ok = window.confirm('Broadcast this letter to ALL signed-up users (excluding admins, respecting email-reminder opt-outs)? This cannot be undone.');
+      const ok = window.confirm('Broadcast this letter to ALL signed-up users (including admins, respecting email-reminder opt-outs)? This cannot be undone.');
       if (!ok) return;
     }
     const id = existing ? existing.id : await handleSave();
@@ -358,7 +358,7 @@ const LetterEditor: React.FC<EditorProps> = ({ letterId, letters, onClose }) => 
       </div>
 
       <p className="text-xs text-gray-400 font-medium text-center pt-2">
-        "Send test" delivers only to your own email so you can preview the rendering. Broadcast goes to every signed-up non-admin user who hasn't opted out of email reminders via /profile.
+        "Send test" delivers only to your own email so you can preview the rendering. Broadcast goes to every signed-up user (including admins) who hasn't opted out of email reminders via /profile.
       </p>
     </div>
   );
