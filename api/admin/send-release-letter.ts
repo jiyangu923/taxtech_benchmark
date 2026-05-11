@@ -291,12 +291,20 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
   }
 
   // 5. Render & send.
+  //
+  // Sender precedence: RELEASE_LETTER_FROM_ADDRESS wins, then EMAIL_FROM_ADDRESS.
+  // This keeps reminder emails (cron) on `reminders@…` while release letters
+  // can ship from a friendlier `news@…` address. Both must be on a verified
+  // Resend domain; no extra Resend setup is needed if the domain is already
+  // verified for one of them.
   const resendKey = process.env.RESEND_API_KEY;
-  const fromAddress = process.env.EMAIL_FROM_ADDRESS;
+  const fromAddress =
+    process.env.RELEASE_LETTER_FROM_ADDRESS ||
+    process.env.EMAIL_FROM_ADDRESS;
   if (!resendKey || !fromAddress) {
     return res.status(500).json({
       error: 'Email backend not configured',
-      detail: 'Set RESEND_API_KEY and EMAIL_FROM_ADDRESS in Vercel env',
+      detail: 'Set RESEND_API_KEY and one of RELEASE_LETTER_FROM_ADDRESS or EMAIL_FROM_ADDRESS in Vercel env',
     });
   }
 
