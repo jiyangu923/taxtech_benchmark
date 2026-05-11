@@ -330,12 +330,15 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
   const sentEmails: string[] = [];
   const errors: { email: string; status: number | string; detail?: string }[] = [];
 
-  // Resend free tier limits to ~2 req/s. Without throttling, broadcasts of
-  // 5+ recipients fire in rapid succession and the second half come back as
-  // 429 Too Many Requests. We pace at ~2.5 req/s with a small in-loop
-  // delay AND retry once on 429 with backoff. Stays well under Vercel's
-  // 10s function timeout for typical recipient counts (<20).
-  const RESEND_DELAY_MS = 400;       // ~2.5 req/s, safe under the 2/s cap
+  // Resend Pro tier limits to 10 req/s. Without throttling, large broadcasts
+  // can still burst-overshoot — we pace the loop at ~8 req/s with a 120ms
+  // gap (margin under the 10/s cap) and retry once on 429 with backoff for
+  // any request that still slips through. The function's maxDuration is
+  // bumped to 30s below so >100-recipient broadcasts don't hit the default
+  // 10s timeout: 100 recipients × 120ms ≈ 12s; 200 × 120ms ≈ 24s.
+  //
+  // (Was 400ms on free tier @ 2 req/s; bumped after upgrading to Pro.)
+  const RESEND_DELAY_MS = 120;       // ~8 req/s, safely under Pro's 10/s cap
   const RESEND_429_BACKOFF_MS = 1100; // wait > 1s after a 429 before retry
 
   async function sendOne(toEmail: string, attempt = 1): Promise<Response> {
@@ -404,6 +407,14 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
     errors: errors.slice(0, 10),
   });
 }
+
+/**
+ * Bump the function's maxDuration well above Vercel's default 10s to give
+ * large broadcasts headroom. With a 120ms throttle, 200 recipients take
+ * ~24s of wall time (mostly waiting between Resend calls). 30s leaves
+ * margin for retries. Hobby tier supports up to 60s.
+ */
+export const config = { maxDuration: 30 };
 
 /**
  * Top-level wrapper — without it any uncaught exception (or top-level import
