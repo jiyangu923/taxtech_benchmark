@@ -1,12 +1,26 @@
 import { createClient } from '@supabase/supabase-js';
+import { processLock } from '@supabase/auth-js';
 import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft } from '../types';
 import { submissionsToCsv, downloadCsv } from './csv';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
+// `lock: processLock` swaps Supabase's default `navigatorLock` (which uses
+// the browser `navigator.locks` API) for a single-process lock. The
+// navigator-locks default can leak orphaned locks when components unmount
+// mid-auth-call (e.g. during SPA route changes), causing `getSession()` to
+// hang for ~5s while the lock self-recovers. Symptom: the admin Releases
+// editor's "Broadcast" click would freeze with all action buttons stuck in
+// loading state because `supabase.auth.getSession()` never resolved in
+// time. processLock is a single-tab in-memory lock that can't orphan and
+// is the documented fix from Supabase for this issue. Trade-off: no
+// cross-tab coordination — fine for our app since auth state is per-tab.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { flowType: 'pkce' },
+  auth: {
+    flowType: 'pkce',
+    lock: processLock,
+  },
 });
 
 const INITIAL_ADMINS = ['admin@taxbenchmark.com', 'jiyangu923@gmail.com'];
