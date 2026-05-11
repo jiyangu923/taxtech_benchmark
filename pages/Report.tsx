@@ -170,7 +170,7 @@ const Report: React.FC<ReportProps> = ({ user }) => {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="h-4 w-4 text-indigo-300" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Powered by Taxable AI</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Powered by Gemini</span>
               </div>
               <h2 className="font-display text-xl sm:text-2xl font-medium mb-1">Ask Taxi</h2>
               <p className="text-sm text-indigo-100 font-medium">Get a personalized read on any of these reports.</p>
