@@ -448,7 +448,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-indigo-300" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Powered by Taxable AI</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Powered by Gemini</span>
                 </div>
                 <h1 className="font-display text-xl sm:text-2xl font-medium truncate">Ask Taxi</h1>
               </div>
