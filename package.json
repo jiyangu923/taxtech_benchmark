@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "latest",
+    "@supabase/auth-js": "^2.98.0",
     "@supabase/supabase-js": "^2.98.0",
     "@tanstack/react-query": "^5.100.5",
     "lucide-react": "^0.563.0",
