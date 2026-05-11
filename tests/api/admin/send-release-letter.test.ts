@@ -31,9 +31,13 @@ describe('isBroadcastRecipient', () => {
     expect(isBroadcastRecipient(profile({ email_reminders_enabled: false }))).toBe(false);
   });
 
-  it('rejects admins regardless of opt-in flag', () => {
-    expect(isBroadcastRecipient(profile({ role: 'admin' }))).toBe(false);
-    expect(isBroadcastRecipient(profile({ role: 'admin', email_reminders_enabled: true }))).toBe(false);
+  it('accepts admins (release letters go to the whole team incl. admins)', () => {
+    expect(isBroadcastRecipient(profile({ role: 'admin' }))).toBe(true);
+    expect(isBroadcastRecipient(profile({ role: 'admin', email_reminders_enabled: null }))).toBe(true);
+  });
+
+  it('still rejects opted-out admins (the toggle wins for everyone)', () => {
+    expect(isBroadcastRecipient(profile({ role: 'admin', email_reminders_enabled: false }))).toBe(false);
   });
 
   it('rejects rows with missing or malformed email', () => {
@@ -43,7 +47,7 @@ describe('isBroadcastRecipient', () => {
 });
 
 describe('filterBroadcastRecipients', () => {
-  it('keeps only opted-in non-admin users', () => {
+  it('keeps every opted-in user including admins', () => {
     const profiles: RecipientProfile[] = [
       profile({ id: 'a', email: 'a@x.com' }),
       profile({ id: 'b', email: 'b@x.com', role: 'admin' }),
@@ -51,16 +55,16 @@ describe('filterBroadcastRecipients', () => {
       profile({ id: 'd', email: 'd@x.com', email_reminders_enabled: null }),
     ];
     const out = filterBroadcastRecipients(profiles).map(p => p.id);
-    expect(out).toEqual(['a', 'd']);
+    expect(out).toEqual(['a', 'b', 'd']);
   });
 
   it('returns empty array for empty input', () => {
     expect(filterBroadcastRecipients([])).toEqual([]);
   });
 
-  it('returns empty array when every user is filtered out', () => {
+  it('returns empty array when every user is opted out', () => {
     const profiles: RecipientProfile[] = [
-      profile({ id: 'a', role: 'admin' }),
+      profile({ id: 'a', role: 'admin', email_reminders_enabled: false }),
       profile({ id: 'b', email_reminders_enabled: false }),
     ];
     expect(filterBroadcastRecipients(profiles)).toEqual([]);

@@ -191,7 +191,13 @@ interface RecipientProfile {
 }
 
 function isBroadcastRecipient(p: RecipientProfile): boolean {
-  if (p.role === 'admin') return false;
+  // Release letters go to every signed-up user — including admins. The
+  // reminder cron deliberately excludes admins (no point nagging the team
+  // about completing a survey they built), but release letters are a
+  // product newsletter — admins should see what's going out.
+  //
+  // We still respect the email_reminders_enabled toggle so users who
+  // opted out of email don't get blasted.
   if (p.email_reminders_enabled === false) return false;
   if (!p.email || !p.email.includes('@')) return false;
   return true;
