@@ -330,30 +330,52 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
   const sentEmails: string[] = [];
   const errors: { email: string; status: number | string; detail?: string }[] = [];
 
-  for (const r of recipients) {
+  // Resend free tier limits to ~2 req/s. Without throttling, broadcasts of
+  // 5+ recipients fire in rapid succession and the second half come back as
+  // 429 Too Many Requests. We pace at ~2.5 req/s with a small in-loop
+  // delay AND retry once on 429 with backoff. Stays well under Vercel's
+  // 10s function timeout for typical recipient counts (<20).
+  const RESEND_DELAY_MS = 400;       // ~2.5 req/s, safe under the 2/s cap
+  const RESEND_429_BACKOFF_MS = 1100; // wait > 1s after a 429 before retry
+
+  async function sendOne(toEmail: string, attempt = 1): Promise<Response> {
+    return fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: fromAddress,
+        to: toEmail,
+        subject,
+        text,
+        html,
+      }),
+    });
+  }
+
+  for (let i = 0; i < recipients.length; i++) {
+    const r = recipients[i];
     try {
-      const resp = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: fromAddress,
-          to: r.email,
-          subject,
-          text,
-          html,
-        }),
-      });
+      let resp = await sendOne(r.email);
+      if (resp.status === 429) {
+        // One retry with backoff — covers the burst case after a brief pause.
+        await new Promise(res => setTimeout(res, RESEND_429_BACKOFF_MS));
+        resp = await sendOne(r.email);
+      }
       if (!resp.ok) {
         const detail = await resp.text().catch(() => '');
         errors.push({ email: r.email, status: resp.status, detail: detail.slice(0, 200) });
-        continue;
+      } else {
+        sentEmails.push(r.email);
       }
-      sentEmails.push(r.email);
     } catch (e: any) {
       errors.push({ email: r.email, status: 'fetch-error', detail: e?.message || 'unknown' });
+    }
+    // Pace the next send — skip the delay after the last one.
+    if (i < recipients.length - 1) {
+      await new Promise(res => setTimeout(res, RESEND_DELAY_MS));
     }
   }
 
