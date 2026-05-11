@@ -144,3 +144,25 @@ export interface FeedbackSubmission {
   page_path?: string;
   user_agent?: string;
 }
+
+export type ReleaseLetterStatus = 'draft' | 'sent';
+
+export interface ReleaseLetter {
+  id: string;
+  title: string;
+  week_of: string;          // YYYY-MM-DD
+  body_markdown: string;
+  status: ReleaseLetterStatus;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  sent_at: string | null;
+  sent_count: number;
+}
+
+/** Payload to create or update a release letter from the admin form. */
+export interface ReleaseLetterDraft {
+  title: string;
+  week_of: string;
+  body_markdown: string;
+}
