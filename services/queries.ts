@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { api } from './api';
-import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission } from '../types';
+import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft } from '../types';
 import { Session, ChatMessage } from '../pages/Taxi.helpers';
 
 /**
@@ -20,6 +20,7 @@ export const queryKeys = {
   currentSurveyVersion: ['settings', 'currentSurveyVersion'] as const,
   allProfiles: ['profiles', 'all'] as const,
   feedback: ['feedback'] as const,
+  releaseLetters: ['releaseLetters'] as const,
 };
 
 // ─── Reads ───────────────────────────────────────────────────────────────────
@@ -207,6 +208,56 @@ export function useDeleteFeedback() {
   return useMutation({
     mutationFn: (id: string) => api.deleteFeedback(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.feedback }),
+  });
+}
+
+// ─── Release Letters ─────────────────────────────────────────────────────────
+
+export function useReleaseLetters(opts?: Omit<UseQueryOptions<ReleaseLetter[]>, 'queryKey' | 'queryFn'>) {
+  return useQuery<ReleaseLetter[]>({
+    queryKey: queryKeys.releaseLetters,
+    queryFn: () => api.listReleaseLetters(),
+    ...opts,
+  });
+}
+
+export function useCreateReleaseLetter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (draft: ReleaseLetterDraft) => api.createReleaseLetter(draft),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.releaseLetters }),
+  });
+}
+
+export function useUpdateReleaseLetter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<ReleaseLetterDraft> }) =>
+      api.updateReleaseLetter(id, patch),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.releaseLetters }),
+  });
+}
+
+export function useDeleteReleaseLetter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteReleaseLetter(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.releaseLetters }),
+  });
+}
+
+export function useUploadReleaseImage() {
+  return useMutation({
+    mutationFn: (file: File) => api.uploadReleaseImage(file),
+  });
+}
+
+export function useSendReleaseLetter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ letterId, mode }: { letterId: string; mode: 'test' | 'broadcast' }) =>
+      api.sendReleaseLetter(letterId, mode),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.releaseLetters }),
   });
 }
 

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission } from '../types';
+import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft } from '../types';
 import { submissionsToCsv, downloadCsv } from './csv';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -280,6 +280,83 @@ export const api = {
   async deleteFeedback(id: string): Promise<void> {
     const { error } = await supabase.from('feedback').delete().eq('id', id);
     if (error) throw new Error(error.message);
+  },
+
+  // ─── Release Letters ─────────────────────────────────────────────────────
+  //
+  // Admin writes weekly "what shipped this week" letters in markdown,
+  // then sends a test to themselves before broadcasting to all users.
+  // CRUD here; the actual email send lives in api/admin/send-release-letter.
+
+  async listReleaseLetters(): Promise<ReleaseLetter[]> {
+    const { data, error } = await supabase
+      .from('release_letters')
+      .select('*')
+      .order('week_of', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data as ReleaseLetter[]) || [];
+  },
+
+  async createReleaseLetter(draft: ReleaseLetterDraft): Promise<ReleaseLetter> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error('Must be logged in');
+    const { data, error } = await supabase
+      .from('release_letters')
+      .insert({ ...draft, created_by: authUser.id })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data as ReleaseLetter;
+  },
+
+  async updateReleaseLetter(id: string, patch: Partial<ReleaseLetterDraft>): Promise<void> {
+    const { error } = await supabase
+      .from('release_letters')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async deleteReleaseLetter(id: string): Promise<void> {
+    const { error } = await supabase.from('release_letters').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  /**
+   * Upload an image to the release-images bucket and return its public URL.
+   * Filename is auto-prefixed with a UUID so admin can upload screenshots
+   * with the same name across letters without collision.
+   */
+  async uploadReleaseImage(file: File): Promise<string> {
+    const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '';
+    const path = `${crypto.randomUUID()}${ext}`;
+    const { error } = await supabase.storage
+      .from('release-images')
+      .upload(path, file, { cacheControl: '31536000', upsert: false });
+    if (error) throw new Error(error.message);
+    const { data } = supabase.storage.from('release-images').getPublicUrl(path);
+    return data.publicUrl;
+  },
+
+  /**
+   * Calls the admin-only serverless function to send a release letter.
+   * mode='test' sends only to the current admin's own email; mode='broadcast'
+   * sends to every opted-in non-admin profile.
+   */
+  async sendReleaseLetter(letterId: string, mode: 'test' | 'broadcast'): Promise<{ sent: number; failed: number; errors: any[] }> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Must be logged in');
+    const resp = await fetch('/api/admin/send-release-letter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ letterId, mode }),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(body.error || `HTTP ${resp.status}`);
+    return body;
   },
 
   /**
