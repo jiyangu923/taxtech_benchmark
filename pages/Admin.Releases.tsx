@@ -375,7 +375,7 @@ function formatToday(): string {
 function defaultBodyTemplate(): string {
   return `Hi everyone,
 
-Quick weekly update on what's new in benchmarktax.
+Quick weekly update on what's new at taxbenchmark.ai.
 
 ## What shipped this week
 
