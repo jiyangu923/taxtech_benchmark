@@ -6,6 +6,15 @@ import { usePublicStats } from '../services/queries';
 
 interface HomeProps {
   user: User | null;
+  /**
+   * Triggers the global AuthModal (lives in App.tsx). Passed down so the
+   * homepage CTAs can open the sign-in sheet directly instead of navigating
+   * to a route. Without this, the "Sign in to participate" buttons and the
+   * "View benchmark" link were dead — the protected routes (/survey, /report)
+   * silently bounce back to "/" for unauthenticated users, so clicks did
+   * nothing visible.
+   */
+  onOpenLogin: () => void;
 }
 
 interface PublicStats {
@@ -28,12 +37,12 @@ export function formatRevenue(usd: number): string {
   return `$${usd}`;
 }
 
-const Home: React.FC<HomeProps> = ({ user }) => {
+const Home: React.FC<HomeProps> = ({ user, onOpenLogin }) => {
   const { data: stats = null } = usePublicStats();
 
   return (
     <div className="bg-canvas min-h-screen">
-      <Hero user={user} stats={stats} />
+      <Hero user={user} stats={stats} onOpenLogin={onOpenLogin} />
 
       {/* Feature grid — pulled up via -mt-24 to overlap the hero's indigo deck.
           Creates the same "tray" effect as the original full-bleed hero
@@ -44,22 +53,26 @@ const Home: React.FC<HomeProps> = ({ user }) => {
             { icon: <TrendingUp className="h-6 w-6" />, title: 'Automation Metrics', desc: 'Benchmark your tax calculation, payment, and compliance automation rates against the market.' },
             { icon: <Users className="h-6 w-6" />, title: 'Team Structure', desc: 'Understand how peer organizations structure their tax technology vs. tax business teams.' },
             { icon: <CheckCircle2 className="h-6 w-6" />, title: 'AI Readiness', desc: 'See where the industry stands on GenAI adoption—from exploration to mass production.' },
-          ].map((card) => (
-            <Link
-              key={card.title}
-              to={user ? '/survey' : '/'}
-              className="rounded-2xl bg-white p-8 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group border border-gray-100"
-            >
-              <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-50 text-primary group-hover:bg-indigo-100 transition-colors">
-                {card.icon}
-              </div>
-              <h3 className="font-display text-2xl font-medium text-gray-900 group-hover:text-primary transition-colors">{card.title}</h3>
-              <p className="mt-3 text-base text-gray-600 leading-relaxed">{card.desc}</p>
-              <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary group-hover:gap-2.5 transition-all">
-                {user ? 'Start Survey' : 'Sign in to participate'} <ArrowRight className="h-4 w-4" />
-              </span>
-            </Link>
-          ))}
+          ].map((card) => {
+            const cardClasses = 'rounded-2xl bg-white p-8 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group border border-gray-100 text-left w-full';
+            const cardBody = (
+              <>
+                <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-50 text-primary group-hover:bg-indigo-100 transition-colors">
+                  {card.icon}
+                </div>
+                <h3 className="font-display text-2xl font-medium text-gray-900 group-hover:text-primary transition-colors">{card.title}</h3>
+                <p className="mt-3 text-base text-gray-600 leading-relaxed">{card.desc}</p>
+                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary group-hover:gap-2.5 transition-all">
+                  {user ? 'Start Survey' : 'Sign in to participate'} <ArrowRight className="h-4 w-4" />
+                </span>
+              </>
+            );
+            return user ? (
+              <Link key={card.title} to="/survey" className={cardClasses}>{cardBody}</Link>
+            ) : (
+              <button key={card.title} type="button" onClick={onOpenLogin} className={cardClasses}>{cardBody}</button>
+            );
+          })}
         </div>
       </div>
 
@@ -112,7 +125,7 @@ const TrustCard: React.FC<{ icon: React.ReactNode; iconClass: string; title: str
  *   original full-bleed indigo hero without the heavy full-section color.
  * - Thin indigo "publication spine" along the very top edge.
  */
-const Hero: React.FC<{ user: User | null; stats: PublicStats | null }> = ({ user, stats }) => (
+const Hero: React.FC<{ user: User | null; stats: PublicStats | null; onOpenLogin: () => void }> = ({ user, stats, onOpenLogin }) => (
   <div className="relative">
     <div className="absolute inset-x-0 top-0 h-[3px] bg-primary z-10" />
 
@@ -127,7 +140,7 @@ const Hero: React.FC<{ user: User | null; stats: PublicStats | null }> = ({ user
         <p className="mt-6 text-lg text-gray-700 max-w-2xl leading-relaxed">
           A community-built peer comparison for in-house tax-technology functions. Anonymous data, equal access, no vendor agenda.
         </p>
-        <HeroCTAs user={user} />
+        <HeroCTAs user={user} onOpenLogin={onOpenLogin} />
       </div>
       <div className="lg:col-span-5">
         <div className="bg-white border border-gray-200 rounded-xl p-8 grid grid-cols-2 gap-x-6 gap-y-8 shadow-sm">
@@ -144,22 +157,32 @@ const Hero: React.FC<{ user: User | null; stats: PublicStats | null }> = ({ user
   </div>
 );
 
-const HeroCTAs: React.FC<{ user: User | null }> = ({ user }) => (
-  <div className="mt-10 flex flex-wrap gap-3">
-    {!user ? (
-      <button className="inline-flex items-center gap-2 px-7 py-3.5 bg-primary text-white rounded-md text-base font-semibold hover:bg-indigo-900 transition-colors shadow-sm">
-        Sign in to participate <ArrowRight className="h-4 w-4" />
-      </button>
-    ) : (
-      <Link to="/survey" className="inline-flex items-center gap-2 px-7 py-3.5 bg-primary text-white rounded-md text-base font-semibold hover:bg-indigo-900 transition-colors shadow-sm">
-        Start the survey <ArrowRight className="h-4 w-4" />
-      </Link>
-    )}
-    <Link to="/report" className="inline-flex items-center gap-2 px-7 py-3.5 bg-white border border-gray-300 text-gray-900 rounded-md text-base font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors">
-      View benchmark
-    </Link>
-  </div>
-);
+const HeroCTAs: React.FC<{ user: User | null; onOpenLogin: () => void }> = ({ user, onOpenLogin }) => {
+  const primaryClass = 'inline-flex items-center gap-2 px-7 py-3.5 bg-primary text-white rounded-md text-base font-semibold hover:bg-indigo-900 transition-colors shadow-sm';
+  const secondaryClass = 'inline-flex items-center gap-2 px-7 py-3.5 bg-white border border-gray-300 text-gray-900 rounded-md text-base font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors';
+  return (
+    <div className="mt-10 flex flex-wrap gap-3">
+      {/* Primary CTA: survey for logged-in users; sign-in for guests. */}
+      {user ? (
+        <Link to="/survey" className={primaryClass}>
+          Start the survey <ArrowRight className="h-4 w-4" />
+        </Link>
+      ) : (
+        <button type="button" onClick={onOpenLogin} className={primaryClass}>
+          Sign in to participate <ArrowRight className="h-4 w-4" />
+        </button>
+      )}
+
+      {/* Secondary CTA: report is gated, so guests get the sign-in modal too
+          (instead of bouncing silently to "/" via the protected-route guard). */}
+      {user ? (
+        <Link to="/report" className={secondaryClass}>View benchmark</Link>
+      ) : (
+        <button type="button" onClick={onOpenLogin} className={secondaryClass}>View benchmark</button>
+      )}
+    </div>
+  );
+};
 
 const Stat: React.FC<{ n: string; label: string }> = ({ n, label }) => (
   <div>
