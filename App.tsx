@@ -182,7 +182,7 @@ const App: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-500">
             <span>&copy; {new Date().getFullYear()} taxbenchmark.ai. All rights reserved.</span>
             <div className="flex gap-6">
-              <a href="mailto:jiyangu923@gmail.com" className="hover:text-primary transition-colors">Contact</a>
+              <a href="mailto:hello@taxbenchmark.ai" className="hover:text-primary transition-colors">Contact</a>
               <Link to="/" className="hover:text-primary transition-colors">Home</Link>
             </div>
           </div>
