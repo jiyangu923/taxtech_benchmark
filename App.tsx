@@ -143,7 +143,7 @@ const App: React.FC = () => {
             </div>
           ) : (
           <Routes>
-            <Route path="/" element={<Home user={user} />} />
+            <Route path="/" element={<Home user={user} onOpenLogin={() => setIsAuthModalOpen(true)} />} />
             <Route path="/direct-tax" element={<DirectTax />} />
 
             <Route
