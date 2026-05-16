@@ -418,10 +418,16 @@ const Survey: React.FC = () => {
       {activeSection === 1 && (
         <div className="mb-8 space-y-4">
           <ParticipantCounter variant="banner" />
-          <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-sm text-indigo-700">
-            <span className="font-black">Takes ~10 minutes.</span>{' '}
-            You'll need your approximate FTE headcount, filing volumes, and automation levels.
-            Your progress is saved automatically — you can leave and return at any time.
+          <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-sm text-indigo-700 leading-relaxed">
+            <p>
+              <span className="font-black">Submit your best estimates on this first pass.</span>{' '}
+              You can come back any time to refine your answers — every submission is editable
+              after it lands, so each return visit makes your numbers more precise.
+            </p>
+            <p className="mt-2 text-indigo-600/80">
+              Takes ~10 minutes. You'll need approximate FTE headcount, filing volumes, and
+              automation levels. Your in-progress draft auto-saves so you can pause mid-survey.
+            </p>
           </div>
         </div>
       )}
