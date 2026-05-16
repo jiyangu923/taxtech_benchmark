@@ -27,6 +27,7 @@ const emptyDraft: CommunityMemberDraft = {
   name: '',
   role: '',
   company: '',
+  company_logo_url: '',
   linkedin_url: '',
   photo_url: '',
 };
@@ -77,6 +78,7 @@ const AdminCommunity: React.FC = () => {
       name: draft.name.trim(),
       role: (draft.role || '').trim() || null,
       company: (draft.company || '').trim() || null,
+      company_logo_url: normalizeUrl(draft.company_logo_url),
       linkedin_url: normalizeUrl(draft.linkedin_url),
       photo_url: normalizeUrl(draft.photo_url),
     };
@@ -96,6 +98,7 @@ const AdminCommunity: React.FC = () => {
       name: m.name,
       role: m.role || '',
       company: m.company || '',
+      company_logo_url: m.company_logo_url || '',
       linkedin_url: m.linkedin_url || '',
       photo_url: m.photo_url || '',
     });
@@ -116,6 +119,7 @@ const AdminCommunity: React.FC = () => {
       name: editDraft.name.trim(),
       role: (editDraft.role || '').trim() || null,
       company: (editDraft.company || '').trim() || null,
+      company_logo_url: normalizeUrl(editDraft.company_logo_url),
       linkedin_url: normalizeUrl(editDraft.linkedin_url),
       photo_url: normalizeUrl(editDraft.photo_url),
     };
@@ -250,12 +254,21 @@ const AdminCommunity: React.FC = () => {
               className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
             />
           </Field>
+          <Field label="Company Logo URL">
+            <input
+              type="text"
+              value={draft.company_logo_url || ''}
+              onChange={e => setDraft({ ...draft, company_logo_url: e.target.value })}
+              placeholder="https://www.google.com/s2/favicons?domain=acme.com&sz=128"
+              className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
+            />
+          </Field>
           <Field label="Photo URL">
             <input
               type="text"
               value={draft.photo_url || ''}
               onChange={e => setDraft({ ...draft, photo_url: e.target.value })}
-              placeholder="https://… (Storage upload coming in PR 2)"
+              placeholder="https://… or use Send invite + member uploads"
               className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
             />
           </Field>
@@ -399,6 +412,9 @@ const MemberRow: React.FC<RowProps> = ({
               </Field>
               <Field label="LinkedIn URL">
                 <input className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" value={editDraft.linkedin_url || ''} onChange={e => onEditChange({ ...editDraft, linkedin_url: e.target.value })} />
+              </Field>
+              <Field label="Company Logo URL">
+                <input className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" value={editDraft.company_logo_url || ''} onChange={e => onEditChange({ ...editDraft, company_logo_url: e.target.value })} placeholder="https://www.google.com/s2/favicons?domain=acme.com&sz=128" />
               </Field>
               <Field label="Photo URL">
                 <input className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" value={editDraft.photo_url || ''} onChange={e => onEditChange({ ...editDraft, photo_url: e.target.value })} />

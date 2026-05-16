@@ -175,6 +175,7 @@ export interface CommunityMember {
   name: string;
   role: string | null;
   company: string | null;
+  company_logo_url: string | null;
   linkedin_url: string | null;
   photo_url: string | null;
   status: CommunityMemberStatus;
@@ -193,6 +194,7 @@ export interface CommunityMemberDraft {
   name: string;
   role?: string | null;
   company?: string | null;
+  company_logo_url?: string | null;
   linkedin_url?: string | null;
   photo_url?: string | null;
 }
