@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { processLock } from '@supabase/auth-js';
 import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus } from '../types';
 import { submissionsToCsv, downloadCsv } from './csv';
+import { withTimeout, STALE_SESSION_MESSAGE, AUTH_TIMEOUT_MS } from './authTimeout';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -326,11 +327,21 @@ export const api = {
   },
 
   async createCommunityMember(draft: CommunityMemberDraft): Promise<CommunityMember> {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) throw new Error('Must be logged in');
+    // getSession is purely client-side (no network call), unlike getUser, so
+    // we don't burn a Supabase round-trip on every add. The withTimeout race
+    // is defense in depth: in long-lived admin tabs the processLock can wedge
+    // and stall the call indefinitely — without this, the "Adding..." button
+    // would spin forever with no feedback. The 5s cap surfaces a clear
+    // "refresh the page" message instead.
+    const { data: { session } } = await withTimeout(
+      supabase.auth.getSession(),
+      AUTH_TIMEOUT_MS,
+      STALE_SESSION_MESSAGE,
+    );
+    if (!session?.user) throw new Error('Must be logged in');
     const { data, error } = await supabase
       .from('community_members')
-      .insert({ ...draft, created_by: authUser.id })
+      .insert({ ...draft, created_by: session.user.id })
       .select()
       .single();
     if (error) throw new Error(error.message);
@@ -365,7 +376,13 @@ export const api = {
    * listing; refusing rows with no email is a defensive check.
    */
   async sendCommunityInvite(memberId: string): Promise<{ email: string; expiresAt: string }> {
-    const { data: { session } } = await supabase.auth.getSession();
+    // Same hang-guard as createCommunityMember above. Without this, clicking
+    // "Send invite" on a long-lived admin tab silently spins.
+    const { data: { session } } = await withTimeout(
+      supabase.auth.getSession(),
+      AUTH_TIMEOUT_MS,
+      STALE_SESSION_MESSAGE,
+    );
     if (!session) throw new Error('Must be logged in');
     const resp = await fetch('/api/admin/send-community-invite', {
       method: 'POST',
