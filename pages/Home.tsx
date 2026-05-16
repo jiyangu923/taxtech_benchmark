@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, TrendingUp, Users, Heart, ShieldCheck, Eye } from 'lucide-react';
 import { User } from '../types';
 import { usePublicStats } from '../services/queries';
+import ParticipantCounter from './ParticipantCounter';
 
 interface HomeProps {
   user: User | null;
@@ -131,6 +132,7 @@ const Hero: React.FC<{ user: User | null; stats: PublicStats | null; onOpenLogin
 
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 lg:pt-28 pb-16 lg:pb-20 grid lg:grid-cols-12 gap-12 items-end">
       <div className="lg:col-span-7">
+        <div className="mb-2"><ParticipantCounter variant="eyebrow" /></div>
         <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-amber-acc-2 mb-6">
           Indirect Tax · Benchmark Edition v1
         </p>

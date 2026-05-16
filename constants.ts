@@ -1,5 +1,13 @@
 import { Option, SectionDef } from './types';
 
+/**
+ * Founding-cohort cap. Used by ParticipantCounter on Home + Survey to convey
+ * scarcity ("4 of 100 spots filled"). Soft cap — admin still controls when
+ * the cohort actually closes; this just drives the on-page messaging.
+ * Bump or remove when you launch a second cohort.
+ */
+export const MAX_PARTICIPANTS = 100;
+
 export const SECTIONS: SectionDef[] = [
   { id: 1, title: 'Benchmarking Context', description: 'Survey goals and company profile' },
   { id: 2, title: 'Organizational Profile', description: 'Industry, revenue, and organizational scope' },
