@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import {
   Users, UserPlus, Linkedin, CheckCircle2, Clock, XCircle,
-  Trash2, Edit2, Save, X, AlertCircle, Loader2, RotateCcw, Mail,
+  Trash2, Edit2, Save, X, AlertCircle, Loader2, RotateCcw, Mail, Send,
 } from 'lucide-react';
 import {
   useAllCommunityMembers, useCreateCommunityMember,
   useUpdateCommunityMember, useDeleteCommunityMember,
+  useSendCommunityInvite,
 } from '../services/queries';
 import type { CommunityMember, CommunityMemberDraft, CommunityMemberStatus } from '../types';
 import {
@@ -35,6 +36,7 @@ const AdminCommunity: React.FC = () => {
   const createMutation = useCreateCommunityMember();
   const updateMutation = useUpdateCommunityMember();
   const deleteMutation = useDeleteCommunityMember();
+  const sendInviteMutation = useSendCommunityInvite();
 
   const [filter, setFilter] = useState<CommunityMemberStatus | 'all'>('all');
   const [draft, setDraft] = useState<CommunityMemberDraft>(emptyDraft);
@@ -143,6 +145,13 @@ const AdminCommunity: React.FC = () => {
     });
   };
 
+  const handleSendInvite = (m: CommunityMember) => {
+    sendInviteMutation.mutate(m.id, {
+      onSuccess: () => flash('success', `Invite sent to ${m.email}.`),
+      onError: (err: any) => flash('error', err?.message || 'Could not send invite.'),
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-12 flex items-center justify-center text-gray-500">
@@ -189,7 +198,7 @@ const AdminCommunity: React.FC = () => {
           <div>
             <h3 className="font-display text-lg font-semibold text-gray-900">Add a member</h3>
             <p className="text-xs text-gray-500 mt-0.5 font-medium">
-              New members start as <strong>Pending</strong>. PR 2 will send an email-token confirmation; for now, mark them Confirmed manually after they consent.
+              New members start as <strong>Pending</strong>. Use <strong>Send invite</strong> to email them a confirmation link, or flip the status manually if you've already collected consent another way.
             </p>
           </div>
         </div>
@@ -309,7 +318,9 @@ const AdminCommunity: React.FC = () => {
               onSaveEdit={saveEdit}
               onStatusChange={(action) => handleStatusChange(m, action)}
               onDelete={() => handleDelete(m)}
+              onSendInvite={() => handleSendInvite(m)}
               busy={updateMutation.isPending || deleteMutation.isPending}
+              invitePending={sendInviteMutation.isPending}
             />
           ))}
         </ul>
@@ -335,13 +346,22 @@ interface RowProps {
   onSaveEdit: () => void;
   onStatusChange: (action: CommunityAction) => void;
   onDelete: () => void;
+  onSendInvite: () => void;
   busy: boolean;
+  invitePending: boolean;
 }
 
 const MemberRow: React.FC<RowProps> = ({
   member: m, isEditing, editDraft, onStartEdit, onCancelEdit,
-  onEditChange, onSaveEdit, onStatusChange, onDelete, busy,
+  onEditChange, onSaveEdit, onStatusChange, onDelete, onSendInvite, busy, invitePending,
 }) => {
+  // Invite state derived from the row, not held in component state — the
+  // admin tab refreshes via React Query invalidation after sending.
+  const now = Date.now();
+  const expiresAtMs = m.confirm_token_expires_at ? new Date(m.confirm_token_expires_at).getTime() : null;
+  const inviteSent = !!m.invited_at;
+  const inviteExpired = expiresAtMs !== null && expiresAtMs < now;
+  const inviteActive = inviteSent && !inviteExpired && m.status === 'pending';
   return (
     <li className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
@@ -407,6 +427,12 @@ const MemberRow: React.FC<RowProps> = ({
                   </a>
                 )}
                 <span className="text-gray-400">Added {new Date(m.created_at).toLocaleDateString()}</span>
+                {inviteActive && expiresAtMs !== null && (
+                  <span className="text-amber-acc-2 font-semibold">Invite sent · expires {new Date(expiresAtMs).toLocaleDateString()}</span>
+                )}
+                {inviteSent && inviteExpired && m.status === 'pending' && (
+                  <span className="text-red-600 font-semibold">Invite expired</span>
+                )}
               </div>
             </>
           )}
@@ -429,6 +455,12 @@ const MemberRow: React.FC<RowProps> = ({
             <button onClick={onStartEdit} className="inline-flex items-center gap-2 px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100">
               <Edit2 className="h-4 w-4" /> Edit
             </button>
+            {m.status !== 'confirmed' && (
+              <button onClick={onSendInvite} disabled={invitePending} className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-sm font-semibold text-primary hover:bg-indigo-100 disabled:opacity-60">
+                {invitePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {inviteActive ? 'Resend invite' : inviteSent && inviteExpired ? 'Send new invite' : 'Send invite'}
+              </button>
+            )}
             {m.status !== 'confirmed' && (
               <button onClick={() => onStatusChange('confirm')} disabled={busy} className="inline-flex items-center gap-2 px-3.5 py-2 bg-green-50 border border-green-200 rounded-lg text-sm font-semibold text-green-800 hover:bg-green-100 disabled:opacity-60">
                 <CheckCircle2 className="h-4 w-4" /> Mark confirmed
