@@ -166,3 +166,31 @@ export interface ReleaseLetterDraft {
   week_of: string;
   body_markdown: string;
 }
+
+export type CommunityMemberStatus = 'pending' | 'confirmed' | 'declined';
+
+export interface CommunityMember {
+  id: string;
+  email: string;
+  name: string;
+  role: string | null;
+  company: string | null;
+  linkedin_url: string | null;
+  photo_url: string | null;
+  status: CommunityMemberStatus;
+  confirmed_at: string | null;
+  declined_at: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+/** Payload the admin form sends when creating or editing a member. */
+export interface CommunityMemberDraft {
+  email: string;
+  name: string;
+  role?: string | null;
+  company?: string | null;
+  linkedin_url?: string | null;
+  photo_url?: string | null;
+}

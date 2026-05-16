@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { processLock } from '@supabase/auth-js';
-import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft } from '../types';
+import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus } from '../types';
 import { submissionsToCsv, downloadCsv } from './csv';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -293,6 +293,68 @@ export const api = {
 
   async deleteFeedback(id: string): Promise<void> {
     const { error } = await supabase.from('feedback').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  // ─── Community Members ───────────────────────────────────────────────────
+  //
+  // Public-facing list shown on /community. Public visitors can read confirmed
+  // rows (RLS-enforced); admins can read/write everything.
+  // PR 2 will add token-confirmed self-edit + Supabase Storage photo upload.
+
+  async getPublicCommunityMembers(): Promise<CommunityMember[]> {
+    // Anyone can call this — RLS filters to status='confirmed' for non-admins.
+    // We add the explicit `eq` so admins also get only confirmed rows from
+    // this endpoint (the admin tab uses getAllCommunityMembers).
+    const { data, error } = await supabase
+      .from('community_members')
+      .select('*')
+      .eq('status', 'confirmed')
+      .order('confirmed_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data as CommunityMember[]) || [];
+  },
+
+  async getAllCommunityMembers(): Promise<CommunityMember[]> {
+    // Admin-only view (RLS enforces). Includes pending and declined.
+    const { data, error } = await supabase
+      .from('community_members')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data as CommunityMember[]) || [];
+  },
+
+  async createCommunityMember(draft: CommunityMemberDraft): Promise<CommunityMember> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error('Must be logged in');
+    const { data, error } = await supabase
+      .from('community_members')
+      .insert({ ...draft, created_by: authUser.id })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data as CommunityMember;
+  },
+
+  async updateCommunityMember(
+    id: string,
+    patch: Partial<CommunityMemberDraft> & { status?: CommunityMemberStatus }
+  ): Promise<void> {
+    // When flipping status, stamp the corresponding timestamp so the public
+    // sort by confirmed_at stays meaningful and the audit trail is honest.
+    const stamped: Record<string, any> = { ...patch, updated_at: new Date().toISOString() };
+    if (patch.status === 'confirmed') stamped.confirmed_at = new Date().toISOString();
+    if (patch.status === 'declined')  stamped.declined_at  = new Date().toISOString();
+    const { error } = await supabase
+      .from('community_members')
+      .update(stamped)
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async deleteCommunityMember(id: string): Promise<void> {
+    const { error } = await supabase.from('community_members').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
 
