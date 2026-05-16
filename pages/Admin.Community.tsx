@@ -254,12 +254,12 @@ const AdminCommunity: React.FC = () => {
               className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
             />
           </Field>
-          <Field label="Company Logo URL">
+          <Field label="Company Logo URL (auto-derived on confirm)">
             <input
               type="text"
               value={draft.company_logo_url || ''}
               onChange={e => setDraft({ ...draft, company_logo_url: e.target.value })}
-              placeholder="https://www.google.com/s2/favicons?domain=acme.com&sz=128"
+              placeholder="Leave blank — server derives a favicon from the email or company name"
               className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
             />
           </Field>
@@ -413,8 +413,8 @@ const MemberRow: React.FC<RowProps> = ({
               <Field label="LinkedIn URL">
                 <input className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" value={editDraft.linkedin_url || ''} onChange={e => onEditChange({ ...editDraft, linkedin_url: e.target.value })} />
               </Field>
-              <Field label="Company Logo URL">
-                <input className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" value={editDraft.company_logo_url || ''} onChange={e => onEditChange({ ...editDraft, company_logo_url: e.target.value })} placeholder="https://www.google.com/s2/favicons?domain=acme.com&sz=128" />
+              <Field label="Company Logo URL (auto-derived on confirm)">
+                <input className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" value={editDraft.company_logo_url || ''} onChange={e => onEditChange({ ...editDraft, company_logo_url: e.target.value })} placeholder="Leave blank to use the server-derived favicon" />
               </Field>
               <Field label="Photo URL">
                 <input className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" value={editDraft.photo_url || ''} onChange={e => onEditChange({ ...editDraft, photo_url: e.target.value })} />
