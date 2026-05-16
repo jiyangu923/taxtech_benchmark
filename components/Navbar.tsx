@@ -29,6 +29,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, authReady, onLogout, onOpenLogin 
   const links: NavItem[] = [
     { to: '/', label: 'Indirect Tax', show: true },
     { to: '/direct-tax', label: 'Direct Tax', show: true },
+    { to: '/community', label: 'Community', show: true },
     { to: '/survey', label: 'Submit Data', show: authReady && !!user },
     { to: '/report', label: 'Analytics', show: authReady && !!user },
     { to: '/taxi', label: 'Taxi AI', show: authReady && !!user, ai: true },

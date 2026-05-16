@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { api } from './api';
-import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft } from '../types';
+import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus } from '../types';
 import { Session, ChatMessage } from '../pages/Taxi.helpers';
 
 /**
@@ -21,6 +21,8 @@ export const queryKeys = {
   allProfiles: ['profiles', 'all'] as const,
   feedback: ['feedback'] as const,
   releaseLetters: ['releaseLetters'] as const,
+  publicCommunityMembers: ['communityMembers', 'public'] as const,
+  allCommunityMembers: ['communityMembers', 'all'] as const,
 };
 
 // ─── Reads ───────────────────────────────────────────────────────────────────
@@ -208,6 +210,59 @@ export function useDeleteFeedback() {
   return useMutation({
     mutationFn: (id: string) => api.deleteFeedback(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.feedback }),
+  });
+}
+
+// ─── Community Members ───────────────────────────────────────────────────────
+//
+// Two read hooks: `usePublicCommunityMembers` (confirmed only — drives the
+// /community page) and `useAllCommunityMembers` (admin tab; includes pending
+// and declined). Every mutation invalidates both so the admin and public
+// views stay coherent without manual refetch.
+
+function invalidateCommunityMembers(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: queryKeys.publicCommunityMembers });
+  qc.invalidateQueries({ queryKey: queryKeys.allCommunityMembers });
+}
+
+export function usePublicCommunityMembers(opts?: Omit<UseQueryOptions<CommunityMember[]>, 'queryKey' | 'queryFn'>) {
+  return useQuery<CommunityMember[]>({
+    queryKey: queryKeys.publicCommunityMembers,
+    queryFn: () => api.getPublicCommunityMembers(),
+    ...opts,
+  });
+}
+
+export function useAllCommunityMembers(opts?: Omit<UseQueryOptions<CommunityMember[]>, 'queryKey' | 'queryFn'>) {
+  return useQuery<CommunityMember[]>({
+    queryKey: queryKeys.allCommunityMembers,
+    queryFn: () => api.getAllCommunityMembers(),
+    ...opts,
+  });
+}
+
+export function useCreateCommunityMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (draft: CommunityMemberDraft) => api.createCommunityMember(draft),
+    onSuccess: () => invalidateCommunityMembers(qc),
+  });
+}
+
+export function useUpdateCommunityMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<CommunityMemberDraft> & { status?: CommunityMemberStatus } }) =>
+      api.updateCommunityMember(id, patch),
+    onSuccess: () => invalidateCommunityMembers(qc),
+  });
+}
+
+export function useDeleteCommunityMember() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteCommunityMember(id),
+    onSuccess: () => invalidateCommunityMembers(qc),
   });
 }
 

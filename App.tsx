@@ -12,6 +12,7 @@ import Report from './pages/Report';
 import Taxi from './pages/Taxi';
 import DirectTax from './pages/DirectTax';
 import Profile from './pages/Profile';
+import Community from './pages/Community';
 import { User } from './types';
 import { supabase, api } from './services/api';
 
@@ -47,6 +48,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/survey': 'Submit Data | taxbenchmark.ai',
   '/report': 'Analytics | taxbenchmark.ai',
   '/taxi': 'Ask Taxi | taxbenchmark.ai',
+  '/community': 'Community | taxbenchmark.ai',
   '/admin': 'Control Panel | taxbenchmark.ai',
   '/profile': 'Profile | taxbenchmark.ai',
 };
@@ -145,6 +147,7 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/" element={<Home user={user} onOpenLogin={() => setIsAuthModalOpen(true)} />} />
             <Route path="/direct-tax" element={<DirectTax />} />
+            <Route path="/community" element={<Community />} />
 
             <Route
               path="/survey"
