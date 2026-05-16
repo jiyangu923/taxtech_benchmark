@@ -53,6 +53,21 @@ const Community: React.FC = () => {
   );
 };
 
+/** Small inline company logo. Hides itself on load error so a 404'd
+ *  favicon doesn't leave a broken-image icon on the card. */
+const CompanyLogo: React.FC<{ src: string }> = ({ src }) => {
+  const [failed, setFailed] = React.useState(false);
+  if (failed) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      className="w-4 h-4 rounded-sm object-contain flex-shrink-0"
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
 const MemberCard: React.FC<{ member: CommunityMember }> = ({ member: m }) => {
   return (
     <li className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 p-6 flex flex-col">
@@ -77,7 +92,12 @@ const MemberCard: React.FC<{ member: CommunityMember }> = ({ member: m }) => {
             <p className="mt-1 text-sm text-gray-700 font-medium leading-snug">{m.role}</p>
           )}
           {m.company && (
-            <p className="text-sm text-gray-500 leading-snug truncate">{m.company}</p>
+            <p className="text-sm text-gray-500 leading-snug truncate flex items-center gap-1.5">
+              {m.company_logo_url && (
+                <CompanyLogo src={m.company_logo_url} />
+              )}
+              {m.company}
+            </p>
           )}
         </div>
       </div>
