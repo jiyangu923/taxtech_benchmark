@@ -183,6 +183,8 @@ export interface CommunityMember {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  invited_at?: string | null;
+  confirm_token_expires_at?: string | null;
 }
 
 /** Payload the admin form sends when creating or editing a member. */
@@ -193,4 +195,31 @@ export interface CommunityMemberDraft {
   company?: string | null;
   linkedin_url?: string | null;
   photo_url?: string | null;
+}
+
+/**
+ * Subset of a member that the member themselves can edit on the
+ * public /confirm-member page. The server validates a token before
+ * accepting any of these fields. `name` is required; all others optional.
+ */
+export interface CommunityMemberSelfDraft {
+  name: string;
+  role?: string | null;
+  company?: string | null;
+  linkedin_url?: string | null;
+  photo_url?: string | null;
+}
+
+/**
+ * Returned by /api/community/lookup when the member opens their invite
+ * link. Just enough info to pre-fill the form — no token or other
+ * sensitive fields.
+ */
+export interface CommunityMemberInvitePreview {
+  email: string;
+  name: string;
+  role: string | null;
+  company: string | null;
+  linkedin_url: string | null;
+  photo_url: string | null;
 }

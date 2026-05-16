@@ -266,6 +266,16 @@ export function useDeleteCommunityMember() {
   });
 }
 
+export function useSendCommunityInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (memberId: string) => api.sendCommunityInvite(memberId),
+    // The server stamps invited_at + confirm_token_expires_at, so refresh
+    // the admin list to show "Invite sent · expires …" badges.
+    onSuccess: () => invalidateCommunityMembers(qc),
+  });
+}
+
 // ─── Release Letters ─────────────────────────────────────────────────────────
 
 export function useReleaseLetters(opts?: Omit<UseQueryOptions<ReleaseLetter[]>, 'queryKey' | 'queryFn'>) {

@@ -358,6 +358,28 @@ export const api = {
     if (error) throw new Error(error.message);
   },
 
+  /**
+   * Admin-triggered. Server generates a fresh confirmation token, stores it
+   * on the member row, and sends an email with the /#/confirm-member?token
+   * link. Refusing a confirmed row keeps us from churning a published
+   * listing; refusing rows with no email is a defensive check.
+   */
+  async sendCommunityInvite(memberId: string): Promise<{ email: string; expiresAt: string }> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Must be logged in');
+    const resp = await fetch('/api/admin/send-community-invite', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ memberId }),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(body.error || `HTTP ${resp.status}`);
+    return body;
+  },
+
   // ─── Release Letters ─────────────────────────────────────────────────────
   //
   // Admin writes weekly "what shipped this week" letters in markdown,
