@@ -6,6 +6,7 @@ import { Submission, Option } from '../types';
 import { useMySubmission, useCreateSubmission } from '../services/queries';
 import * as C from '../constants';
 import SURVEY_TOOLTIPS from '../surveyTooltips';
+import ParticipantCounter from './ParticipantCounter';
 
 const DRAFT_KEY = 'taxtech_survey_draft';
 
@@ -413,12 +414,15 @@ const Survey: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto py-12 px-4 bg-gray-50 min-h-screen">
 
-      {/* Intro banner — shown on step 1 only */}
+      {/* Founding-cohort scarcity banner + intro — shown on step 1 only */}
       {activeSection === 1 && (
-        <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-sm text-indigo-700">
-          <span className="font-black">Takes ~10 minutes.</span>{' '}
-          You'll need your approximate FTE headcount, filing volumes, and automation levels.
-          Your progress is saved automatically — you can leave and return at any time.
+        <div className="mb-8 space-y-4">
+          <ParticipantCounter variant="banner" />
+          <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-sm text-indigo-700">
+            <span className="font-black">Takes ~10 minutes.</span>{' '}
+            You'll need your approximate FTE headcount, filing volumes, and automation levels.
+            Your progress is saved automatically — you can leave and return at any time.
+          </div>
         </div>
       )}
 
