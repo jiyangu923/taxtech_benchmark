@@ -69,6 +69,6 @@ export function bannerCopy(count: number, max: number): BannerCopy {
   }
   return {
     title: `Founding cohort — ${count} of ${max} spots filled.`,
-    subtitle: `Limited to ${max} participants. Each submission becomes part of the public benchmark.`,
+    subtitle: `Limited to ${max} participants.`,
   };
 }
