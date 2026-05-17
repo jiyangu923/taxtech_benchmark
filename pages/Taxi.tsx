@@ -12,7 +12,7 @@ import {
   useUpdateChatSession,
   useDeleteChatSession,
 } from '../services/queries';
-import { askBenchmarkAI } from '../services/gemini';
+import { streamTaxi } from '../services/taxi';
 import { User } from '../types';
 import taxiAvatar from '../assets/taxi-avatar-cab.svg';
 import {
@@ -164,7 +164,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     setAiInput('');
     scrollToBottom();
     try {
-      const res = await askBenchmarkAI(query, mySubmission, allSubmissions);
+      const { result: res } = await streamTaxi(query, mySubmission, allSubmissions);
       const newMsg: ChatMessage = { question: query, ...res };
       const isPendingActive = pendingSession?.id === activeSession.id;
       const isFirst = activeSession.messages.length === 0;
