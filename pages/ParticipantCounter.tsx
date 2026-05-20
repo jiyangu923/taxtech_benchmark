@@ -17,7 +17,7 @@ import {
  */
 
 const WAITLIST_MAILTO =
-  'mailto:jiyangu923@gmail.com?subject=taxbenchmark.ai%20waitlist&body=Hi%20J%20%E2%80%94%20please%20add%20me%20to%20the%20waitlist%20for%20the%20next%20cohort.';
+  'mailto:contact@taxbenchmark.ai?subject=taxbenchmark.ai%20waitlist&body=Please%20add%20me%20to%20the%20waitlist%20for%20the%20next%20cohort.';
 
 interface Props {
   variant: 'eyebrow' | 'banner';
