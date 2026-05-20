@@ -32,6 +32,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isLoading) onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen, isLoading, onClose]);
+
   if (!isOpen) return null;
 
   const handleAuthAction = async (e: React.FormEvent) => {
@@ -73,7 +87,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-heading"
+    >
       <div
         className="absolute inset-0 bg-gray-900/40 backdrop-blur-md transition-opacity duration-300"
         onClick={!isLoading ? onClose : undefined}
@@ -83,7 +102,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
         <div className="px-8 py-10">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h2 className="font-display text-2xl font-semibold text-gray-900 tracking-tight">
+              <h2 id="auth-modal-heading" className="font-display text-2xl font-semibold text-gray-900 tracking-tight">
                 {mode === 'login' ? 'Welcome Back' : 'Create Account'}
               </h2>
               <p className="text-sm text-gray-500 mt-1 font-medium">
@@ -91,7 +110,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
               </p>
             </div>
             {!isLoading && (
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-xl transition-all">
+              <button onClick={onClose} aria-label="Close sign-in dialog" className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-xl transition-all">
                 <X className="h-6 w-6" />
               </button>
             )}
@@ -183,6 +202,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
                     />
                     <button
                       type="button" onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      aria-pressed={showPassword}
                       className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
                     >
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
