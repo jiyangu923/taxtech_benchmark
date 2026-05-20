@@ -168,11 +168,9 @@ const Report: React.FC<ReportProps> = ({ user }) => {
           <div className="flex items-center gap-6">
             <img src={taxiAvatar} alt="Taxi" className="w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-lg flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="h-4 w-4 text-indigo-300" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Powered by Gemini</span>
-              </div>
-              <h2 className="font-display text-xl sm:text-2xl font-medium mb-1">Ask Taxi</h2>
+              <h2 className="font-display text-xl sm:text-2xl font-medium mb-1 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-indigo-300" /> Ask Taxi
+              </h2>
               <p className="text-sm text-indigo-100 font-medium">Get a personalized read on any of these reports.</p>
             </div>
             <ArrowRight className="h-5 w-5 text-white opacity-70 group-hover:opacity-100 group-hover:translate-x-1 transition-all flex-shrink-0" />
