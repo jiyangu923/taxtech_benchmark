@@ -148,7 +148,7 @@ const App: React.FC = () => {
           ) : (
           <Routes>
             <Route path="/" element={<Home user={user} onOpenLogin={() => setIsAuthModalOpen(true)} />} />
-            <Route path="/direct-tax" element={<DirectTax />} />
+            <Route path="/direct-tax" element={<DirectTax user={user} onOpenLogin={() => setIsAuthModalOpen(true)} />} />
             <Route path="/community" element={<Community />} />
             <Route path="/confirm-member" element={<ConfirmMember />} />
 

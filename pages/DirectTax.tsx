@@ -1,22 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Hammer, CheckCircle } from 'lucide-react';
+import { Hammer, CheckCircle, LogIn } from 'lucide-react';
 import { api } from '../services/api';
+import { User } from '../types';
 
-const DirectTax: React.FC = () => {
+interface DirectTaxProps {
+  user: User | null;
+  onOpenLogin: () => void;
+}
+
+const DirectTax: React.FC<DirectTaxProps> = ({ user, onOpenLogin }) => {
   const [subscribed, setSubscribed] = useState(() => {
+    if (!user) return false;
     try { return localStorage.getItem('directtax_notify') === 'true'; }
     catch { return false; }
   });
 
-  // Sync with server on mount
   useEffect(() => {
+    if (!user) {
+      setSubscribed(false);
+      return;
+    }
     api.getDirectTaxNotify().then(serverVal => {
-      if (serverVal && !subscribed) {
+      if (serverVal) {
         setSubscribed(true);
         try { localStorage.setItem('directtax_notify', 'true'); } catch {}
       }
     }).catch(() => { /* use localStorage fallback */ });
-  }, []);
+  }, [user]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] bg-gray-50 px-4">
@@ -40,13 +50,24 @@ const DirectTax: React.FC = () => {
             <CheckCircle className="h-5 w-5" />
             You'll be notified when Direct Tax launches
           </div>
-        ) : (
+        ) : user ? (
           <button
             onClick={() => { setSubscribed(true); try { localStorage.setItem('directtax_notify', 'true'); } catch {} api.subscribeDirectTaxNotify().catch(() => {}); }}
             className="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-indigo-900 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
           >
             Notify Me When Ready
           </button>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <button
+              onClick={onOpenLogin}
+              className="inline-flex items-center justify-center gap-2 px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-indigo-900 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            >
+              <LogIn className="h-5 w-5" />
+              Sign in to be notified
+            </button>
+            <p className="text-xs text-gray-500">A free account lets us notify you when Direct Tax launches.</p>
+          </div>
         )}
       </div>
     </div>
