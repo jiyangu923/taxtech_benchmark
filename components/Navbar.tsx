@@ -41,11 +41,8 @@ const Navbar: React.FC<NavbarProps> = ({ user, authReady, onLogout, onOpenLogin 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0 flex items-center gap-2.5 group">
-              <div className="w-8 h-8 border-[1.5px] border-gray-900 rounded-md grid place-items-center font-mono text-[13px] font-semibold text-gray-900 group-hover:border-primary group-hover:text-primary transition-colors">
-                b
-              </div>
-              <span className="font-display text-[19px] font-semibold tracking-tight text-gray-900">
+            <Link to="/" className="flex-shrink-0 flex items-center group">
+              <span className="font-display text-[19px] font-semibold tracking-tight text-gray-900 group-hover:text-primary transition-colors">
                 taxbenchmark<span className="text-amber-acc">.</span>ai
               </span>
             </Link>
