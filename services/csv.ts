@@ -54,11 +54,12 @@ export function submissionsToCsv(rows: Submission[]): string {
 }
 
 /**
- * Triggers a browser download of the given CSV string. Returns the filename
- * for caller-side messaging.
+ * Triggers a browser download of a Blob. The anchor MUST be appended to the
+ * DOM before clicking \u2014 several browsers silently ignore a detached
+ * `<a>.click()`, which makes a download appear to "do nothing". Shared by the
+ * CSV export and the admin Export Snapshot (JSON) so neither can regress.
  */
-export function downloadCsv(csv: string, filename: string): void {
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -67,4 +68,13 @@ export function downloadCsv(csv: string, filename: string): void {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Triggers a browser download of the given CSV string. Returns the filename
+ * for caller-side messaging.
+ */
+export function downloadCsv(csv: string, filename: string): void {
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  downloadBlob(blob, filename);
 }

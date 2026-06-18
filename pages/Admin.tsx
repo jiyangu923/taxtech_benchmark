@@ -145,8 +145,14 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
   };
 
   const handleBackup = async () => {
-    await api.exportDatabase();
-    setSyncMessage({ type: 'success', text: 'Full database backup downloaded.' });
+    try {
+      await api.exportDatabase();
+      setSyncMessage({ type: 'success', text: 'Full database backup downloaded.' });
+    } catch (err: any) {
+      // Previously unhandled — any failure (RLS, fetch) made the button look
+      // like a no-op. Surface it as a red toast instead.
+      setSyncMessage({ type: 'error', text: err?.message || 'Backup failed.' });
+    }
     setTimeout(() => setSyncMessage(null), 3000);
   };
 

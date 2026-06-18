@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { processLock } from '@supabase/auth-js';
 import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus } from '../types';
-import { submissionsToCsv, downloadCsv } from './csv';
+import { submissionsToCsv, downloadCsv, downloadBlob } from './csv';
 import { withTimeout, STALE_SESSION_MESSAGE, AUTH_TIMEOUT_MS } from './authTimeout';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -691,11 +691,9 @@ export const api = {
       [JSON.stringify({ submissions, settings: { webhookUrl, adminEmails } }, null, 2)],
       { type: 'application/json' }
     );
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'benchmark_full_db.json';
-    link.click();
+    // Use the shared downloader: a detached <a>.click() (the previous code)
+    // is silently ignored by several browsers, so Export Snapshot did nothing.
+    downloadBlob(blob, 'benchmark_full_db.json');
   },
 
   async importDatabase(file: File): Promise<boolean> {
