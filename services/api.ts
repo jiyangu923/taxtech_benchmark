@@ -159,19 +159,17 @@ export const api = {
       .single();
     if (error) throw new Error(error.message);
 
-    // Archive every OTHER current row for this user (i.e. the prior
-    // submission). If this update fails the new row is already saved as
-    // current, so we never lose data — at worst there are two current rows
-    // briefly, which getMySubmission tolerates (latest wins) and the next
-    // submit cleans up.
+    // Archive the user's PRIOR current submissions via a SECURITY DEFINER
+    // RPC. A normal user has NO RLS policy to UPDATE their own submission rows
+    // (only admins can), so a direct client update silently affects 0 rows and
+    // leaves a duplicate is_current row — two records per user. The RPC flips
+    // is_current for the caller's own rows only and never touches status, so it
+    // can't be used to self-approve. We keep the row we just inserted.
     const newId = (sub as Submission).id;
-    const { error: archiveErr } = await supabase
-      .from('submissions')
-      .update({ is_current: false })
-      .eq('userId', profile.id)
-      .eq('is_current', true)
-      .neq('id', newId);
+    const { error: archiveErr } = await supabase.rpc('archive_my_submissions_except', { keep_id: newId });
     if (archiveErr) {
+      // Don't fail the submission — the new row is saved. Until the RPC
+      // migration is applied this degrades to the old (duplicating) behavior.
       console.warn('createSubmission: prior submission not archived:', archiveErr.message);
     }
 

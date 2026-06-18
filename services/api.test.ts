@@ -239,10 +239,9 @@ describe('createSubmission', () => {
 
     const result = await api.createSubmission({ revenueRange: '100m_500m' } as any);
 
-    // History is preserved via update(is_current:false) instead of delete(),
-    // and the archive excludes the just-inserted row (neq on its id).
-    expect(submissions.update).toHaveBeenCalledWith({ is_current: false });
-    expect(submissions.neq).toHaveBeenCalledWith('id', 's1');
+    // Prior rows are archived via the SECURITY DEFINER RPC (a normal user
+    // can't UPDATE submissions under RLS), keeping the just-inserted row.
+    expect(mockRpc).toHaveBeenCalledWith('archive_my_submissions_except', { keep_id: 's1' });
     expect(submissions.delete).not.toHaveBeenCalled();
     expect(submissions.insert).toHaveBeenCalled();
     expect(result.status).toBe('pending');
@@ -290,8 +289,8 @@ describe('createSubmission', () => {
     settings.maybeSingle.mockResolvedValueOnce({ data: { value: '1' }, error: null });
     submissions.single.mockResolvedValueOnce({ data: null, error: { message: 'Insert failed' } });
     await expect(api.createSubmission({} as any)).rejects.toThrow('Insert failed');
-    // No data loss: the prior submission is never archived when the insert fails.
-    expect(submissions.update).not.toHaveBeenCalled();
+    // No data loss: the archive RPC never runs when the insert fails.
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 });
 
