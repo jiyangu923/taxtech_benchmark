@@ -321,6 +321,19 @@ const Survey: React.FC = () => {
     </div>
   );
 
+  const renderTextArea = (label: string, field: keyof Submission, placeholder = '') => (
+    <div className="mb-4" key={field}>
+      <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">{label}<Tooltip field={field} /></label>
+      <textarea
+        rows={3}
+        placeholder={placeholder}
+        className="w-full rounded-xl border-gray-200 p-3 border font-medium text-sm focus:ring-primary focus:border-primary outline-none resize-y"
+        value={(formData[field] as any) || ''}
+        onChange={(e) => handleChange(field, e.target.value)}
+      />
+    </div>
+  );
+
   const renderSelect = (label: string, field: keyof Submission, options: Option[], required = false) => (
     <div className="mb-4" key={field}>
       <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
@@ -571,6 +584,7 @@ const Survey: React.FC = () => {
             {renderSelect("E-Invoicing & Digital Reporting Automation", "eInvoicingAutomationRange", C.OPTS_AUTOMATION)}
             {renderSelect("Withholding Tax Automation", "withholdingTaxAutomationRange", C.OPTS_AUTOMATION)}
             {renderSelect("Customs & Duties Automation", "customsDutiesAutomationRange", C.OPTS_AUTOMATION)}
+            {renderSelect("Compliance Automation Coverage", "complianceAutomationCoverageRange", C.OPTS_AUTOMATION)}
             {renderRadio("Regulatory Response", "regulatoryChangeResponseTime", C.OPTS_REGULATORY_RESPONSE)}
           </div>
         )}
@@ -611,6 +625,7 @@ const Survey: React.FC = () => {
               </button>
             </div>
             {formData.aiAdopted && renderSelect("Maturity Phase", "genAIAdoptionStage", C.OPTS_GENAI_STAGE)}
+            {formData.aiAdopted && renderTextArea("AI Use Cases", "aiUseCases", "e.g. tax research, document extraction, anomaly detection (comma-separated)")}
           </div>
         )}
       </div>

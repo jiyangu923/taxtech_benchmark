@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import { supabase } from './services/api';
+import { isPasswordSetupUrl } from './services/authFlow';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -17,6 +18,15 @@ if (!rootElement) {
   .forEach(k => { try { localStorage.removeItem(k); } catch {} });
 
 async function bootstrap() {
+  // 0. Detect invite / password-recovery links BEFORE the code exchange below
+  //    wipes the query string. The auth `type` may live in the query or the
+  //    hash, so we check the whole URL. App reads this flag to show
+  //    SetPasswordModal. (PKCE recovery also fires a PASSWORD_RECOVERY auth
+  //    event, which App handles as a second, independent signal.)
+  if (isPasswordSetupUrl(window.location.href)) {
+    (window as any).__NEEDS_PASSWORD_SETUP__ = true;
+  }
+
   // 1. Exchange PKCE code if returning from OAuth redirect
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
