@@ -26,50 +26,66 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 const INITIAL_ADMINS = ['admin@taxbenchmark.com', 'jiyangu923@gmail.com'];
 
+// Fetch the caller's profile row, recreating it from auth metadata if it's
+// missing. Normally the profile is created by the `handle_new_user` DB trigger
+// at signup; this self-heals the case where that trigger didn't run or the row
+// was deleted, so neither getCurrentUser nor login can dead-end a freshly
+// confirmed user with a misleading "Account not found".
+async function fetchOrCreateProfile(
+  authUser: { id: string; email?: string | null; user_metadata?: Record<string, any> | null }
+): Promise<User | null> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', authUser.id)
+    .single();
+  if (profile) return profile as User;
+
+  // Use hard-coded initial admins for the role check here to avoid reading
+  // the settings table (which requires admin RLS) in a non-admin context.
+  const email = (authUser.email ?? '').toLowerCase();
+  const role = INITIAL_ADMINS.map(e => e.toLowerCase()).includes(email) ? 'admin' : 'user';
+  const name =
+    authUser.user_metadata?.full_name ||
+    authUser.user_metadata?.name ||
+    email.split('@')[0];
+
+  const { data: created } = await supabase
+    .from('profiles')
+    .insert({ id: authUser.id, email, name, role })
+    .select()
+    .single();
+
+  return (created as User) || null;
+}
+
 export const api = {
   // ─── Auth ────────────────────────────────────────────────────────────────
 
   async getCurrentUser(): Promise<User | null> {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) return null;
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', authUser.id)
-      .single();
-
-    if (profile) return profile as User;
-
-    // Profile row was deleted but auth user still exists — recreate it.
-    // Use hard-coded initial admins for role check here to avoid reading
-    // the settings table (which requires admin RLS) in a non-admin context.
-    const email = (authUser.email ?? '').toLowerCase();
-    const role = INITIAL_ADMINS.map(e => e.toLowerCase()).includes(email) ? 'admin' : 'user';
-    const name =
-      authUser.user_metadata?.full_name ||
-      authUser.user_metadata?.name ||
-      email.split('@')[0];
-
-    const { data: created } = await supabase
-      .from('profiles')
-      .insert({ id: authUser.id, email, name, role })
-      .select()
-      .single();
-
-    return (created as User) || null;
+    return fetchOrCreateProfile(authUser);
   },
 
   async register(name: string, email: string, password: string): Promise<void> {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options: {
+        data: { full_name: name },
+        // Send the confirmation link back to this origin's PKCE handler
+        // (index.tsx exchanges the ?code= from the query string). Mirrors the
+        // Google OAuth redirectTo so activation doesn't depend solely on the
+        // Supabase dashboard Site URL being correct.
+        emailRedirectTo: window.location.origin + '/',
+      },
     });
     if (error) throw new Error(error.message);
     if (!data.user) throw new Error('Registration failed.');
-    // Profile is created by ensureProfile() after the user confirms their email
-    // and onAuthStateChange fires with a valid session.
+    // The profile row is created by the handle_new_user DB trigger on signup,
+    // and self-healed by fetchOrCreateProfile() on first authenticated load if
+    // the trigger ever misses.
   },
 
   async login(email: string, password: string): Promise<User> {
@@ -77,13 +93,11 @@ export const api = {
     if (error) throw new Error(error.message);
     if (!data.user) throw new Error('Login failed.');
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
+    // Self-heal a missing profile (same as getCurrentUser) so a freshly
+    // confirmed user is never dead-ended with "Account not found".
+    const profile = await fetchOrCreateProfile(data.user);
     if (!profile) throw new Error('Account not found. Please register first or confirm your email.');
-    return profile as User;
+    return profile;
   },
 
   async loginWithGoogle(): Promise<void> {
@@ -121,20 +135,15 @@ export const api = {
       .single();
     if (!profile) throw new Error('Profile not found');
 
-    // Soft-archive any prior current submission so historical data is
-    // preserved for trend analysis. We don't delete — we flip is_current
-    // so the new row becomes the active one and the old one survives in
-    // the table for time-series queries.
-    await supabase
-      .from('submissions')
-      .update({ is_current: false })
-      .eq('userId', profile.id)
-      .eq('is_current', true);
-
     // Tag the new submission with the current survey version so we can
     // detect outdated submissions later when admin bumps the version.
     const surveyVersion = await api.getCurrentSurveyVersion();
 
+    // Insert the new submission FIRST, then archive the prior one. Doing it in
+    // this order means a failed insert never touches the existing row — the
+    // user's previous (possibly approved) submission is preserved rather than
+    // orphaned. We soft-archive (flip is_current) instead of deleting so
+    // historical rows survive for trend analysis.
     const { data: sub, error } = await supabase
       .from('submissions')
       .insert({
@@ -149,6 +158,23 @@ export const api = {
       .select()
       .single();
     if (error) throw new Error(error.message);
+
+    // Archive every OTHER current row for this user (i.e. the prior
+    // submission). If this update fails the new row is already saved as
+    // current, so we never lose data — at worst there are two current rows
+    // briefly, which getMySubmission tolerates (latest wins) and the next
+    // submit cleans up.
+    const newId = (sub as Submission).id;
+    const { error: archiveErr } = await supabase
+      .from('submissions')
+      .update({ is_current: false })
+      .eq('userId', profile.id)
+      .eq('is_current', true)
+      .neq('id', newId);
+    if (archiveErr) {
+      console.warn('createSubmission: prior submission not archived:', archiveErr.message);
+    }
+
     return sub as Submission;
   },
 
@@ -183,14 +209,18 @@ export const api = {
   async getMySubmission(): Promise<Submission | null> {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) return null;
+    // Order newest-first and take one so we tolerate the rare case of more
+    // than one is_current row (e.g. if a prior archive update failed): the
+    // latest submission wins, and the next submit self-heals the duplicate.
     const { data, error } = await supabase
       .from('submissions')
       .select('*')
       .eq('userId', authUser.id)
       .eq('is_current', true)
-      .maybeSingle();
+      .order('submittedAt', { ascending: false })
+      .limit(1);
     if (error) throw new Error(error.message);
-    return (data as Submission) || null;
+    return ((data as Submission[])?.[0]) ?? null;
   },
 
   // ─── Survey versioning + reminder candidates ─────────────────────────────
