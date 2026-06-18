@@ -31,7 +31,7 @@ const { profiles, submissions, settings, mockFrom, mockAuth, mockRpc } = vi.hois
       // Called in beforeEach to flush queue + re-wire chain methods.
       _reset() {
         resolveQueue.length = 0;
-        for (const m of ['select', 'insert', 'update', 'delete', 'eq', 'not', 'upsert']) {
+        for (const m of ['select', 'insert', 'update', 'delete', 'eq', 'not', 'neq', 'order', 'limit', 'upsert']) {
           t[m].mockReset();
           t[m].mockReturnValue(t);
         }
@@ -40,7 +40,7 @@ const { profiles, submissions, settings, mockFrom, mockAuth, mockRpc } = vi.hois
       },
     };
 
-    for (const m of ['select', 'insert', 'update', 'delete', 'eq', 'not', 'upsert']) {
+    for (const m of ['select', 'insert', 'update', 'delete', 'eq', 'not', 'neq', 'order', 'limit', 'upsert']) {
       t[m] = vi.fn(() => t);
     }
     t.single = vi.fn();
@@ -138,7 +138,7 @@ describe('register', () => {
     expect(mockAuth.signUp).toHaveBeenCalledWith({
       email: 'alice@test.com',
       password: 'password123',
-      options: { data: { full_name: 'Alice' } },
+      options: { data: { full_name: 'Alice' }, emailRedirectTo: window.location.origin + '/' },
     });
   });
 
@@ -177,11 +177,22 @@ describe('login', () => {
       .rejects.toThrow('Invalid login credentials');
   });
 
-  it('throws when auth succeeds but the profile row is missing', async () => {
+  it('self-heals a missing profile by recreating it', async () => {
+    const created = { id: 'u1', name: 'newuser', email: 'new@test.com', role: 'user' };
     mockAuth.signInWithPassword.mockResolvedValueOnce({
-      data: { user: { id: 'u1' } }, error: null,
+      data: { user: { id: 'u1', email: 'new@test.com', user_metadata: {} } }, error: null,
     });
-    profiles.single.mockResolvedValueOnce({ data: null });
+    profiles.single.mockResolvedValueOnce({ data: null });     // initial lookup misses
+    profiles.single.mockResolvedValueOnce({ data: created });  // insert().select().single()
+    expect(await api.login('new@test.com', 'pass')).toEqual(created);
+  });
+
+  it('throws when the profile is missing and recreation also fails', async () => {
+    mockAuth.signInWithPassword.mockResolvedValueOnce({
+      data: { user: { id: 'u1', email: 'new@test.com', user_metadata: {} } }, error: null,
+    });
+    profiles.single.mockResolvedValueOnce({ data: null });   // initial lookup misses
+    profiles.single.mockResolvedValueOnce({ data: null });   // recreate insert also returns nothing
     await expect(api.login('unregistered@test.com', 'pass'))
       .rejects.toThrow('Account not found. Please register first or confirm your email.');
   });
@@ -228,8 +239,10 @@ describe('createSubmission', () => {
 
     const result = await api.createSubmission({ revenueRange: '100m_500m' } as any);
 
-    // History is preserved via update(is_current:false) instead of delete()
+    // History is preserved via update(is_current:false) instead of delete(),
+    // and the archive excludes the just-inserted row (neq on its id).
     expect(submissions.update).toHaveBeenCalledWith({ is_current: false });
+    expect(submissions.neq).toHaveBeenCalledWith('id', 's1');
     expect(submissions.delete).not.toHaveBeenCalled();
     expect(submissions.insert).toHaveBeenCalled();
     expect(result.status).toBe('pending');
@@ -277,6 +290,8 @@ describe('createSubmission', () => {
     settings.maybeSingle.mockResolvedValueOnce({ data: { value: '1' }, error: null });
     submissions.single.mockResolvedValueOnce({ data: null, error: { message: 'Insert failed' } });
     await expect(api.createSubmission({} as any)).rejects.toThrow('Insert failed');
+    // No data loss: the prior submission is never archived when the insert fails.
+    expect(submissions.update).not.toHaveBeenCalled();
   });
 });
 
@@ -312,20 +327,20 @@ describe('getMySubmission', () => {
   it('returns the submission row scoped to the current user', async () => {
     const row = { id: 's1', userId: 'u1', companyProfile: ['public'] };
     mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
-    submissions.maybeSingle.mockResolvedValueOnce({ data: row, error: null });
+    submissions.mockResolveWith({ data: [row], error: null });
     expect(await api.getMySubmission()).toEqual(row);
     expect(submissions.eq).toHaveBeenCalledWith('userId', 'u1');
   });
 
   it('returns null when the user has no submission yet', async () => {
     mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
-    submissions.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    submissions.mockResolveWith({ data: [], error: null });
     expect(await api.getMySubmission()).toBeNull();
   });
 
   it('throws on a database error', async () => {
     mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
-    submissions.maybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'RLS denied' } });
+    submissions.mockResolveWith({ data: null, error: { message: 'RLS denied' } });
     await expect(api.getMySubmission()).rejects.toThrow('RLS denied');
   });
 });
