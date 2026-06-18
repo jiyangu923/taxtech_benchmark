@@ -28,7 +28,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, authReady, onLogout, onOpenLogin 
   type NavItem = { to: string; label: string; show: boolean; admin?: boolean; ai?: boolean };
   const links: NavItem[] = [
     { to: '/', label: 'Indirect Tax', show: true },
-    { to: '/direct-tax', label: 'Direct Tax', show: true },
+    { to: '/direct-tax', label: 'Direct Tax', show: false }, // hidden from nav; route still reachable at /direct-tax
     { to: '/community', label: 'Community', show: true },
     { to: '/survey', label: 'Submit Data', show: authReady && !!user },
     { to: '/report', label: 'Analytics', show: authReady && !!user },
