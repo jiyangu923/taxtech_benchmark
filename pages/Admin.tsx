@@ -3,7 +3,7 @@ import { api } from '../services/api';
 import { Submission, User } from '../types';
 import {
     Check, X, Eye, XCircle, RefreshCw, Trash2,
-    FileSpreadsheet, CloudSync, Save,
+    FileSpreadsheet,
     CheckCircle2, Users, Plus, Mail, ShieldCheck,
     UserPlus, Database, Download, Upload, AlertTriangle,
     Activity, HardDrive, Info, Settings, Search, Filter, RotateCcw,
@@ -16,15 +16,15 @@ import AdminCommunity from './Admin.Community';
 import { useNavigate } from 'react-router-dom';
 import * as C from '../constants';
 import {
-  useSubmissions, useWebhookUrl, useAdminEmails,
-  useSetWebhookUrl, useAddAdminEmail, useRemoveAdminEmail,
+  useSubmissions, useAdminEmails,
+  useAddAdminEmail, useRemoveAdminEmail,
   useUpdateSubmissionStatus, useDeleteSubmission,
 } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../services/queries';
 
 const Admin: React.FC<{ user: User | null }> = ({ user }) => {
-  const [activeTab, setActiveTab] = useState<'submissions' | 'reminders' | 'feedback' | 'releases' | 'community' | 'sync' | 'admins' | 'system'>('submissions');
+  const [activeTab, setActiveTab] = useState<'submissions' | 'reminders' | 'feedback' | 'releases' | 'community' | 'admins' | 'system'>('submissions');
   const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
   const qc = useQueryClient();
 
@@ -36,32 +36,14 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
   // Server-cached data via React Query — survives navigation, auto-revalidates
   // on focus, and refetches on mutation invalidation.
   const { data: submissions = [] } = useSubmissions({ enabled: !!user && user.role === 'admin' });
-  const { data: serverWebhookUrl = '' } = useWebhookUrl();
   const { data: adminEmails = [] } = useAdminEmails();
 
-  // Local-only UI state for the webhook input — we mirror the server value
-  // into a local string so the user can edit without writing on every keystroke.
-  // The "unsaved" indicator is derived from comparing the two.
-  const [webhookUrl, setWebhookUrl] = useState('');
-  const [webhookHydrated, setWebhookHydrated] = useState(false);
-  useEffect(() => {
-    // Only hydrate the local input from the server value once on first arrival.
-    // After that, the user owns the input — don't clobber their edits.
-    if (!webhookHydrated && serverWebhookUrl !== '') {
-      setWebhookUrl(serverWebhookUrl);
-      setWebhookHydrated(true);
-    }
-  }, [serverWebhookUrl, webhookHydrated]);
-  const webhookDirty = webhookUrl !== serverWebhookUrl;
-
   const [newAdminEmail, setNewAdminEmail] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error' | 'warning', text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   // Mutations
-  const setWebhookMutation = useSetWebhookUrl();
   const addAdminMutation = useAddAdminEmail();
   const removeAdminMutation = useRemoveAdminEmail();
   const updateStatusMutation = useUpdateSubmissionStatus();
@@ -70,7 +52,6 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
   const loadAll = () => {
     // Force-refresh button — invalidates all admin-relevant queries.
     qc.invalidateQueries({ queryKey: queryKeys.submissions });
-    qc.invalidateQueries({ queryKey: queryKeys.webhookUrl });
     qc.invalidateQueries({ queryKey: queryKeys.adminEmails });
   };
 
@@ -185,33 +166,6 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
     e.target.value = '';
   };
 
-  const handleSyncToSheets = async () => {
-    if (!webhookUrl) return;
-    setIsSyncing(true);
-    try {
-      await fetch(webhookUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ data: submissions }) });
-      setSyncMessage({ type: 'success', text: 'Sync triggered!' });
-    } catch (error) {
-      setSyncMessage({ type: 'error', text: 'Sync failed.' });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const saveWebhook = async () => {
-    try {
-      await setWebhookMutation.mutateAsync(webhookUrl);
-      setSyncMessage({ type: 'success', text: 'Integration settings saved.' });
-    } catch (err: any) {
-      // Previously this threw silently — Save click looked like a no-op when
-      // upsert failed (RLS, network). The mutation hook also invalidates
-      // the webhookUrl cache on success so the next read reflects the new
-      // value without manual refetch.
-      setSyncMessage({ type: 'error', text: err?.message || 'Failed to save webhook URL.' });
-    }
-    setTimeout(() => setSyncMessage(null), 4000);
-  };
-
   const getLabel = (options: { value: string; label: string }[], val?: string) => {
     if (!val) return 'Not provided';
     return options.find(o => o.value === val)?.label || val;
@@ -251,7 +205,6 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                 <button onClick={() => setActiveTab('feedback')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'feedback' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><MessageSquare className="h-4 w-4" /> Feedback</button>
                 <button onClick={() => setActiveTab('releases')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'releases' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Mail className="h-4 w-4" /> Releases</button>
                 <button onClick={() => setActiveTab('community')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'community' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Heart className="h-4 w-4" /> Community</button>
-                <button onClick={() => setActiveTab('sync')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'sync' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><CloudSync className="h-4 w-4" /> Integration</button>
                 <button onClick={() => setActiveTab('admins')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'admins' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Users className="h-4 w-4" /> Team Access</button>
                 <button onClick={() => setActiveTab('system')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'system' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Database className="h-4 w-4" /> System & Data</button>
             </nav>
@@ -392,51 +345,6 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
           </div>
         )}
 
-        {activeTab === 'sync' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 animate-fadeIn">
-                <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="bg-indigo-50 p-2 rounded-lg"><CloudSync className="h-6 w-6 text-primary"/></div>
-                        <h3 className="text-lg font-bold text-gray-900">Google Sheets Integration</h3>
-                    </div>
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                              <span>Webhook Endpoint URL</span>
-                              {webhookDirty && (
-                                <span className="text-amber-acc-2 normal-case tracking-normal text-[11px] font-semibold">· unsaved</span>
-                              )}
-                            </label>
-                            <div className="flex gap-3">
-                                <input type="text" className="flex-1 rounded-xl border-gray-200 shadow-sm p-3 border text-sm focus:ring-primary focus:border-primary outline-none" placeholder="https://script.google.com/macros/s/..." value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} />
-                                <button onClick={saveWebhook} disabled={!webhookDirty || setWebhookMutation.isPending} className={`inline-flex items-center px-6 py-3 border rounded-xl text-sm font-bold shadow-sm transition-all ${(!webhookDirty || setWebhookMutation.isPending) ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed' : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'}`}>
-                                  <Save className="h-4 w-4 mr-2" /> {setWebhookMutation.isPending ? 'Saving…' : 'Save'}
-                                </button>
-                            </div>
-                            <p className="mt-3 text-xs text-gray-400 leading-relaxed">
-                                Deploy an App Script Webhook to receive benchmark data in real-time. Use the <code>doPost(e)</code> trigger in your spreadsheet script.
-                            </p>
-                        </div>
-                        <div className="pt-4 border-t border-gray-50">
-                             <button onClick={handleSyncToSheets} disabled={isSyncing || !webhookUrl} className={`w-full flex justify-center items-center gap-3 py-4 rounded-xl text-white font-bold text-sm shadow-xl transition-all active:scale-[0.98] ${isSyncing || !webhookUrl ? 'bg-gray-200 cursor-not-allowed' : 'bg-primary hover:bg-indigo-900 shadow-primary/20'}`}>
-                                {isSyncing ? <RefreshCw className="h-5 w-5 animate-spin" /> : <CloudSync className="h-5 w-5" />} {isSyncing ? 'Broadcasting Data...' : 'Manual Data Broadcast'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 flex flex-col justify-between">
-                    <div>
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="bg-green-50 p-2 rounded-lg"><FileSpreadsheet className="h-6 w-6 text-green-600"/></div>
-                            <h3 className="text-lg font-bold text-gray-900">Flat File Export</h3>
-                        </div>
-                        <p className="text-sm text-gray-500 mb-8 leading-relaxed">Download all approved submissions in a standard CSV format for manual analysis in Excel or BI tools.</p>
-                    </div>
-                    <button onClick={handleCsvExport} className="w-full py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 active:scale-[0.98]">Download CSV Export</button>
-                </div>
-            </div>
-        )}
-
         {activeTab === 'admins' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 animate-fadeIn">
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
@@ -500,6 +408,16 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                     </div>
                     
                     <div className="grid grid-cols-1 gap-6">
+                        <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                             <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
+                                <FileSpreadsheet className="h-4 w-4 text-green-600" /> CSV Export
+                             </h4>
+                             <p className="text-xs text-gray-500 mb-4 leading-relaxed">Download all approved submissions as a CSV for analysis in Excel or BI tools.</p>
+                             <button onClick={handleCsvExport} className="w-full py-3 bg-white border border-green-200 text-green-700 rounded-xl font-bold text-sm hover:bg-green-50 transition-all flex items-center justify-center gap-2">
+                                Download CSV
+                             </button>
+                        </div>
+
                         <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
                              <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
                                 <Download className="h-4 w-4 text-indigo-600" /> System Backup
