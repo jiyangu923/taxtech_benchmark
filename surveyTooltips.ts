@@ -84,6 +84,8 @@ const SURVEY_TOOLTIPS: Record<string, string> = {
     'Often overlooked, withholding tax automation prevents costly over- or under-withholding across jurisdictions.',
   customsDutiesAutomationRange:
     'Customs automation is an emerging area — few teams have mature solutions, making this a potential differentiator.',
+  complianceAutomationCoverageRange:
+    'The share of your overall compliance reporting that runs without manual intervention — the headline automation number peers compare against.',
   regulatoryChangeResponseTime:
     'How fast you can implement a regulatory change is a key indicator of organizational agility.',
 
@@ -118,6 +120,8 @@ const SURVEY_TOOLTIPS: Record<string, string> = {
     'AI adoption in tax is accelerating — even a simple yes/no helps track industry momentum.',
   genAIAdoptionStage:
     'Knowing whether peers are experimenting or in production helps calibrate your own AI roadmap.',
+  aiUseCases:
+    'List the specific tax workflows where you apply AI (e.g. tax research, document extraction, anomaly detection) — comma-separated. Powers the peer "top use cases" view.',
 };
 
 export default SURVEY_TOOLTIPS;

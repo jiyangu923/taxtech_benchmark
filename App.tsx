@@ -16,6 +16,7 @@ import Community from './pages/Community';
 import ConfirmMember from './pages/ConfirmMember';
 import { User } from './types';
 import { supabase, api } from './services/api';
+import { isPasswordSetupUrl } from './services/authFlow';
 
 /**
  * One QueryClient for the whole app — created once at module load (not per
@@ -70,9 +71,11 @@ const App: React.FC = () => {
   const [needsPasswordSet, setNeedsPasswordSet] = useState(false);
 
   useEffect(() => {
-    // Detect invite flow: Supabase puts #access_token=...&type=invite in the URL hash
-    const hash = window.location.hash;
-    if (hash.includes('type=invite')) {
+    // Invite / password-recovery links require the user to set a password.
+    // index.tsx captures this from the URL (query or hash) before the PKCE code
+    // exchange wipes it; we re-check the current URL here as a fallback, and
+    // the PASSWORD_RECOVERY auth event below is a third, independent signal.
+    if ((window as any).__NEEDS_PASSWORD_SETUP__ || isPasswordSetupUrl(window.location.href)) {
       setNeedsPasswordSet(true);
     }
 
@@ -91,6 +94,9 @@ const App: React.FC = () => {
     // Listen for sign-in / sign-out (including OAuth redirects back from Google)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'INITIAL_SESSION') return; // already handled above
+      // Supabase emits PASSWORD_RECOVERY when a recovery link is opened (works
+      // under PKCE) — prompt the user to set a new password.
+      if (event === 'PASSWORD_RECOVERY') setNeedsPasswordSet(true);
       if (session?.user) {
         const profile = await api.getCurrentUser();
         if (profile) setUser(profile);
@@ -137,7 +143,7 @@ const App: React.FC = () => {
         />
 
         {needsPasswordSet && (
-          <SetPasswordModal onComplete={() => setNeedsPasswordSet(false)} />
+          <SetPasswordModal onComplete={() => { (window as any).__NEEDS_PASSWORD_SETUP__ = false; setNeedsPasswordSet(false); }} />
         )}
 
         <main className="flex-1">
