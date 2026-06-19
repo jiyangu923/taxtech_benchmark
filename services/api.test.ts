@@ -394,16 +394,21 @@ describe('updateSubmissionStatus', () => {
 // ─── deleteSubmission ─────────────────────────────────────────────────────────
 
 describe('deleteSubmission', () => {
-  it('calls delete with the correct id', async () => {
-    submissions.eq.mockResolvedValueOnce({ error: null });
+  it('calls delete with the correct id when a row is removed', async () => {
+    submissions.mockResolveWith({ data: [{ id: 's1' }], error: null });
     await api.deleteSubmission('s1');
     expect(submissions.delete).toHaveBeenCalled();
     expect(submissions.eq).toHaveBeenCalledWith('id', 's1');
   });
 
   it('throws on a database error', async () => {
-    submissions.eq.mockResolvedValueOnce({ error: { message: 'Delete failed' } });
+    submissions.mockResolveWith({ data: null, error: { message: 'Delete failed' } });
     await expect(api.deleteSubmission('s1')).rejects.toThrow('Delete failed');
+  });
+
+  it('throws when nothing was deleted (RLS no-op or row already gone)', async () => {
+    submissions.mockResolveWith({ data: [], error: null });
+    await expect(api.deleteSubmission('s1')).rejects.toThrow(/Nothing was deleted/);
   });
 });
 
