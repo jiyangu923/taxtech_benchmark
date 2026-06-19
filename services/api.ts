@@ -534,8 +534,15 @@ export const api = {
   },
 
   async deleteSubmission(id: string): Promise<void> {
-    const { error } = await supabase.from('submissions').delete().eq('id', id);
+    // .select() returns the deleted rows so we can detect a no-op delete:
+    // under RLS, a delete the caller isn't allowed to make affects 0 rows and
+    // returns NO error — which previously looked like success while the row
+    // stayed put. Treat 0 deleted rows as a failure so it surfaces.
+    const { data, error } = await supabase.from('submissions').delete().eq('id', id).select('id');
     if (error) throw new Error(error.message);
+    if (!data || data.length === 0) {
+      throw new Error('Nothing was deleted — you may lack permission, or the row no longer exists.');
+    }
   },
 
   // ─── Settings ────────────────────────────────────────────────────────────

@@ -92,8 +92,16 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
       e.stopPropagation();
     }
     if (window.confirm('PERMANENTLY delete this submission?')) {
-      await deleteSubmissionMutation.mutateAsync(id);
-      if (selectedSub && selectedSub.id === id) setSelectedSub(null);
+      try {
+        await deleteSubmissionMutation.mutateAsync(id);
+        if (selectedSub && selectedSub.id === id) setSelectedSub(null);
+        setSyncMessage({ type: 'success', text: 'Submission deleted.' });
+      } catch (err: any) {
+        // Previously unhandled: a denied/no-op delete failed silently and the
+        // row appeared to linger. Surface the reason instead.
+        setSyncMessage({ type: 'error', text: err?.message || 'Delete failed.' });
+      }
+      setTimeout(() => setSyncMessage(null), 4000);
     }
   };
 
