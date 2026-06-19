@@ -231,7 +231,7 @@ describe('createSubmission', () => {
 
   it('soft-archives the previous submission and inserts a new one with is_current=true', async () => {
     const profile = { id: 'u1', name: 'Alice' };
-    const newSub  = { id: 's1', userId: 'u1', userName: 'Alice', status: 'pending', is_current: true, survey_version: 1 };
+    const newSub  = { id: 's1', userId: 'u1', userName: 'Alice', status: 'approved', is_current: true, survey_version: 1 };
     mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
     profiles.single.mockResolvedValueOnce({ data: profile });
     settings.maybeSingle.mockResolvedValueOnce({ data: { value: '1' }, error: null });
@@ -244,7 +244,7 @@ describe('createSubmission', () => {
     expect(mockRpc).toHaveBeenCalledWith('archive_my_submissions_except', { keep_id: 's1' });
     expect(submissions.delete).not.toHaveBeenCalled();
     expect(submissions.insert).toHaveBeenCalled();
-    expect(result.status).toBe('pending');
+    expect(result.status).toBe('approved');
     expect(result.userName).toBe('Alice');
   });
 
@@ -254,7 +254,7 @@ describe('createSubmission', () => {
     profiles.single.mockResolvedValueOnce({ data: profile });
     settings.maybeSingle.mockResolvedValueOnce({ data: { value: '3' }, error: null });
     submissions.single.mockResolvedValueOnce({
-      data: { id: 's2', userId: 'uid-99', userName: 'Bob', status: 'pending', is_current: true, survey_version: 3 },
+      data: { id: 's2', userId: 'uid-99', userName: 'Bob', status: 'approved', is_current: true, survey_version: 3 },
       error: null,
     });
 
@@ -263,7 +263,7 @@ describe('createSubmission', () => {
     const insertArg = submissions.insert.mock.calls[0][0];
     expect(insertArg.userId).toBe('uid-99');
     expect(insertArg.userName).toBe('Bob');
-    expect(insertArg.status).toBe('pending');
+    expect(insertArg.status).toBe('approved');
     expect(insertArg.is_current).toBe(true);
     expect(insertArg.survey_version).toBe(3);
     expect(result.userId).toBe('uid-99');

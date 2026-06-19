@@ -150,7 +150,11 @@ export const api = {
         ...data,
         userId: profile.id,
         userName: profile.name,
-        status: 'pending',
+        // Auto-approve on submit (alpha model): everyone is in the benchmark
+        // immediately and unlocks analytics + the AI assistant the moment they
+        // submit. Admins moderate after the fact by deleting bad entries —
+        // there's no pre-entry approval gate.
+        status: 'approved',
         submittedAt: new Date().toISOString(),
         is_current: true,
         survey_version: surveyVersion,
