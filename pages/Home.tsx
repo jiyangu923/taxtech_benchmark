@@ -93,8 +93,8 @@ const Home: React.FC<HomeProps> = ({ user, onOpenLogin }) => {
           <TrustCard
             icon={<ShieldCheck className="h-6 w-6" />}
             iconClass="bg-amber-acc-tint text-amber-acc-2"
-            title="Anonymous & Reviewed"
-            desc="Every submission is anonymized. Each response goes through a completeness review before entering the dataset."
+            title="Anonymous & Moderated"
+            desc="Every submission is anonymized. We keep the dataset clean by removing low-quality or off-topic entries."
           />
           <TrustCard
             icon={<Eye className="h-6 w-6" />}
