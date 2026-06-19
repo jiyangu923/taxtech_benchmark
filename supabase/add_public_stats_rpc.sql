@@ -39,7 +39,12 @@ begin
   )
   into result
   from public.submissions
-  where status = 'approved';
+  -- is_current = true is essential: re-submits archive the prior row
+  -- (is_current=false) but it KEEPS status='approved', so without this filter
+  -- every superseded version would be counted and the public counts would
+  -- inflate past the real number of participants.
+  where status = 'approved'
+    and is_current = true;
 
   return result;
 end;
