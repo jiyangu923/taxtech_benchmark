@@ -412,8 +412,8 @@ const Survey: React.FC = () => {
           <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-6" />
           <h2 className="font-display text-2xl font-semibold text-gray-900">Survey Submitted</h2>
           <p className="text-gray-500 mt-2 max-w-sm">
-            Your responses have been received and are awaiting admin review.
-            You'll be redirected to the analytics page shortly.
+            Your responses are in — taking you to the benchmark analytics now.
+            You can come back and refine your answers anytime.
           </p>
         </div>
       </div>
