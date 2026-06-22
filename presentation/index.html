@@ -174,6 +174,12 @@
   .pill-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
   .pill { font-family: var(--mono); font-size: 13px; padding: 7px 13px; border-radius: 999px; background: #fff; border: 1px solid var(--line); color: var(--ink-2); }
 
+  /* scorecard */
+  .sc { display: flex; align-items: center; gap: 12px; }
+  .sc .scbar { flex: 1; height: 14px; background: #eceae6; border-radius: 999px; overflow: hidden; }
+  .sc .scbar span { display: block; height: 100%; border-radius: 999px; }
+  .sc b { font-family: var(--mono); font-size: 24px; color: var(--primary); width: 34px; text-align: right; }
+
   /* QR slide */
   .qr-box { background:#fff; border:1px solid var(--line); border-radius: 20px; padding: 22px; display:inline-flex; }
   .qr-box img, .qr-box svg { width: 240px; height: 240px; display:block; }
@@ -669,6 +675,43 @@
       <p>The killer parallel: in coding the human approves the merge; in tax the human approves the filing. The approval gate is the constant. Then: "Tax is roughly where coding was a couple of years ago. The map is already drawn — we just get to read ahead."</p>
     </aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>19</span></div>
+  </section>
+
+  <!-- 18c. SCORECARD: CODING VS TAX -->
+  <section class="slide">
+    <div class="eyebrow">The gap, quantified</div>
+    <h2>If we scored the three stages, 0–100</h2>
+    <div class="spacer" style="max-height:18px"></div>
+
+    <div style="display:grid; grid-template-columns:210px 1fr 1fr 1fr; gap:14px 18px; align-items:center">
+      <!-- header -->
+      <div></div>
+      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 1 · Foundation</div></div>
+      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 2 · Cont. Learning</div></div>
+      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 3 · Proactive</div></div>
+
+      <!-- coding row -->
+      <div><div style="font-weight:700; font-size:21px; color:var(--ink)">Coding</div><div class="small" style="font-size:13px">the leading indicator</div></div>
+      <div class="sc"><div class="scbar"><span style="width:90%; background:var(--primary)"></span></div><b>90</b></div>
+      <div class="sc"><div class="scbar"><span style="width:40%; background:var(--primary)"></span></div><b>40</b></div>
+      <div class="sc"><div class="scbar"><span style="width:20%; background:var(--primary)"></span></div><b>20</b></div>
+
+      <!-- tax row -->
+      <div><div style="font-weight:700; font-size:21px; color:var(--ink)">Tax</div><div class="small" style="font-size:13px">today</div></div>
+      <div class="sc"><div class="scbar"><span style="width:15%; background:var(--amber)"></span></div><b style="color:var(--amber)">15</b></div>
+      <div class="sc"><div class="scbar"><span style="width:5%; background:var(--amber)"></span></div><b style="color:var(--amber)">5</b></div>
+      <div class="sc"><div class="scbar"><span style="width:2%; background:var(--amber)"></span></div><b style="color:var(--amber)">0</b></div>
+    </div>
+
+    <div class="spacer"></div>
+    <p class="lead">Same curve, ~2–3 years apart. Coding has finished Stage 1 and is mid-Stage 2 — <strong>which is exactly the map tax gets to read ahead.</strong></p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>This is your most quotable slide — a single number per cell. Read it across: coding 90/40/20, tax 15/5/0.</p>
+      <p>Coding's Stage 1 (AI-native) is basically done (90); Continuous Learning is genuinely in progress (40) — usage signal captured, but still batch retraining, not closed-loop; Proactive (20) is emerging — agents act, humans still approve the merge.</p>
+      <p>Tax is at the very start of Stage 1 (15) — the foundation work we just covered. The point isn't the exact digits; it's the <em>shape</em>: identical curve, a 2–3 year lag. We're not guessing the future — we're reading coding's map.</p>
+      <p>Scores are a directional, early-2026 judgment — say so if pressed, and invite the room to argue the numbers (great engagement hook).</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>20</span></div>
   </section>
 
   <!-- 19a. THE HARNESS DIFFUSES FROM CODING -->
