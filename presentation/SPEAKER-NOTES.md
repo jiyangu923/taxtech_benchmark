@@ -40,17 +40,22 @@
 | 17 | Divider: 3 stages | 0.5 | Transition to your framework. |
 | 18 | **Three-stage framework** | 3 | **Centerpiece.** Walk all three, then dwell on each. |
 | 19 | **Coding = leading indicator** | 3 | **The proof.** Stage 1 done, 2 in progress, 3 emerging. Approval gate constant. |
-| 20 | First vs last to automate | 2 | Volume/structure automate; judgment/accountability stay human. |
-| 21 | Divider: Implications | 0.5 | What it means for your team. |
-| 22 | Build vs buy | 2 | Buy the commodity, own the context. |
-| 23 | Org & talent | 2 | Team inverts. The "credibly both" hire. Resolve ownership. |
-| 24 | Risks / trust | 2.5 | Each risk maps to a layer. The stack *is* the risk strategy. |
-| 25 | Maturity model | 2 | "Be honest — who's above Level 0?" Climb in order. |
-| 26 | Action: 5 moves | 2 | Data foundation · eval set · ownership · one workflow · model-agnostic. |
-| 27 | Recap | 1 | Callback to 3 shifts. "Infrastructure compounds." |
-| 28 | Benchmark / join | 1 | Community infrastructure for the field. |
-| 29 | QR / try it live | 0.5 | Scan to join. |
-| 30 | Thank you / Q&A | — | "Tell me what's broken in your stack." |
+| 20 | **Foundation across the lifecycle** | 3 | **Your case study.** One AI-native foundation under Planning / Compliance & Reporting / Audit. Foundation first. |
+| 21 | First vs last to automate | 2 | Volume/structure automate; judgment/accountability stay human. |
+| 22 | Divider: Implications | 0.5 | What it means for your team. |
+| 23 | Build vs buy | 2 | Buy the commodity, own the context. |
+| 24 | Org & talent | 2 | Team inverts. The "credibly both" hire. Resolve ownership. |
+| 25 | Risks / trust | 2.5 | Each risk maps to a layer. The stack *is* the risk strategy. |
+| 26 | Maturity model | 2 | "Be honest — who's above Level 0?" Climb in order. |
+| 27 | Action: 5 moves | 2 | Data foundation · eval set · ownership · one workflow · model-agnostic. |
+| 28 | Recap | 1 | Callback to 3 shifts. "Infrastructure compounds." |
+| 29 | Benchmark / join | 1 | Community infrastructure for the field. |
+| 30 | QR / try it live | 0.5 | Scan to join. |
+| 31 | Thank you / Q&A | — | "Tell me what's broken in your stack." |
+
+> **Slide 20 is your strongest personal beat.** It's what your team is actually
+> building — present it in the first person if you're cleared to attribute it.
+> Tie it back to the framework: this *is* Stage 1, done across the whole lifecycle.
 
 ---
 
