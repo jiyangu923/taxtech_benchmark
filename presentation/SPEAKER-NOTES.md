@@ -43,17 +43,28 @@
 | 20 | **The harness diffuses** | 3 | **The mechanism.** Stage 2/3 harness doesn't exist yet; built in coding first, diffuses to tax. Most startups still foundation-stage. |
 | 21 | **Foundation across the lifecycle** | 3 | **Your case study.** One AI-native foundation under Planning / Compliance & Reporting / Audit. Foundation first. |
 | 22 | **The flywheel** | 2.5 | **The payoff.** Connect end-to-end → audit-ready lineage → feedback → foundation compounds. Audit closes the loop = Stage 2 fuel. |
-| 23 | First vs last to automate | 2 | Volume/structure automate; judgment/accountability stay human. |
-| 24 | Divider: Implications | 0.5 | What it means for your team. |
-| 25 | Build vs buy | 2 | Buy the commodity, own the context. |
-| 26 | Org & talent | 2 | Team inverts. The "credibly both" hire. Resolve ownership. |
-| 27 | Risks / trust | 2.5 | Each risk maps to a layer. The stack *is* the risk strategy. |
-| 28 | Maturity model | 2 | "Be honest — who's above Level 0?" Climb in order. |
-| 29 | Action: 5 moves | 2 | Data foundation · eval set · ownership · one workflow · model-agnostic. |
-| 30 | Recap | 1 | Callback to 3 shifts. "Infrastructure compounds." |
-| 31 | Benchmark / join | 1 | Community infrastructure for the field. |
-| 32 | QR / try it live | 0.5 | Scan to join. |
-| 33 | Thank you / Q&A | — | "Tell me what's broken in your stack." |
+| 23 | **What the foundation requires** | 2.5 | **Infra depth.** Eight disciplines: lakehouse · streaming · integration · master data · retrieval · ML platform · governance · evals. |
+| 24 | **Why it's hard** | 2 | **The honest part.** Fragmented data · real-time skills · doubly-rare talent · multi-year build · split ownership · cost center. |
+| 25 | **Why we were positioned** | 2.5 | **Earned, not lucky.** Hyperscale infra exists · real-time by default · eng talent · in-house AI/compute · scale ROI · eng-owned tax. |
+| 26 | First vs last to automate | 2 | Volume/structure automate; judgment/accountability stay human. |
+| 27 | Divider: Implications | 0.5 | What it means for your team. |
+| 28 | Build vs buy | 2 | Buy the commodity, own the context. |
+| 29 | Org & talent | 2 | Team inverts. The "credibly both" hire. Resolve ownership. |
+| 30 | Risks / trust | 2.5 | Each risk maps to a layer. The stack *is* the risk strategy. |
+| 31 | Maturity model | 2 | "Be honest — who's above Level 0?" Climb in order. |
+| 32 | Action: 5 moves | 2 | Data foundation · eval set · ownership · one workflow · model-agnostic. |
+| 33 | Recap | 1 | Callback to 3 shifts. "Infrastructure compounds." |
+| 34 | Benchmark / join | 1 | Community infrastructure for the field. |
+| 35 | QR / try it live | 0.5 | Scan to join. |
+| 36 | Thank you / Q&A | — | "Tell me what's broken in your stack." |
+
+> **Slides 23–25 are the infra core of the talk.** 23: the eight disciplines a
+> real foundation needs. 24: why almost no tax function can stand them up
+> (blocker is the infra surface area, not the model). 25: why your environment
+> could — the seven barriers on 24 are exactly what's already solved at Meta.
+> Genericize 25 if you're not cleared to attribute specifics. **Running time is
+> now ~43–45 min — if you need to hit 40, the easiest cut is collapsing the six
+> stack-layer slides (11–16) into two.**
 
 > **Slides 20–21 are the heart of the argument.** Slide 20: the Stage 2/3 harness
 > doesn't exist yet anywhere — it's invented in coding (most investment) and

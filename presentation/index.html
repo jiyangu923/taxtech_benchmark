@@ -763,6 +763,100 @@
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>22</span></div>
   </section>
 
+  <!-- 19d. WHAT THE FOUNDATION REQUIRES -->
+  <section class="slide">
+    <div class="eyebrow">Under the hood</div>
+    <h2>What an AI-native tax foundation actually requires</h2>
+    <div class="spacer" style="max-height:12px"></div>
+    <p class="lead" style="max-width:64ch; margin-bottom:16px">"Foundation" is not one thing you buy. It's eight infrastructure disciplines — each hard on its own, and only valuable when integrated.</p>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:13px">
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Data platform / lakehouse</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Snowflake · Databricks · BigQuery — a real tax data lake</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Streaming &amp; pipelines</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Kafka · Flink · CDC — event-driven, not batch ETL</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Integration &amp; connectors</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">ERP · tax engines · APIs · MCP tool standards</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Semantic &amp; master data</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Entity / jurisdiction models · catalog · lineage</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Retrieval / knowledge</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Vector store · embeddings · document parsing (RAG)</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">AI / ML platform</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Model serving · GPU compute · agent orchestration</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Governance &amp; security</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Access control · PII / privacy · audit logging</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Eval &amp; observability</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Test harness · monitoring · end-to-end tracing</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">Each box is its own engineering team in most companies. <strong>The foundation is all eight, integrated</strong> — that's the bar.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Slow down and show real infra depth — this is the AI-<em>infrastructure</em> talk paying off. Walk the eight categories briskly; the point isn't to teach each one, it's to convey the <em>surface area</em>.</p>
+      <p>Key line: each of these is a full discipline — data platform, streaming, ML platform — that big tech companies staff with dedicated teams. A tax function being asked to assemble all eight, integrated, is the real challenge. That sets up the next two slides.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>23</span></div>
+  </section>
+
+  <!-- 19e. WHY IT'S HARD -->
+  <section class="slide">
+    <div class="eyebrow">The honest part</div>
+    <h2>Why almost no tax function can stand this up</h2>
+    <div class="spacer" style="max-height:18px"></div>
+    <div class="grid-3">
+      <div class="card"><h3 style="color:var(--bad)">Messy, fragmented data</h3><p>Tax data is scattered across ERPs, billing, supply chain, and spreadsheets — in many jurisdictions, with no clean source of truth.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">Real-time is a different sport</h3><p>Most teams live in batch ETL. Streaming, CDC, and event-driven infra are a specialized, expensive skill set they don't have.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">Doubly-rare talent</h3><p>You need people fluent in tax <em>and</em> platform/data/AI engineering. Each is scarce; the overlap barely exists.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">It's a multi-year platform</h3><p>Not a SKU you buy — a cross-cutting build that spans eight disciplines and years, not a quarter.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">Split ownership</h3><p>Tax vs. Finance Systems vs. IT. No single owner, no clear mandate, no budget line that fits.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">Tax is a cost center</h3><p>Funding hyperscale-grade infrastructure for a function seen as overhead is a hard sell to any CFO.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">This is why "just add AI" stalls. The blocker isn't the model — it's <strong>standing up eight infra disciplines a tax team was never built to own.</strong></p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Be candid — this is the slide that earns trust. Most teams in the room will recognize every one of these barriers. Naming them honestly is what makes the "why Meta" slide credible rather than boastful.</p>
+      <p>The throughline: this is exactly why the harness has to diffuse from where the infra already exists. Almost no tax function can build all eight from scratch — which is the whole point.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>24</span></div>
+  </section>
+
+  <!-- 19f. WHY META WAS POSITIONED -->
+  <section class="slide">
+    <div class="eyebrow">A rare starting point</div>
+    <h2>Why we were uniquely positioned to build it</h2>
+    <div class="spacer" style="max-height:18px"></div>
+    <div class="grid-3">
+      <div class="card"><h3 class="primary">Hyperscale data infra exists</h3><p>One of the largest data platforms in the world is already here. Tax builds <em>on</em> it — we don't stand up a lakehouse from scratch.</p></div>
+      <div class="card"><h3 class="primary">Real-time by default</h3><p>The company runs event-driven and streaming end-to-end. Tax data can be real-time native, not a batch afterthought.</p></div>
+      <div class="card"><h3 class="primary">World-class engineering</h3><p>Deep bench of platform, data, and ML engineers — and a culture where tax-tech is embedded with real software teams.</p></div>
+      <div class="card"><h3 class="primary">AI platform &amp; compute in-house</h3><p>Frontier models, GPU scale, and mature ML tooling already operating — not a procurement exercise.</p></div>
+      <div class="card"><h3 class="primary">Scale justifies the build</h3><p>Enormous transaction volume across many jurisdictions makes the ROI on a real foundation obvious.</p></div>
+      <div class="card"><h3 class="primary">Engineering-owned tax tech</h3><p>The org model lets tax move like a product team — own the stack, ship, and iterate.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">We didn't have to build the infra <em>and</em> the harness. The infra was already here — so we could put it to work for tax.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Frame this as fortunate positioning, not bragging — humility makes it land. The seven barriers on the previous slide are exactly the things that are <em>already solved</em> in this environment, so the tax team gets to start at a starting line most never reach.</p>
+      <p>The transferable lesson for the room: you may not have Meta's infra, but the principle holds — anchor your tax foundation to wherever real data/ML infrastructure already lives in <em>your</em> company (enterprise data platform, the CFO's systems org), instead of building a parallel one inside tax.</p>
+      <p>NOTE TO SELF: confirm you're cleared to attribute specifics publicly. If not, genericize to "a hyperscale environment" / "our company."</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>25</span></div>
+  </section>
+
   <!-- 19. PHASE DETAIL: WHAT MOVES FIRST -->
   <section class="slide">
     <div class="eyebrow">Sequencing</div>
