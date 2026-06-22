@@ -257,22 +257,23 @@
   <!-- 8 · THE INFRA REQUIRED -->
   <section class="slide">
     <div class="eyebrow">Under the hood</div>
-    <h2>What that foundation actually requires</h2>
-    <div class="spacer" style="max-height:12px"></div>
-    <p class="lead" style="max-width:64ch;margin-bottom:16px">"Foundation" is not one thing you buy. It's eight infrastructure disciplines — each hard alone, only valuable integrated.</p>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px">
-      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Data platform / lakehouse</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Snowflake · Databricks · BigQuery</p></div>
-      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Streaming &amp; pipelines</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Kafka · Flink · CDC — not batch</p></div>
-      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Integration &amp; connectors</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">ERP · tax engines · APIs · MCP</p></div>
-      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Semantic &amp; master data</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Entity / jurisdiction · lineage</p></div>
-      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Retrieval / knowledge</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Vector store · embeddings (RAG)</p></div>
-      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">AI / ML platform</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Serving · GPU · agent orchestration</p></div>
-      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Governance &amp; security</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Access · PII / privacy · audit logs</p></div>
-      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Eval &amp; observability</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Test harness · monitoring · tracing</p></div>
+    <h2>What that foundation requires — and who supplies it</h2>
+    <div class="spacer" style="max-height:10px"></div>
+    <p class="lead" style="max-width:70ch;margin-bottom:14px">Nine disciplines, each its own industry. The work isn't picking a vendor — it's <strong>integrating all nine.</strong></p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Data platform / lakehouse</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Snowflake · Databricks · BigQuery</p></div>
+      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Streaming &amp; pipelines</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Kafka/Confluent · Flink · Fivetran</p></div>
+      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Integration &amp; connectors</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">SAP/Oracle · Vertex/Avalara · MuleSoft</p></div>
+      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Master data &amp; catalog</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Collibra · Alation · Atlan</p></div>
+      <div class="card" style="padding:14px 16px;border-color:var(--amber);background:var(--amber-tint)"><h3 style="font-size:16px">Graph / knowledge graph</h3><p style="font-family:var(--mono);font-size:12px;color:var(--amber);margin-top:5px">Neo4j · TigerGraph · Neptune</p></div>
+      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Retrieval / vector</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Pinecone · Weaviate · pgvector</p></div>
+      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">AI / ML platform</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Bedrock · SageMaker · Vertex AI</p></div>
+      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Governance &amp; security</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Immuta · OneTrust · Okta</p></div>
+      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Eval &amp; observability</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">LangSmith · Arize · Braintrust</p></div>
     </div>
     <div class="spacer"></div>
-    <p class="lead">Each box is its own engineering team in most companies. <strong>The foundation is all eight, integrated.</strong></p>
-    <aside class="notes"><h4>Notes</h4><p>Show real infra depth — this is the AI-infrastructure payoff. The point is the surface area: a tax function assembling all eight, integrated, is the real challenge.</p></aside>
+    <p class="lead" style="font-size:21px">Each box is its own engineering team in most companies. <strong>The foundation is all nine, integrated.</strong></p>
+    <aside class="notes"><h4>Notes</h4><p>Nine disciplines, each a real industry with named vendors. The point is the surface area: nobody sells "the foundation" — you integrate all nine.</p><p><strong>Graph (highlighted):</strong> relationships are first-class in tax — entity ↔ jurisdiction ↔ product ↔ transaction, ownership structures for transfer pricing, tax-law citation graphs, and lineage itself is a graph. That's what makes audit explainable. Neo4j / TigerGraph / Amazon Neptune are the typical engines.</p></aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>08</span></div>
   </section>
 

@@ -44,7 +44,7 @@
 | 21 | **The harness diffuses** | 3 | **The mechanism.** Stage 2/3 harness doesn't exist yet; built in coding first, diffuses to tax. Most startups still foundation-stage. |
 | 22 | **Foundation across the lifecycle** | 3 | **Your case study.** One AI-native foundation under Planning / Compliance & Reporting / Audit. Foundation first. |
 | 23 | **The flywheel** | 2.5 | **The payoff.** Connect end-to-end → audit-ready lineage → feedback → foundation compounds. Audit closes the loop = Stage 2 fuel. |
-| 24 | **What the foundation requires** | 2.5 | **Infra depth.** Eight disciplines: lakehouse · streaming · integration · master data · retrieval · ML platform · governance · evals. |
+| 24 | **What the foundation requires** | 2.5 | **Infra depth + vendors.** Nine disciplines: lakehouse · streaming · integration · master data · **graph** · retrieval · ML platform · governance · evals — each with a representative service. |
 | 25 | **Why it's hard** | 2 | **The honest part.** Fragmented data · real-time skills · doubly-rare talent · multi-year build · split ownership · cost center. |
 | 26 | **Why we were positioned** | 2.5 | **Earned, not lucky.** Hyperscale infra exists · real-time by default · eng talent · in-house AI/compute · scale ROI · eng-owned tax. |
 | 27 | First vs last to automate | 2 | Volume/structure automate; judgment/accountability stay human. |
@@ -66,7 +66,7 @@
 > foundation now — the portable part you control — so you're ready when the
 > harness arrives.
 >
-> **Slides 24–26 are the infra core.** 24: the eight disciplines a real
+> **Slides 24–26 are the infra core.** 24: the nine disciplines a real
 > foundation needs. 25: why almost no tax function can stand them up (the blocker
 > is infra surface area, not the model). 26: why your environment could — the
 > barriers on 25 are exactly what's already solved at Meta. Genericize 26 if

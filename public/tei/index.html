@@ -833,46 +833,51 @@
     <div class="eyebrow">Under the hood</div>
     <h2>What an AI-native tax foundation actually requires</h2>
     <div class="spacer" style="max-height:12px"></div>
-    <p class="lead" style="max-width:64ch; margin-bottom:16px">"Foundation" is not one thing you buy. It's eight infrastructure disciplines — each hard on its own, and only valuable when integrated.</p>
-    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:13px">
-      <div class="card" style="padding:15px 16px">
+    <p class="lead" style="max-width:70ch; margin-bottom:14px">"Foundation" is not one thing you buy. It's nine infrastructure disciplines — each its own industry — and the work is <strong>integrating all nine.</strong></p>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px">
+      <div class="card" style="padding:14px 16px">
         <h3 style="font-size:16px">Data platform / lakehouse</h3>
-        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Snowflake · Databricks · BigQuery — a real tax data lake</p>
+        <p style="font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:5px">Snowflake · Databricks · BigQuery</p>
       </div>
-      <div class="card" style="padding:15px 16px">
+      <div class="card" style="padding:14px 16px">
         <h3 style="font-size:16px">Streaming &amp; pipelines</h3>
-        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Kafka · Flink · CDC — event-driven, not batch ETL</p>
+        <p style="font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:5px">Kafka/Confluent · Flink · Fivetran</p>
       </div>
-      <div class="card" style="padding:15px 16px">
+      <div class="card" style="padding:14px 16px">
         <h3 style="font-size:16px">Integration &amp; connectors</h3>
-        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">ERP · tax engines · APIs · MCP tool standards</p>
+        <p style="font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:5px">SAP/Oracle · Vertex/Avalara · MuleSoft</p>
       </div>
-      <div class="card" style="padding:15px 16px">
-        <h3 style="font-size:16px">Semantic &amp; master data</h3>
-        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Entity / jurisdiction models · catalog · lineage</p>
+      <div class="card" style="padding:14px 16px">
+        <h3 style="font-size:16px">Master data &amp; catalog</h3>
+        <p style="font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:5px">Collibra · Alation · Atlan</p>
       </div>
-      <div class="card" style="padding:15px 16px">
-        <h3 style="font-size:16px">Retrieval / knowledge</h3>
-        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Vector store · embeddings · document parsing (RAG)</p>
+      <div class="card" style="padding:14px 16px; border-color:var(--amber); background:var(--amber-tint)">
+        <h3 style="font-size:16px">Graph / knowledge graph</h3>
+        <p style="font-family:var(--mono); font-size:12px; color:var(--amber); margin-top:5px">Neo4j · TigerGraph · Neptune</p>
       </div>
-      <div class="card" style="padding:15px 16px">
+      <div class="card" style="padding:14px 16px">
+        <h3 style="font-size:16px">Retrieval / vector</h3>
+        <p style="font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:5px">Pinecone · Weaviate · pgvector</p>
+      </div>
+      <div class="card" style="padding:14px 16px">
         <h3 style="font-size:16px">AI / ML platform</h3>
-        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Model serving · GPU compute · agent orchestration</p>
+        <p style="font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:5px">Bedrock · SageMaker · Vertex AI</p>
       </div>
-      <div class="card" style="padding:15px 16px">
+      <div class="card" style="padding:14px 16px">
         <h3 style="font-size:16px">Governance &amp; security</h3>
-        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Access control · PII / privacy · audit logging</p>
+        <p style="font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:5px">Immuta · OneTrust · Okta</p>
       </div>
-      <div class="card" style="padding:15px 16px">
+      <div class="card" style="padding:14px 16px">
         <h3 style="font-size:16px">Eval &amp; observability</h3>
-        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Test harness · monitoring · end-to-end tracing</p>
+        <p style="font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:5px">LangSmith · Arize · Braintrust</p>
       </div>
     </div>
     <div class="spacer"></div>
-    <p class="lead">Each box is its own engineering team in most companies. <strong>The foundation is all eight, integrated</strong> — that's the bar.</p>
+    <p class="lead" style="font-size:21px">Each box is its own engineering team in most companies. <strong>The foundation is all nine, integrated</strong> — that's the bar.</p>
     <aside class="notes"><h4>Speaker notes</h4>
-      <p>Slow down and show real infra depth — this is the AI-<em>infrastructure</em> talk paying off. Walk the eight categories briskly; the point isn't to teach each one, it's to convey the <em>surface area</em>.</p>
-      <p>Key line: each of these is a full discipline — data platform, streaming, ML platform — that big tech companies staff with dedicated teams. A tax function being asked to assemble all eight, integrated, is the real challenge. That sets up the next two slides.</p>
+      <p>Slow down and show real infra depth — this is the AI-<em>infrastructure</em> talk paying off. Walk the nine categories briskly with a representative vendor each; the point is the <em>surface area</em>, not teaching each tool.</p>
+      <p><strong>Graph / knowledge graph (highlighted)</strong> is the one tax people underrate. Relationships are first-class in tax: entity ↔ jurisdiction ↔ product ↔ transaction, ownership chains for transfer pricing, tax-law citation graphs — and <em>data lineage itself is a graph</em>, which is what makes audit explainable. Engines: Neo4j, TigerGraph, Amazon Neptune.</p>
+      <p>Key line: each of these is a full discipline that big tech staffs with dedicated teams. A tax function assembling all nine, integrated, is the real challenge — and the setup for the next two slides.</p>
     </aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>23</span></div>
   </section>
@@ -886,15 +891,15 @@
       <div class="card"><h3 style="color:var(--bad)">Messy, fragmented data</h3><p>Tax data is scattered across ERPs, billing, supply chain, and spreadsheets — in many jurisdictions, with no clean source of truth.</p></div>
       <div class="card"><h3 style="color:var(--bad)">Real-time is a different sport</h3><p>Most teams live in batch ETL. Streaming, CDC, and event-driven infra are a specialized, expensive skill set they don't have.</p></div>
       <div class="card"><h3 style="color:var(--bad)">Doubly-rare talent</h3><p>You need people fluent in tax <em>and</em> platform/data/AI engineering. Each is scarce; the overlap barely exists.</p></div>
-      <div class="card"><h3 style="color:var(--bad)">It's a multi-year platform</h3><p>Not a SKU you buy — a cross-cutting build that spans eight disciplines and years, not a quarter.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">It's a multi-year platform</h3><p>Not a SKU you buy — a cross-cutting build that spans nine disciplines and years, not a quarter.</p></div>
       <div class="card"><h3 style="color:var(--bad)">Split ownership</h3><p>Tax vs. Finance Systems vs. IT. No single owner, no clear mandate, no budget line that fits.</p></div>
       <div class="card"><h3 style="color:var(--bad)">Tax is a cost center</h3><p>Funding hyperscale-grade infrastructure for a function seen as overhead is a hard sell to any CFO.</p></div>
     </div>
     <div class="spacer"></div>
-    <p class="lead">This is why "just add AI" stalls. The blocker isn't the model — it's <strong>standing up eight infra disciplines a tax team was never built to own.</strong></p>
+    <p class="lead">This is why "just add AI" stalls. The blocker isn't the model — it's <strong>standing up nine infra disciplines a tax team was never built to own.</strong></p>
     <aside class="notes"><h4>Speaker notes</h4>
       <p>Be candid — this is the slide that earns trust. Most teams in the room will recognize every one of these barriers. Naming them honestly is what makes the "why Meta" slide credible rather than boastful.</p>
-      <p>The throughline: this is exactly why the harness has to diffuse from where the infra already exists. Almost no tax function can build all eight from scratch — which is the whole point.</p>
+      <p>The throughline: this is exactly why the harness has to diffuse from where the infra already exists. Almost no tax function can build all nine from scratch — which is the whole point.</p>
     </aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>24</span></div>
   </section>
