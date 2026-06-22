@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tax AI Infrastructure — The Next 2–3 Years</title>
+<!-- Fonts load from Google when online; degrade gracefully to system fonts offline. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --primary: #1e3a8a;
+    --primary-2: #2c4ea8;
+    --secondary: #4f46e5;
+    --accent: #0ea5e9;
+    --canvas: #FAFAF9;
+    --ink: #14181f;
+    --ink-2: #3a4150;
+    --muted: #6b7280;
+    --amber: #A8772E;
+    --amber-tint: #f3ead9;
+    --line: #e6e6e3;
+    --good: #047857;
+    --warn: #b45309;
+    --bad: #b91c1c;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: #0d1117;
+    font-family: var(--sans);
+    color: var(--ink);
+    overflow: hidden;
+  }
+
+  /* 16:9 stage that scales to the viewport */
+  #stage {
+    position: fixed;
+    top: 50%; left: 50%;
+    width: 1280px; height: 720px;
+    transform: translate(-50%, -50%) scale(var(--scale, 1));
+    transform-origin: center center;
+    background: var(--canvas);
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55);
+  }
+
+  .slide {
+    position: absolute; inset: 0;
+    padding: 64px 84px;
+    display: none;
+    flex-direction: column;
+    background: var(--canvas);
+  }
+  .slide.active { display: flex; }
+
+  /* Top publication spine */
+  .slide::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: var(--primary);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--amber); font-weight: 600; margin-bottom: 18px;
+  }
+  h1 { font-size: 60px; line-height: 1.04; letter-spacing: -.02em; font-weight: 800; color: var(--ink); }
+  h2 { font-size: 42px; line-height: 1.08; letter-spacing: -.015em; font-weight: 700; color: var(--ink); }
+  h3 { font-size: 24px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
+  .lead { font-size: 24px; line-height: 1.5; color: var(--ink-2); font-weight: 400; max-width: 56ch; }
+  .small { font-size: 17px; color: var(--muted); }
+  p { font-size: 20px; line-height: 1.5; color: var(--ink-2); }
+  .primary { color: var(--primary); }
+  .accent-amber { color: var(--amber); }
+  strong { color: var(--ink); font-weight: 700; }
+
+  .spacer { flex: 1; }
+
+  /* layout helpers */
+  .row { display: flex; gap: 28px; }
+  .col { flex: 1; }
+  .center { align-items: center; justify-content: center; text-align: center; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+  ul.clean { list-style: none; display: flex; flex-direction: column; gap: 16px; margin-top: 8px; }
+  ul.clean li { position: relative; padding-left: 30px; font-size: 21px; line-height: 1.4; color: var(--ink-2); }
+  ul.clean li::before {
+    content: ""; position: absolute; left: 0; top: 10px; width: 9px; height: 9px;
+    border-radius: 2px; background: var(--primary);
+  }
+  ul.clean li strong { color: var(--ink); }
+
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 16px;
+    padding: 24px 26px; box-shadow: 0 1px 2px rgba(0,0,0,.03);
+  }
+  .card h3 { margin-bottom: 8px; }
+  .card p { font-size: 17px; line-height: 1.45; }
+
+  .tag {
+    display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono);
+    font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--primary); background: #eef1fb; border: 1px solid #dbe1f6;
+    border-radius: 999px; padding: 5px 12px; font-weight: 600;
+  }
+
+  .stat { font-family: var(--mono); font-weight: 600; }
+  .stat .n { font-size: 56px; color: var(--primary); line-height: 1; letter-spacing: -.02em; }
+  .stat .lbl { font-family: var(--sans); font-size: 15px; color: var(--ink-2); margin-top: 12px; max-width: 22ch; }
+
+  /* footer chrome */
+  .foot {
+    position: absolute; left: 84px; right: 84px; bottom: 26px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .04em;
+  }
+  .foot .brand { color: var(--ink-2); font-weight: 600; }
+  .progress { position: absolute; bottom: 0; left: 0; height: 4px; background: var(--amber); transition: width .25s ease; z-index: 5; }
+
+  /* title slide */
+  .title-slide { background: linear-gradient(160deg, #16285f 0%, var(--primary) 55%, #233d8e 100%); }
+  .title-slide::before { background: var(--amber); }
+  .title-slide, .title-slide h1, .title-slide .lead, .title-slide .eyebrow, .title-slide p { color: #fff; }
+  .title-slide .eyebrow { color: #f6d99a; }
+  .title-slide .lead { color: #d7ddf3; }
+  .title-slide .byline { font-family: var(--mono); font-size: 15px; color: #aeb9e6; letter-spacing: .04em; }
+  .title-slide .foot { color: #93a0d4; }
+  .title-slide .foot .brand { color: #cdd5f3; }
+
+  /* dark section dividers */
+  .divider { background: var(--primary); }
+  .divider::before { background: var(--amber); }
+  .divider h2, .divider .eyebrow, .divider p { color: #fff; }
+  .divider .eyebrow { color: #f6d99a; }
+  .divider .lead { color: #cfd6f1; }
+  .divider .foot { color: #93a0d4; }
+  .divider .foot .brand { color: #cdd5f3; }
+  .divider .kicker { font-family: var(--mono); font-size: 120px; font-weight: 600; color: rgba(255,255,255,.12); line-height: 1; }
+
+  /* stack diagram */
+  .stack { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+  .layer {
+    display: flex; align-items: center; gap: 18px;
+    border: 1px solid var(--line); border-radius: 12px; background: #fff;
+    padding: 14px 20px;
+  }
+  .layer .num { font-family: var(--mono); font-size: 14px; color: #fff; background: var(--primary);
+    width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 600; flex: 0 0 auto;}
+  .layer .name { font-weight: 700; font-size: 19px; width: 250px; flex: 0 0 auto; }
+  .layer .desc { font-size: 16px; color: var(--muted); }
+  .layer.hl { border-color: var(--amber); background: var(--amber-tint); box-shadow: 0 2px 10px rgba(168,119,46,.15); }
+  .layer.hl .num { background: var(--amber); }
+
+  /* timeline */
+  .timeline { display: grid; grid-template-columns: repeat(3,1fr); gap: 0; margin-top: 10px; position: relative; }
+  .timeline::before { content:""; position:absolute; top: 26px; left: 8%; right: 8%; height: 3px; background: linear-gradient(90deg,var(--primary),var(--accent),var(--amber)); border-radius: 3px; }
+  .phase { padding: 0 18px; }
+  .phase .dot { width: 18px; height: 18px; border-radius: 50%; background: var(--primary); border: 4px solid var(--canvas); box-shadow: 0 0 0 2px var(--primary); margin: 18px auto 22px; }
+  .phase:nth-child(2) .dot { background: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .phase:nth-child(3) .dot { background: var(--amber); box-shadow: 0 0 0 2px var(--amber); }
+  .phase .yr { font-family: var(--mono); font-size: 15px; color: var(--amber); text-align:center; font-weight:600; letter-spacing:.08em; }
+  .phase h3 { text-align: center; margin: 6px 0 12px; }
+  .phase ul.clean li { font-size: 16px; padding-left: 22px; }
+  .phase ul.clean li::before { width: 7px; height: 7px; top: 8px; }
+
+  .quote { font-size: 38px; line-height: 1.3; font-weight: 700; letter-spacing: -.015em; color: var(--ink); max-width: 24ch; }
+  .quote .primary { color: var(--primary); }
+
+  .pill-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .pill { font-family: var(--mono); font-size: 13px; padding: 7px 13px; border-radius: 999px; background: #fff; border: 1px solid var(--line); color: var(--ink-2); }
+
+  /* scorecard */
+  .sc { display: flex; align-items: center; gap: 12px; }
+  .sc .scbar { flex: 1; height: 14px; background: #eceae6; border-radius: 999px; overflow: hidden; }
+  .sc .scbar span { display: block; height: 100%; border-radius: 999px; }
+  .sc b { font-family: var(--mono); font-size: 24px; color: var(--primary); width: 34px; text-align: right; }
+
+  /* QR slide */
+  .qr-box { background:#fff; border:1px solid var(--line); border-radius: 20px; padding: 22px; display:inline-flex; }
+  .qr-box img, .qr-box svg { width: 240px; height: 240px; display:block; }
+
+  /* Inline per-slide notes are data only — surfaced via the #notes overlay (press N), never drawn on the slide. */
+  .slide .notes { display: none !important; }
+
+  /* notes panel */
+  #notes {
+    position: fixed; left: 0; right: 0; bottom: 0; max-height: 38vh; overflow:auto;
+    background: rgba(13,17,23,.96); color: #e7ecf5; padding: 18px 26px; display: none;
+    font-size: 16px; line-height: 1.5; border-top: 2px solid var(--amber); z-index: 50;
+  }
+  #notes.show { display: block; }
+  #notes h4 { font-family: var(--mono); font-size: 12px; letter-spacing:.12em; text-transform:uppercase; color:#f6d99a; margin-bottom: 8px; }
+  #notes p { color:#c9d2e3; font-size: 16px; margin-bottom: 8px; }
+
+  #help {
+    position: fixed; top: 14px; right: 16px; z-index: 60; font-family: var(--mono);
+    font-size: 11px; color: #5a6677; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+    border-radius: 8px; padding: 6px 10px; letter-spacing:.04em;
+  }
+  @media print { #help { display:none; } }
+
+  /* ── Print / PDF export ─────────────────────────────────────────────
+     Lay every slide out as its own 16:9 landscape page. Triggered by
+     Chrome "Save as PDF" or the headless export script. */
+  @media print {
+    @page { size: 1280px 720px; margin: 0; }
+    html, body { height: auto; background: #fff; overflow: visible; }
+    #help, #notes, .progress { display: none !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    #stage {
+      position: static; transform: none !important; left: auto; top: auto;
+      width: 1280px; height: auto; box-shadow: none; overflow: visible;
+    }
+    .slide {
+      display: flex !important; position: relative;
+      width: 1280px; height: 720px;
+      break-after: page; page-break-after: always; break-inside: avoid;
+    }
+    .slide:last-of-type { break-after: auto; page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+<div id="help">← → navigate &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; N notes &nbsp;·&nbsp; O overview</div>
+<div id="stage"><div class="progress" id="bar"></div>
+
+  <!-- 1. TITLE -->
+  <section class="slide title-slide active">
+    <div class="eyebrow">TEI Conference · Keynote</div>
+    <div class="spacer" style="max-height:40px"></div>
+    <h1>Tax AI Infrastructure</h1>
+    <p class="lead" style="margin-top:22px">The plumbing behind the next three years of tax — and why the org chart, not the model, is the bottleneck.</p>
+    <div class="spacer"></div>
+    <div class="byline">A working thesis, grounded in data from in-house tax-technology teams.</div>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Open with energy. "Everyone's talking about AI <em>models</em>. I want to talk about AI <em>infrastructure</em> — the unglamorous plumbing that decides whether any of this works in a tax function."</p>
+      <p>Set the frame: this is a 3-year view, and it's grounded in real data from in-house tax-tech teams (the benchmark). Promise one provocative claim: the bottleneck is org and data, not the model.</p>
+    </aside>
+    <div class="foot"><span class="brand">taxbenchmark.ai</span><span>01</span></div>
+  </section>
+
+  <!-- 2. HOOK -->
+  <section class="slide">
+    <div class="eyebrow">The question</div>
+    <div class="spacer" style="max-height:30px"></div>
+    <div class="quote">In 2028, what part of the tax function will still be done <span class="primary">the way it is today?</span></div>
+    <div class="spacer" style="max-height:30px"></div>
+    <p class="lead">My answer: less than you think — but not for the reason the vendors are selling you.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Let the question hang. Ask for a show of hands: "Who thinks the provision will look the same in 2028?"</p>
+      <p>Punchline tee-up: the change won't come from a magic model. It comes from infrastructure — data, grounding, agents, governance — being assembled in a specific order. That's the talk.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>02</span></div>
+  </section>
+
+  <!-- 3. WHY LISTEN / EVIDENCE BASE -->
+  <section class="slide">
+    <div class="eyebrow">Where this comes from</div>
+    <h2>Not vibes — a benchmark of real tax-tech functions</h2>
+    <div class="spacer" style="max-height:26px"></div>
+    <div class="grid-3">
+      <div class="card"><h3 class="primary">Anonymous</h3><p>In-house tax & tax-technology teams report how they actually run: headcount, automation, architecture, AI stage.</p></div>
+      <div class="card"><h3 class="primary">Vendor-neutral</h3><p>A non-profit, community-built dataset. No product to sell, no "magic quadrant" to defend.</p></div>
+      <div class="card"><h3 class="primary">Operational</h3><p>9 dimensions — from build-vs-buy to data flow to regulatory response time — not survey-of-CFOs fluff.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="small">Throughout this talk, the numbers come from what teams report about themselves — so we're calibrating to reality, not roadmaps.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Establish credibility fast. You're not guessing — you've been collecting structured data on how tax-tech teams actually operate.</p>
+      <p>Emphasize vendor-neutral. The room is tired of vendor keynotes. You have no SKU.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>03</span></div>
+  </section>
+
+  <!-- 4. THESIS -->
+  <section class="slide">
+    <div class="eyebrow">The thesis</div>
+    <h2>Three shifts define the next 2–3 years</h2>
+    <div class="spacer" style="max-height:30px"></div>
+    <div class="grid-3">
+      <div class="card">
+        <span class="tag">Shift 01</span>
+        <h3 style="margin-top:14px">Software → Infrastructure</h3>
+        <p>We stop buying "tax apps" and start assembling a stack: data, grounding, models, agents, governance.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Shift 02</span>
+        <h3 style="margin-top:14px">Batch → Real-time</h3>
+        <p>E-invoicing and continuous controls force tax from period-end batch to event-driven, always-on.</p>
+      </div>
+      <div class="card">
+        <span class="tag">Shift 03</span>
+        <h3 style="margin-top:14px">Headcount → Oversight</h3>
+        <p>The job shifts from <em>doing</em> the work to <em>supervising</em> agents that do it. Trust becomes the product.</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">The winners won't have the best model. They'll have the best <strong>infrastructure</strong> around an ordinary one.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>This is your spine slide. Tell them you'll return to these three shifts. Each maps to a section.</p>
+      <p>Land the closing line hard — repeat it. "Best infrastructure around an ordinary model." Models commoditize; infrastructure compounds.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>04</span></div>
+  </section>
+
+  <!-- 5. DIVIDER: TODAY -->
+  <section class="slide divider center">
+    <div class="kicker">01</div>
+    <div class="eyebrow" style="margin-top:18px">Part one</div>
+    <h2>Where tax technology actually is today</h2>
+    <p class="lead" style="margin-top:18px">Before we talk about the future, let's be honest about the floor we're starting from.</p>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>05</span></div>
+  </section>
+
+  <!-- 6. TODAY'S REALITY -->
+  <section class="slide">
+    <div class="eyebrow">The starting line</div>
+    <h2>The tax stack is still mostly manual and batch</h2>
+    <div class="spacer" style="max-height:22px"></div>
+    <div class="row" style="align-items:stretch">
+      <div class="col card center">
+        <div class="stat"><div class="n">ERP&nbsp;+&nbsp;XLS</div><div class="lbl">Still the dominant "tax data architecture" — no dedicated layer</div></div>
+      </div>
+      <div class="col card center">
+        <div class="stat"><div class="n">Batch&nbsp;ETL</div><div class="lbl">Data moves period-end, not in real time. Manual transfers are common.</div></div>
+      </div>
+      <div class="col card center">
+        <div class="stat"><div class="n">Weeks</div><div class="lbl">Typical time to respond to a regulatory change</div></div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">You cannot bolt autonomous agents onto a spreadsheet you reconcile by hand once a quarter.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Reality check. The benchmark dimensions (taxDataArchitecture, dataFlow, regulatoryChangeResponseTime) consistently show ERP-only / batch / multi-week response. Use your own numbers live if you have them.</p>
+      <p>Key line: AI doesn't fix a broken data foundation; it amplifies it. Garbage in, confident garbage out.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>06</span></div>
+  </section>
+
+  <!-- 7. AI ADOPTION REALITY -->
+  <section class="slide">
+    <div class="eyebrow">The AI gap</div>
+    <h2>Most teams are at "exploration," not production</h2>
+    <div class="spacer" style="max-height:22px"></div>
+    <div class="grid-2">
+      <div class="card"><h3>What's happening</h3>
+        <ul class="clean" style="margin-top:10px">
+          <li><strong>Exploration & PoC</strong> dominate the GenAI adoption stage.</li>
+          <li>Use cases cluster in <strong>research & drafting</strong> — low-risk, human-checked.</li>
+          <li>Few teams report <strong>production</strong> or enterprise-wide deployment.</li>
+        </ul>
+      </div>
+      <div class="card"><h3>Why it stalls</h3>
+        <ul class="clean" style="margin-top:10px">
+          <li>No <strong>data foundation</strong> to ground the model in your facts.</li>
+          <li>No <strong>evaluation</strong> harness → can't prove it's right → can't ship.</li>
+          <li>Ownership is split across <strong>Tax, Finance Systems, and IT</strong>.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">The gap between a demo and production <strong>is the infrastructure</strong>. That's the whole game.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>The benchmark's genAIAdoptionStage field skews to exploration/PoC. Name the "demo-to-production gap" explicitly — it's the cliff every team hits.</p>
+      <p>Foreshadow: the three reasons it stalls map directly to three layers of the stack you're about to show.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>07</span></div>
+  </section>
+
+  <!-- 8. WHY NOW -->
+  <section class="slide">
+    <div class="eyebrow">Why now</div>
+    <h2>Three forcing functions are converging</h2>
+    <div class="spacer" style="max-height:26px"></div>
+    <div class="grid-3">
+      <div class="card">
+        <h3 class="accent-amber">1 · Capability</h3>
+        <p>Frontier models now do multi-step reasoning, tool use, and long-context document work well enough for real tax tasks.</p>
+      </div>
+      <div class="card">
+        <h3 class="accent-amber">2 · Regulation</h3>
+        <p>E-invoicing & continuous transaction controls (ViDA, national mandates) make tax data <em>real-time and machine-readable</em> by law.</p>
+      </div>
+      <div class="card">
+        <h3 class="accent-amber">3 · Pressure</h3>
+        <p>Pillar Two, more jurisdictions, flat headcount. The work scales; the team doesn't. Something has to give.</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">Capability makes it <strong>possible</strong>. Regulation makes it <strong>necessary</strong>. Pressure makes it <strong>urgent</strong>.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>This is the "why this isn't last year's hype" slide. Three independent vectors arriving together.</p>
+      <p>Regulation is the one tax people underweight: mandated e-invoicing means your transaction data becomes structured and real-time whether you modernize or not. The infra question is forced on you.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>08</span></div>
+  </section>
+
+  <!-- 9. DIVIDER: THE STACK -->
+  <section class="slide divider center">
+    <div class="kicker">02</div>
+    <div class="eyebrow" style="margin-top:18px">Part two</div>
+    <h2>The Tax AI Infrastructure stack</h2>
+    <p class="lead" style="margin-top:18px">Six layers. You build them bottom-up. Skip one and the layer above it collapses.</p>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>09</span></div>
+  </section>
+
+  <!-- 10. STACK OVERVIEW -->
+  <section class="slide">
+    <div class="eyebrow">The stack · overview</div>
+    <h2>From raw transactions to supervised autonomy</h2>
+    <div class="spacer" style="max-height:18px"></div>
+    <div class="stack">
+      <div class="layer"><div class="num">6</div><div class="name">Governance &amp; Evals</div><div class="desc">Accuracy tests, audit trail, explainability, human sign-off</div></div>
+      <div class="layer"><div class="num">5</div><div class="name">Orchestration</div><div class="desc">Tools, ERP connectors, MCP, workflow & approvals</div></div>
+      <div class="layer"><div class="num">4</div><div class="name">Agents</div><div class="desc">Research · provision · compliance · controversy</div></div>
+      <div class="layer"><div class="num">3</div><div class="name">Models</div><div class="desc">Frontier foundation models + domain prompting/tuning</div></div>
+      <div class="layer"><div class="num">2</div><div class="name">Knowledge &amp; Grounding</div><div class="desc">Tax law, positions, prior filings — retrievable & cited</div></div>
+      <div class="layer"><div class="num">1</div><div class="name">Data Foundation</div><div class="desc">Clean, real-time, lineage-tracked transaction & entity data</div></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="small">Read it bottom-up. Most failed AI pilots tried to start at layer 4.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Walk it bottom to top in one breath, then say: "Notice where the demos live — layer 4. Notice where the value lives — layers 1, 2, and 6." That asymmetry is why pilots stall.</p>
+      <p>You'll spend a slide on each layer next.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>10</span></div>
+  </section>
+
+  <!-- 11. LAYER 1 -->
+  <section class="slide">
+    <div class="eyebrow">Layer 1 · Data foundation</div>
+    <h2>If the data isn't real-time and trusted, stop here</h2>
+    <div class="spacer" style="max-height:18px"></div>
+    <div class="row">
+      <div class="col">
+        <ul class="clean">
+          <li>A <strong>tax data layer</strong> over the ERP — not 40 spreadsheets and a SharePoint.</li>
+          <li><strong>Event-driven ingestion</strong> so transactions arrive as they happen.</li>
+          <li><strong>Lineage</strong> — every number traces back to a source you can defend in an audit.</li>
+          <li>Entity, jurisdiction, and product master data that's actually <strong>maintained</strong>.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="stack" style="gap:8px">
+          <div class="layer hl"><div class="num">1</div><div class="name" style="width:auto">Data Foundation</div></div>
+          <div class="layer" style="opacity:.35"><div class="num">2</div><div class="name" style="width:auto">Knowledge</div></div>
+          <div class="layer" style="opacity:.25"><div class="num">3</div><div class="name" style="width:auto">Models</div></div>
+          <div class="layer" style="opacity:.18"><div class="num">4</div><div class="name" style="width:auto">Agents</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">This is unglamorous, expensive, and the single highest-ROI thing you can do for AI.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>The benchmark's data-flow and data-architecture fields show batch/manual dominating. This is the layer everyone wants to skip and no one can.</p>
+      <p>Tie to e-invoicing: mandates are <em>handing</em> you real-time structured data. Treat compliance plumbing as the seed of your data foundation, not a cost center.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>11</span></div>
+  </section>
+
+  <!-- 12. LAYER 2 -->
+  <section class="slide">
+    <div class="eyebrow">Layer 2 · Knowledge &amp; grounding</div>
+    <h2>The model knows tax in general. It must know <span class="primary">your</span> tax.</h2>
+    <div class="spacer" style="max-height:18px"></div>
+    <div class="grid-2">
+      <div class="card"><h3>What lives here</h3>
+        <ul class="clean" style="margin-top:8px">
+          <li>Statutes, regs, rates — by jurisdiction, with effective dates.</li>
+          <li>Your <strong>tax positions</strong>, memos, and prior-year filings.</li>
+          <li>Rulings, e-invoicing schemas, and a jurisdiction knowledge graph.</li>
+        </ul>
+      </div>
+      <div class="card"><h3>Why it matters</h3>
+        <ul class="clean" style="margin-top:8px">
+          <li>Retrieval grounds answers in <strong>citable sources</strong> — not memory.</li>
+          <li>"Show me the authority" becomes a built-in, not a hope.</li>
+          <li>This is what turns a chatbot into a <strong>defensible</strong> tool.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">No grounding, no citations. No citations, no auditor will ever accept the output.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Explain RAG without jargon: the model retrieves the relevant statute/position and answers <em>from it</em>, with a citation. That's the difference between "trust me" and "here's the authority."</p>
+      <p>This is the layer that makes outputs survive an audit. Connect to governance (layer 6).</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>12</span></div>
+  </section>
+
+  <!-- 13. LAYER 3 -->
+  <section class="slide">
+    <div class="eyebrow">Layer 3 · Models</div>
+    <h2>Models are the commodity. Don't fall in love with one.</h2>
+    <div class="spacer" style="max-height:18px"></div>
+    <div class="row">
+      <div class="col">
+        <ul class="clean">
+          <li>Frontier foundation models, swapped as they improve — assume <strong>portability</strong>.</li>
+          <li>Most "tuning" you need is <strong>prompting + grounding</strong>, not training your own model.</li>
+          <li>Right-size: a cheap fast model for extraction, a strong model for reasoning.</li>
+          <li>Treat the model as a <strong>replaceable part</strong>, not the architecture.</li>
+        </ul>
+      </div>
+      <div class="col card center">
+        <div class="stat"><div class="n">↓ 10×</div><div class="lbl">Rough order-of-magnitude drop in cost-per-task each generation. Plan for it.</div></div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">The teams that hard-wired one vendor's model into everything will be re-platforming in 18 months.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Deflate model hype. Capability is converging and prices are collapsing. The durable engineering is everything <em>around</em> the model.</p>
+      <p>Design principle: an abstraction layer so you can swap models without rewriting workflows. This is an infra decision, not a procurement one.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>13</span></div>
+  </section>
+
+  <!-- 14. LAYER 4 -->
+  <section class="slide">
+    <div class="eyebrow">Layer 4 · Agents</div>
+    <h2>From "ask a question" to "do the task"</h2>
+    <div class="spacer" style="max-height:20px"></div>
+    <div class="grid-2">
+      <div class="card"><h3 class="primary">Research agent</h3><p>Reads the law + your positions, drafts a memo with citations and an explicit confidence flag.</p></div>
+      <div class="card"><h3 class="primary">Compliance agent</h3><p>Prepares returns from the data layer, reconciles, flags anomalies for human review.</p></div>
+      <div class="card"><h3 class="primary">Provision agent</h3><p>Pulls trial balance, computes the provision, drafts the workpapers and the narrative.</p></div>
+      <div class="card"><h3 class="primary">Controversy agent</h3><p>Assembles audit responses from prior filings, source data, and the document trail.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">An agent is a model <strong>plus tools, plus a goal, plus guardrails</strong> — it acts, it doesn't just chat.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Define "agent" plainly: a model that can use tools (query the data layer, run a calc, open a ticket) to complete a multi-step task, with guardrails.</p>
+      <p>Stress: every agent here outputs <em>drafts for review</em> in the near term. Autonomy is earned per task as evals prove reliability.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>14</span></div>
+  </section>
+
+  <!-- 15. LAYER 5 -->
+  <section class="slide">
+    <div class="eyebrow">Layer 5 · Orchestration</div>
+    <h2>Agents are only as useful as what they can reach</h2>
+    <div class="spacer" style="max-height:20px"></div>
+    <div class="row">
+      <div class="col">
+        <ul class="clean">
+          <li><strong>Connectors</strong> to the ERP, the data layer, the filing portals, the tax engine.</li>
+          <li><strong>MCP &amp; tool standards</strong> so any agent can call any system through one interface.</li>
+          <li><strong>Workflow & approvals</strong> — where a human signs, where an agent may proceed.</li>
+          <li><strong>Observability</strong> — logs of every action, ready for review and audit.</li>
+        </ul>
+      </div>
+      <div class="col card">
+        <h3>The integration tax</h3>
+        <p style="margin-top:10px">Benchmark data shows most teams are still on <strong>vendor tax engines + ERP</strong>, glued with batch jobs. Orchestration is where AI either plugs into reality — or stays a sandbox demo.</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">This is the layer that quietly decides whether your pilot ever touches a real return.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Orchestration = the connective tissue. Mention MCP (Model Context Protocol) as the emerging standard for letting agents talk to systems — one interface instead of N bespoke integrations.</p>
+      <p>Approvals are a feature, not a limitation: the workflow encodes <em>who can do what</em>. That's how you ship safely.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>15</span></div>
+  </section>
+
+  <!-- 16. LAYER 6 -->
+  <section class="slide">
+    <div class="eyebrow">Layer 6 · Governance &amp; evals</div>
+    <h2>This is the moat — and the part everyone skips</h2>
+    <div class="spacer" style="max-height:20px"></div>
+    <div class="grid-3">
+      <div class="card"><h3 class="accent-amber">Evaluate</h3><p>A test set of known-answer tax cases. You measure accuracy <em>before</em> you trust output. Regression-test every model swap.</p></div>
+      <div class="card"><h3 class="accent-amber">Audit</h3><p>Every answer carries its sources, inputs, and the reasoning trail. Reproducible months later.</p></div>
+      <div class="card"><h3 class="accent-amber">Control</h3><p>Confidence thresholds route low-certainty items to humans. Clear sign-off and segregation of duties.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">In tax, <strong>being right is not enough — you must be able to prove you were right.</strong> Governance is that proof.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>The emotional peak of the stack. Tax is adversarial and audited. The differentiator isn't a flashier agent — it's the eval + audit trail that lets you defend the output.</p>
+      <p>Frame governance as enabling, not blocking: it's what lets you grant <em>more</em> autonomy safely over time.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>16</span></div>
+  </section>
+
+  <!-- 17. DIVIDER: ROADMAP -->
+  <section class="slide divider center">
+    <div class="kicker">03</div>
+    <div class="eyebrow" style="margin-top:18px">Part three</div>
+    <h2>Three stages of AI evolution in tax</h2>
+    <p class="lead" style="margin-top:18px">AI-Native Foundation → Continuous Learning → Proactive Management. The order is not optional.</p>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>17</span></div>
+  </section>
+
+  <!-- 18. THREE-STAGE FRAMEWORK -->
+  <section class="slide">
+    <div class="eyebrow">The framework</div>
+    <h2>How AI evolves through the tax function</h2>
+    <div class="spacer" style="max-height:14px"></div>
+    <div class="timeline">
+      <div class="phase">
+        <div class="yr">STAGE 1 · 2026</div>
+        <div class="dot"></div>
+        <h3>AI-Native Foundation</h3>
+        <ul class="clean">
+          <li>Data, grounding &amp; AI built in — not bolted on</li>
+          <li>Copilots assist; humans own every step</li>
+          <li>You're laying track, not running trains yet</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="yr">STAGE 2 · 2027</div>
+        <div class="dot"></div>
+        <h3>AI Continuous Learning</h3>
+        <ul class="clean">
+          <li>System learns from your corrections &amp; outcomes</li>
+          <li>Adapts to new law, rates &amp; positions automatically</li>
+          <li>Accuracy compounds; agents run tasks for review</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="yr">STAGE 3 · 2028</div>
+        <div class="dot"></div>
+        <h3>AI Proactive Management</h3>
+        <ul class="clean">
+          <li>AI spots issues &amp; acts <em>before</em> you ask</li>
+          <li>Near-autonomous — <strong>human approval retained</strong></li>
+          <li>Tax team supervises; AI manages the operation</li>
+        </ul>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="small">Each stage requires the one before it to be real. You earn the next stage with evidence — jurisdiction by jurisdiction.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>This is your original framework — make it the heart of the talk. Walk all three stages, then go back and dwell on each.</p>
+      <p><strong>Stage 1 — AI-Native Foundation:</strong> AI and data are designed in from the start, not retrofitted onto spreadsheets. This is the infrastructure work from Part two. Copilots, human-owned.</p>
+      <p><strong>Stage 2 — AI Continuous Learning:</strong> the system improves from feedback and adapts to regulatory change on its own. It stops being a static tool and starts compounding. Agents now complete tasks; humans review.</p>
+      <p><strong>Stage 3 — AI Proactive Management:</strong> AI gets ahead of the work — flags exposure, drafts the response, manages routine operations. Near-autonomous, but a human still approves. Emphasize: <em>not</em> lights-out tax; accountability stays human.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>18</span></div>
+  </section>
+
+  <!-- 18b. CODING AS LEADING INDICATOR -->
+  <section class="slide">
+    <div class="eyebrow">The proof it's real</div>
+    <h2>This isn't a forecast — coding is already running the playbook</h2>
+    <div class="spacer" style="max-height:16px"></div>
+    <p class="lead" style="margin-bottom:20px; max-width:62ch">Software engineering is the same three stages, ~2–3 years ahead. It's the leading indicator for what reaches tax next.</p>
+    <div class="grid-3">
+      <div class="card" style="border-left:4px solid var(--good)">
+        <span class="tag" style="color:var(--good); background:#e8f5ef; border-color:#bfe3d2">Stage 1 · Done ✓</span>
+        <h3 style="margin-top:12px">AI-Native Foundation</h3>
+        <p>Writing code <em>with</em> AI is now the default. Tools like Claude Code and AI-first editors made the transformation — it's complete, not coming.</p>
+      </div>
+      <div class="card" style="border-left:4px solid var(--accent)">
+        <span class="tag" style="color:#0369a1; background:#e6f4fb; border-color:#c4e6f6">Stage 2 · In progress ↻</span>
+        <h3 style="margin-top:12px">Continuous Learning</h3>
+        <p>The strategic prize is now <strong>data access</strong> — the usage signal (accepts, edits, fixes) that lets the tools learn. That's why AI-native coding tools command a premium. Ongoing, not finished.</p>
+      </div>
+      <div class="card" style="border-left:4px solid var(--amber)">
+        <span class="tag" style="color:var(--amber); background:var(--amber-tint); border-color:#e3d2b0">Stage 3 · Emerging ◔</span>
+        <h3 style="margin-top:12px">Proactive Management</h3>
+        <p>Early signs — agents that proactively refactor, fix, open a PR. Real, but <strong>not autonomous</strong>: a human still approves the merge.</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">Tax is at Stage 1 today. Coding proves the sequence holds — and that the human-approval gate survives all the way through.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>This is the slide that makes skeptics believe. Your framework isn't a guess — it's already played out in software, the domain AI hit first and hardest.</p>
+      <p>Map it explicitly: coding's AI-native transformation is <em>done</em> (Stage 1). Continuous learning is <em>in progress</em> — and the scramble for coding-usage data (why AI-native editors are so valuable) is precisely a race to fuel Stage 2. Stage 3 (proactive/autonomous) shows early signs but isn't there — the developer still approves the merge.</p>
+      <p>The killer parallel: in coding the human approves the merge; in tax the human approves the filing. The approval gate is the constant. Then: "Tax is roughly where coding was a couple of years ago. The map is already drawn — we just get to read ahead."</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>19</span></div>
+  </section>
+
+  <!-- 18c. SCORECARD: CODING VS TAX -->
+  <section class="slide">
+    <div class="eyebrow">The gap, quantified</div>
+    <h2>If we scored the three stages, 0–100</h2>
+    <div class="spacer" style="max-height:18px"></div>
+
+    <div style="display:grid; grid-template-columns:210px 1fr 1fr 1fr; gap:14px 18px; align-items:center">
+      <!-- header -->
+      <div></div>
+      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 1 · Foundation</div></div>
+      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 2 · Cont. Learning</div></div>
+      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 3 · Proactive</div></div>
+
+      <!-- coding row -->
+      <div><div style="font-weight:700; font-size:21px; color:var(--ink)">Coding</div><div class="small" style="font-size:13px">the leading indicator</div></div>
+      <div class="sc"><div class="scbar"><span style="width:90%; background:var(--primary)"></span></div><b>90</b></div>
+      <div class="sc"><div class="scbar"><span style="width:40%; background:var(--primary)"></span></div><b>40</b></div>
+      <div class="sc"><div class="scbar"><span style="width:20%; background:var(--primary)"></span></div><b>20</b></div>
+
+      <!-- tax row -->
+      <div><div style="font-weight:700; font-size:21px; color:var(--ink)">Tax</div><div class="small" style="font-size:13px">today</div></div>
+      <div class="sc"><div class="scbar"><span style="width:15%; background:var(--amber)"></span></div><b style="color:var(--amber)">15</b></div>
+      <div class="sc"><div class="scbar"><span style="width:5%; background:var(--amber)"></span></div><b style="color:var(--amber)">5</b></div>
+      <div class="sc"><div class="scbar"><span style="width:2%; background:var(--amber)"></span></div><b style="color:var(--amber)">0</b></div>
+    </div>
+
+    <div class="spacer"></div>
+    <p class="lead">Same curve, ~2–3 years apart. Coding has finished Stage 1 and is mid-Stage 2 — <strong>which is exactly the map tax gets to read ahead.</strong></p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>This is your most quotable slide — a single number per cell. Read it across: coding 90/40/20, tax 15/5/0.</p>
+      <p>Coding's Stage 1 (AI-native) is basically done (90); Continuous Learning is genuinely in progress (40) — usage signal captured, but still batch retraining, not closed-loop; Proactive (20) is emerging — agents act, humans still approve the merge.</p>
+      <p>Tax is at the very start of Stage 1 (15) — the foundation work we just covered. The point isn't the exact digits; it's the <em>shape</em>: identical curve, a 2–3 year lag. We're not guessing the future — we're reading coding's map.</p>
+      <p>Scores are a directional, early-2026 judgment — say so if pressed, and invite the room to argue the numbers (great engagement hook).</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>20</span></div>
+  </section>
+
+  <!-- 19a. THE HARNESS DIFFUSES FROM CODING -->
+  <section class="slide">
+    <div class="eyebrow">Why foundation-first is the only rational move</div>
+    <h2>The harness for Stage 2 &amp; 3 doesn't exist yet — anywhere</h2>
+    <div class="spacer" style="max-height:14px"></div>
+    <p class="lead" style="margin-bottom:22px; max-width:64ch">Continuous Learning and Proactive Management need a <strong>harness</strong> — the scaffolding that makes models learn and act reliably. Nobody has built it. It's being figured out in coding, then it diffuses.</p>
+    <div class="row" style="align-items:stretch; gap:20px">
+      <div class="col" style="flex:0 0 38%; background:var(--primary); border-radius:16px; padding:26px; color:#fff; display:flex; flex-direction:column; justify-content:center">
+        <div class="tag" style="color:#fff; background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.25); align-self:flex-start">The frontier</div>
+        <h3 style="color:#fff; font-size:30px; margin-top:14px">Coding</h3>
+        <p style="color:#cfd6f1; font-size:17px; margin-top:8px">Most investment, most talent — so the harness gets invented here first.</p>
+      </div>
+      <div class="col center" style="flex:0 0 8%; font-family:var(--mono); color:var(--amber); font-size:14px; letter-spacing:.1em">
+        <div style="text-align:center">DIFFUSES →</div>
+      </div>
+      <div class="col" style="display:flex; flex-direction:column; gap:10px; justify-content:center">
+        <div class="layer"><div class="num" style="background:var(--amber)">+</div><div class="name" style="width:auto">Tax</div><div class="desc">adopts the proven harness as it arrives</div></div>
+        <div class="layer" style="opacity:.7"><div class="num" style="background:#9aa3b2">+</div><div class="name" style="width:auto">Finance &amp; Legal</div><div class="desc">next in line</div></div>
+        <div class="layer" style="opacity:.5"><div class="num" style="background:#b6bcc7">+</div><div class="name" style="width:auto">Other verticals</div><div class="desc">follow the same path</div></div>
+      </div>
+    </div>
+    <div class="spacer" style="max-height:14px"></div>
+    <p class="lead">Even most AI startups are still at the <strong>Foundation</strong> stage. So you can't buy Stage 2 or 3 today — but you <em>can</em> build your foundation, and be ready the moment the harness diffuses.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>This is the intellectually honest core of the talk — say it plainly: the tooling for continuous learning and proactive management <strong>does not exist yet, in any vertical</strong>. Don't let anyone sell you "autonomous tax" today; it's not real.</p>
+      <p>Why coding first: it has the most capital and the most talent, so the agentic harness gets invented there. Then proven patterns <em>diffuse</em> downhill to tax, finance, legal, and the rest — the way every technology wave has.</p>
+      <p>Reinforce with the startup point: even most AI startups are stuck at the foundation stage. Continuous learning and autonomy are unsolved <em>everywhere</em>. That's not a reason to wait — it's the reason to build the one thing you control and that's portable: <strong>your foundation.</strong></p>
+      <p>Land it: "We don't need to invent the harness. We need to be the function that's <em>ready</em> when it shows up. That's a foundation you build now."</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>20</span></div>
+  </section>
+
+  <!-- 19b. AI-NATIVE FOUNDATION ACROSS THE TAX LIFECYCLE -->
+  <section class="slide">
+    <div class="eyebrow">Stage 1, in practice</div>
+    <h2>Build the AI-Native Foundation across the whole tax lifecycle</h2>
+    <div class="spacer" style="max-height:14px"></div>
+    <p class="lead" style="margin-bottom:18px; max-width:64ch">You don't modernize one function in isolation. You build <strong>one</strong> AI-native foundation — and every stage of the tax lifecycle draws from it.</p>
+    <div class="grid-3">
+      <div class="card" style="text-align:center">
+        <h3 class="primary">Tax Planning</h3>
+        <p style="margin-top:8px">Scenario modeling and structuring research, grounded in your own positions and the law.</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <h3 class="primary">Compliance &amp; Reporting</h3>
+        <p style="margin-top:8px">High-volume, rules-based work on real-time data — the natural first mover.</p>
+      </div>
+      <div class="card" style="text-align:center">
+        <h3 class="primary">Tax Audit</h3>
+        <p style="margin-top:8px">Controversy &amp; defense built on the same lineage, sources, and document trail.</p>
+      </div>
+    </div>
+    <div class="spacer" style="max-height:14px"></div>
+    <div class="layer hl" style="justify-content:center; padding:18px">
+      <div class="num">1</div>
+      <div class="name" style="width:auto; font-size:21px">One AI-Native Foundation</div>
+      <div class="desc" style="font-size:16px">Shared data · grounding · governance — under all three</div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">Foundation first. Build it once, build it well — then Continuous Learning and Proactive Management have somewhere to stand.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>This is your concrete anchor — what building the AI-native foundation actually looks like across the tax lifecycle: <strong>Planning, Compliance &amp; Reporting, and Audit</strong>. The mistake is treating these as three separate AI projects; the win is one shared foundation (data, grounding, governance) that all three sit on.</p>
+      <p>If you're presenting this as your team's real work, say so plainly — a first-person case study lands far harder than theory. ("Here's what we're building right now.")</p>
+      <p>Reinforce the sequencing message: Stage 1 comes first, on purpose. Continuous Learning (Stage 2) and Proactive Management (Stage 3) have nothing to compound on until the foundation is real.</p>
+      <p>NOTE TO SELF: confirm you're cleared to attribute this to your employer publicly. If not, present it as "in our function" / generic lifecycle.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>20</span></div>
+  </section>
+
+  <!-- 19c. THE FLYWHEEL -->
+  <section class="slide">
+    <div class="eyebrow">Why foundation first pays off</div>
+    <h2>Connect the lifecycle end-to-end — a flywheel kicks in</h2>
+    <p class="lead" style="max-width:74ch; margin-top:8px">Not a cost you pay before the payoff. Connect Planning → Compliance → Audit on one foundation and each loop compounds — <strong>audit closes the loop.</strong></p>
+
+    <div style="position:relative; width:1000px; height:404px; margin:4px auto 0">
+      <!-- ring -->
+      <svg width="316" height="316" viewBox="0 0 360 360" style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%)">
+        <circle cx="180" cy="180" r="150" fill="none" stroke="#dbe1f6" stroke-width="2"/>
+        <polygon points="188,30 176,23 176,37" fill="#A8772E"/>
+        <polygon points="172,330 184,323 184,337" fill="#A8772E"/>
+      </svg>
+      <!-- hub -->
+      <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:140px; height:140px; border-radius:50%; background:var(--primary); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; box-shadow:0 10px 26px rgba(30,58,138,.32)">
+        <div style="font-size:28px; line-height:1">&#8635;</div>
+        <div style="font-family:var(--mono); font-size:12px; letter-spacing:.14em; margin-top:6px">FLYWHEEL</div>
+        <div style="font-size:11px; color:#cfd6f1; margin-top:5px; max-width:108px; line-height:1.3">audit closes the loop</div>
+      </div>
+      <!-- nodes (clockwise) — anchored inside the ring so they never collide with body text -->
+      <div class="card" style="position:absolute; left:50%; top:0; transform:translate(-50%,0); width:250px; padding:11px 16px">
+        <h3 style="font-size:16px">1 · Connect end-to-end</h3><p style="font-size:13.5px; margin-top:2px">Planning → Compliance → Audit on one foundation</p>
+      </div>
+      <div class="card" style="position:absolute; left:100%; top:50%; transform:translate(-100%,-50%); width:250px; padding:11px 16px">
+        <h3 style="font-size:16px">2 · Audit-ready lineage</h3><p style="font-size:13.5px; margin-top:2px">Every number traces to source — defensible on demand</p>
+      </div>
+      <div class="card" style="position:absolute; left:50%; bottom:0; transform:translate(-50%,0); width:250px; padding:11px 16px">
+        <h3 style="font-size:16px">3 · Feedback captured</h3><p style="font-size:13.5px; margin-top:2px">Audit outcomes &amp; corrections become learning signal</p>
+      </div>
+      <div class="card" style="position:absolute; left:0; top:50%; transform:translate(0,-50%); width:250px; padding:11px 16px">
+        <h3 style="font-size:16px">4 · Foundation compounds</h3><p style="font-size:13.5px; margin-top:2px">Cleaner data → better planning &amp; compliance → more to connect</p>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <p class="lead" style="font-size:21px">Each turn makes the data cleaner, the audit position stronger, the foundation smarter — <strong>the exact feedback engine Stage 2 will run on.</strong></p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>This is the "why bother" answer and the optimistic peak. Foundation-first isn't deferred gratification — connecting the lifecycle end-to-end starts compounding immediately.</p>
+      <p>Walk the loop clockwise: (1) connect Planning→Compliance→Audit on one foundation; (2) you get end-to-end lineage, so audit is defensible — every number traces back; (3) audit outcomes and your corrections get captured as feedback; (4) that makes the foundation smarter, which produces cleaner data and better planning/compliance — and round again.</p>
+      <p><strong>Audit is the linchpin</strong> — say it twice. End-to-end connection is what makes audit defensible, and audit is also where the richest feedback signal comes from. It both opens and closes the loop.</p>
+      <p>Tie forward: this flywheel is precisely the feedback engine Stage 2 (Continuous Learning) runs on. Build the connected foundation now and you're not just audit-ready — you're <em>pre-wired</em> for the harness when it diffuses.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>22</span></div>
+  </section>
+
+  <!-- 19d. WHAT THE FOUNDATION REQUIRES -->
+  <section class="slide">
+    <div class="eyebrow">Under the hood</div>
+    <h2>What an AI-native tax foundation actually requires</h2>
+    <div class="spacer" style="max-height:12px"></div>
+    <p class="lead" style="max-width:64ch; margin-bottom:16px">"Foundation" is not one thing you buy. It's eight infrastructure disciplines — each hard on its own, and only valuable when integrated.</p>
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:13px">
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Data platform / lakehouse</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Snowflake · Databricks · BigQuery — a real tax data lake</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Streaming &amp; pipelines</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Kafka · Flink · CDC — event-driven, not batch ETL</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Integration &amp; connectors</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">ERP · tax engines · APIs · MCP tool standards</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Semantic &amp; master data</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Entity / jurisdiction models · catalog · lineage</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Retrieval / knowledge</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Vector store · embeddings · document parsing (RAG)</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">AI / ML platform</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Model serving · GPU compute · agent orchestration</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Governance &amp; security</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Access control · PII / privacy · audit logging</p>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <h3 style="font-size:16px">Eval &amp; observability</h3>
+        <p style="font-family:var(--mono); font-size:12.5px; color:var(--muted); margin-top:6px">Test harness · monitoring · end-to-end tracing</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">Each box is its own engineering team in most companies. <strong>The foundation is all eight, integrated</strong> — that's the bar.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Slow down and show real infra depth — this is the AI-<em>infrastructure</em> talk paying off. Walk the eight categories briskly; the point isn't to teach each one, it's to convey the <em>surface area</em>.</p>
+      <p>Key line: each of these is a full discipline — data platform, streaming, ML platform — that big tech companies staff with dedicated teams. A tax function being asked to assemble all eight, integrated, is the real challenge. That sets up the next two slides.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>23</span></div>
+  </section>
+
+  <!-- 19e. WHY IT'S HARD -->
+  <section class="slide">
+    <div class="eyebrow">The honest part</div>
+    <h2>Why almost no tax function can stand this up</h2>
+    <div class="spacer" style="max-height:18px"></div>
+    <div class="grid-3">
+      <div class="card"><h3 style="color:var(--bad)">Messy, fragmented data</h3><p>Tax data is scattered across ERPs, billing, supply chain, and spreadsheets — in many jurisdictions, with no clean source of truth.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">Real-time is a different sport</h3><p>Most teams live in batch ETL. Streaming, CDC, and event-driven infra are a specialized, expensive skill set they don't have.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">Doubly-rare talent</h3><p>You need people fluent in tax <em>and</em> platform/data/AI engineering. Each is scarce; the overlap barely exists.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">It's a multi-year platform</h3><p>Not a SKU you buy — a cross-cutting build that spans eight disciplines and years, not a quarter.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">Split ownership</h3><p>Tax vs. Finance Systems vs. IT. No single owner, no clear mandate, no budget line that fits.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">Tax is a cost center</h3><p>Funding hyperscale-grade infrastructure for a function seen as overhead is a hard sell to any CFO.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">This is why "just add AI" stalls. The blocker isn't the model — it's <strong>standing up eight infra disciplines a tax team was never built to own.</strong></p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Be candid — this is the slide that earns trust. Most teams in the room will recognize every one of these barriers. Naming them honestly is what makes the "why Meta" slide credible rather than boastful.</p>
+      <p>The throughline: this is exactly why the harness has to diffuse from where the infra already exists. Almost no tax function can build all eight from scratch — which is the whole point.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>24</span></div>
+  </section>
+
+  <!-- 19f. WHY META WAS POSITIONED -->
+  <section class="slide">
+    <div class="eyebrow">A rare starting point</div>
+    <h2>Why we were uniquely positioned to build it</h2>
+    <div class="spacer" style="max-height:18px"></div>
+    <div class="grid-3">
+      <div class="card"><h3 class="primary">Hyperscale data infra exists</h3><p>One of the largest data platforms in the world is already here. Tax builds <em>on</em> it — we don't stand up a lakehouse from scratch.</p></div>
+      <div class="card"><h3 class="primary">Real-time by default</h3><p>The company runs event-driven and streaming end-to-end. Tax data can be real-time native, not a batch afterthought.</p></div>
+      <div class="card"><h3 class="primary">World-class engineering</h3><p>Deep bench of platform, data, and ML engineers — and a culture where tax-tech is embedded with real software teams.</p></div>
+      <div class="card"><h3 class="primary">AI platform &amp; compute in-house</h3><p>Frontier models, GPU scale, and mature ML tooling already operating — not a procurement exercise.</p></div>
+      <div class="card"><h3 class="primary">Scale justifies the build</h3><p>Enormous transaction volume across many jurisdictions makes the ROI on a real foundation obvious.</p></div>
+      <div class="card"><h3 class="primary">Engineering-owned tax tech</h3><p>The org model lets tax move like a product team — own the stack, ship, and iterate.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">We didn't have to build the infra <em>and</em> the harness. The infra was already here — so we could put it to work for tax.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Frame this as fortunate positioning, not bragging — humility makes it land. The seven barriers on the previous slide are exactly the things that are <em>already solved</em> in this environment, so the tax team gets to start at a starting line most never reach.</p>
+      <p>The transferable lesson for the room: you may not have Meta's infra, but the principle holds — anchor your tax foundation to wherever real data/ML infrastructure already lives in <em>your</em> company (enterprise data platform, the CFO's systems org), instead of building a parallel one inside tax.</p>
+      <p>NOTE TO SELF: confirm you're cleared to attribute specifics publicly. If not, genericize to "a hyperscale environment" / "our company."</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>25</span></div>
+  </section>
+
+  <!-- 19. PHASE DETAIL: WHAT MOVES FIRST -->
+  <section class="slide">
+    <div class="eyebrow">Sequencing</div>
+    <h2>What gets automated first — and last</h2>
+    <div class="spacer" style="max-height:20px"></div>
+    <div class="grid-2">
+      <div class="card">
+        <h3 style="color:var(--good)">Automates early</h3>
+        <ul class="clean" style="margin-top:8px">
+          <li>High-volume, rules-heavy <strong>indirect tax / compliance</strong></li>
+          <li>Data extraction &amp; reconciliation</li>
+          <li>First-draft research &amp; documentation</li>
+          <li>E-invoicing &amp; transactional reporting</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--warn)">Automates last</h3>
+        <ul class="clean" style="margin-top:8px">
+          <li>Novel <strong>planning &amp; structuring</strong> judgment</li>
+          <li>Controversy strategy &amp; negotiation</li>
+          <li>Anything with high ambiguity &amp; high stakes</li>
+          <li>Final sign-off &amp; accountability — always human</li>
+        </ul>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">Volume and structure get automated. <strong>Judgment and accountability stay human</strong> — and become more valuable.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Reassure the room: this isn't "AI replaces tax." It's "AI eats the volume, humans keep the judgment." The judgment work becomes a bigger share of the role.</p>
+      <p>Indirect tax leads because it's high-volume and rules-based — which is exactly the benchmark's focus area.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>19</span></div>
+  </section>
+
+  <!-- 20. DIVIDER: IMPLICATIONS -->
+  <section class="slide divider center">
+    <div class="kicker">04</div>
+    <div class="eyebrow" style="margin-top:18px">Part four</div>
+    <h2>What it means for your team</h2>
+    <p class="lead" style="margin-top:18px">Build-vs-buy, org design, talent, and the trust problem.</p>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>20</span></div>
+  </section>
+
+  <!-- 21. BUILD VS BUY -->
+  <section class="slide">
+    <div class="eyebrow">Build vs. buy, rewritten</div>
+    <h2>The line moves — buy the model, own the stack</h2>
+    <div class="spacer" style="max-height:20px"></div>
+    <div class="grid-3">
+      <div class="card"><h3 class="primary">Buy</h3><p>Foundation models, tax engines, e-invoicing connectors, eval tooling. Commodities — don't build these.</p></div>
+      <div class="card"><h3 class="primary">Own</h3><p>Your data foundation, your grounded knowledge, your evals, your governance. This is your moat.</p></div>
+      <div class="card"><h3 class="primary">Assemble</h3><p>Orchestration glues bought parts to owned data. Increasingly low-code — but a real engineering discipline.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">Benchmark reality: teams are split build/buy/hybrid — but the durable answer is <strong>buy the commodity, own the context.</strong></p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Reference the benchmark's build-vs-buy data (replaced vendor with build, abandoned builds, etc.). The historical pendulum swung wildly. AI gives a cleaner rule.</p>
+      <p>Owning your data + evals + governance is what no vendor can sell you — and what makes any bought model actually work for you.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>21</span></div>
+  </section>
+
+  <!-- 22. ORG & TALENT -->
+  <section class="slide">
+    <div class="eyebrow">Org &amp; talent</div>
+    <h2>The team composition inverts</h2>
+    <div class="spacer" style="max-height:20px"></div>
+    <div class="row">
+      <div class="col">
+        <ul class="clean">
+          <li><strong>Fewer preparers, more reviewers</strong> — humans supervise agent output.</li>
+          <li>A new role: the <strong>tax engineer</strong> — fluent in tax <em>and</em> data/AI.</li>
+          <li>Ownership consolidates: AI forces Tax, Finance Systems &amp; IT to <strong>actually co-own</strong> the stack.</li>
+          <li>Skill mix shifts from spreadsheet ops to <strong>data engineering &amp; prompt/eval design</strong>.</li>
+        </ul>
+      </div>
+      <div class="col card">
+        <h3>The benchmark signal</h3>
+        <p style="margin-top:10px">Teams already split tax-tech FTEs across frontend, backend, <strong>data engineering</strong>, and DevOps — and locate tax-tech in Tax, Finance Systems, or IT. The orgs that resolve that ownership question first will move fastest.</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">The scarce hire of 2028 isn't a tax expert or an engineer. It's the person who is <strong>credibly both.</strong></p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Use the benchmark's skill-mix and tax-tech-location fields. The "where does tax-tech live" question (Tax vs Finance Systems vs IT) becomes existential — split ownership kills AI projects.</p>
+      <p>Land the "credibly both" line — it's a hiring thesis the audience will remember.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>22</span></div>
+  </section>
+
+  <!-- 23. RISKS / TRUST -->
+  <section class="slide">
+    <div class="eyebrow">The trust problem</div>
+    <h2>What can go wrong — and how the stack answers it</h2>
+    <div class="spacer" style="max-height:18px"></div>
+    <div class="grid-2">
+      <div class="card"><h3 style="color:var(--bad)">Hallucinated authority</h3><p>Model invents a citation. → <strong>Grounding + evals</strong> force every claim back to a real source.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">Silent errors at scale</h3><p>One bad rule, ten thousand returns. → <strong>Confidence thresholds + sampling + audit trail.</strong></p></div>
+      <div class="card"><h3 style="color:var(--bad)">Regulator acceptance</h3><p>"Explain this number." → <strong>Reproducible lineage</strong> from output to source data.</p></div>
+      <div class="card"><h3 style="color:var(--bad)">Data leakage / privacy</h3><p>Sensitive data to a model. → <strong>Governance, access control, deployment choices.</strong></p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">Every risk maps to a layer. That's not a coincidence — <strong>the stack is the risk-management strategy.</strong></p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Don't hand-wave risk — meet it head-on. For each fear, point to the specific layer that mitigates it. This is how you win the skeptics in the room.</p>
+      <p>Close: "If a vendor can't tell you how their AI handles all four, they're selling you a demo."</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>23</span></div>
+  </section>
+
+  <!-- 24. MATURITY MODEL -->
+  <section class="slide">
+    <div class="eyebrow">Where do you stand?</div>
+    <h2>A maturity model you can place yourself on</h2>
+    <div class="spacer" style="max-height:16px"></div>
+    <div class="stack">
+      <div class="layer"><div class="num">3</div><div class="name">Proactive Management</div><div class="desc">AI acts ahead of the work; near-autonomous; human approval retained</div></div>
+      <div class="layer"><div class="num">2</div><div class="name">Continuous Learning</div><div class="desc">System learns from feedback &amp; adapts to law; agents run tasks for review</div></div>
+      <div class="layer"><div class="num">1</div><div class="name">AI-Native Foundation</div><div class="desc">Copilots in daily use; grounded, with a real data foundation in place</div></div>
+      <div class="layer hl"><div class="num">0</div><div class="name">Exploratory</div><div class="desc">PoCs, ungrounded chatbots, no evals — where most teams sit today</div></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">Most of the room is at <strong>Level 0</strong>. The next three years is climbing the three stages — <strong>in order.</strong></p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Invite self-assessment. Ask: "Be honest — who's above level 1?" Most won't be, and that's the point: huge room to run.</p>
+      <p>Reinforce: you climb in order. No skipping. Each level is gated by the infrastructure of the one below.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>24</span></div>
+  </section>
+
+  <!-- 25. ACTION -->
+  <section class="slide">
+    <div class="eyebrow">Monday morning</div>
+    <h2>Five moves that survive any model</h2>
+    <div class="spacer" style="max-height:20px"></div>
+    <div class="grid-2">
+      <div class="card"><h3 class="primary">1 · Fix the data foundation</h3><p>It's the bottleneck and the highest-ROI work. Start with the data e-invoicing already gives you.</p></div>
+      <div class="card"><h3 class="primary">2 · Build an eval set</h3><p>50 known-answer tax cases. Now you can measure any tool — and prove it works.</p></div>
+      <div class="card"><h3 class="primary">3 · Resolve ownership</h3><p>Decide where tax-tech lives. Get Tax, Finance Systems &amp; IT co-owning one stack.</p></div>
+      <div class="card"><h3 class="primary">4 · Pick one workflow</h3><p>One high-volume, rules-based process. Ground it, instrument it, ship a copilot.</p></div>
+    </div>
+    <div class="spacer" style="max-height:18px"></div>
+    <p class="lead"><strong>5 · Stay model-agnostic.</strong> Architect so you can swap the model in an afternoon, not a quarter.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Make it concrete and doable. None of these require a big AI budget — they're infrastructure and discipline. They pay off no matter which vendor wins.</p>
+      <p>Number 2 is the sleeper: an eval set turns AI from faith into measurement. It's the cheapest high-leverage thing they can build this quarter.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>25</span></div>
+  </section>
+
+  <!-- 26. RECAP -->
+  <section class="slide">
+    <div class="eyebrow">The takeaway</div>
+    <div class="spacer" style="max-height:40px"></div>
+    <div class="quote">Models will commoditize. <span class="primary">Infrastructure compounds.</span> Build the stack, in order, and earn autonomy with evidence.</div>
+    <div class="spacer" style="max-height:30px"></div>
+    <div class="pill-row">
+      <span class="pill">Software → Infrastructure</span>
+      <span class="pill">Batch → Real-time</span>
+      <span class="pill">Headcount → Oversight</span>
+    </div>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Callback to the three shifts from slide 4. Tie the bow. Pause before the final line.</p>
+      <p>Then pivot to the benchmark as the practical next step — and the way the room can be part of the dataset that calibrates all of this.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>26</span></div>
+  </section>
+
+  <!-- 27. BENCHMARK / JOIN -->
+  <section class="slide">
+    <div class="eyebrow">Be part of the data</div>
+    <h2>This thesis gets sharper with your numbers in it</h2>
+    <div class="spacer" style="max-height:22px"></div>
+    <div class="grid-3">
+      <div class="card"><h3 class="primary">Anonymous</h3><p>Benchmark your automation, team structure, and AI stage against peers — no names attached.</p></div>
+      <div class="card"><h3 class="primary">Non-profit</h3><p>Community-built, free, vendor-neutral. The dataset belongs to the field, not a SKU.</p></div>
+      <div class="card"><h3 class="primary">Equal access</h3><p>Contribute once, see the whole picture. No premium tier, no gatekeeping.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">If you run an in-house tax-tech function, you have a data point this field needs.</p>
+    <aside class="notes"><h4>Speaker notes</h4>
+      <p>Soft pitch — this is community infrastructure for the industry, the same philosophy as the talk. The more teams contribute, the more reliable the "where we are today" picture becomes.</p>
+      <p>Then send them to the QR.</p>
+    </aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>27</span></div>
+  </section>
+
+  <!-- 28. QR / TRY IT LIVE -->
+  <section class="slide title-slide center">
+    <div class="eyebrow">Try it live</div>
+    <div class="spacer" style="max-height:18px"></div>
+    <h1 style="font-size:50px">Contribute &amp; compare</h1>
+    <div class="spacer" style="max-height:26px"></div>
+    <div class="row center" style="gap:48px; align-items:center">
+      <div class="qr-box"><img id="qr" alt="QR code to taxbenchmark.ai" src="" /></div>
+      <div style="text-align:left">
+        <p class="byline" style="margin-bottom:10px">Scan to join the benchmark</p>
+        <div style="font-family:var(--mono); font-size:34px; color:#fff; font-weight:600; letter-spacing:-.01em">taxbenchmark.ai</div>
+        <p class="lead" style="font-size:19px; margin-top:18px; max-width:30ch">Free · anonymous · community-driven. Your data calibrates the next three years.</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="foot"><span class="brand">taxbenchmark.ai</span><span>28</span></div>
+  </section>
+
+  <!-- 29. THANK YOU -->
+  <section class="slide divider center">
+    <div class="eyebrow">Thank you</div>
+    <div class="spacer" style="max-height:30px"></div>
+    <h2 style="font-size:64px">Questions?</h2>
+    <p class="lead" style="margin-top:22px">Let's talk about what's broken in your stack — that's where the next three years actually happen.</p>
+    <div class="spacer"></div>
+    <p class="byline" style="font-family:var(--mono); color:#aeb9e6">contact@taxbenchmark.ai &nbsp;·&nbsp; taxbenchmark.ai</p>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>29</span></div>
+  </section>
+
+</div>
+
+<div id="notes"></div>
+
+<script>
+  const stage = document.getElementById('stage');
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const bar = document.getElementById('bar');
+  const notesPanel = document.getElementById('notes');
+  let i = 0;
+  let notesOn = false;
+
+  function fitStage() {
+    const sx = window.innerWidth / 1280;
+    const sy = window.innerHeight / 720;
+    stage.style.setProperty('--scale', Math.min(sx, sy));
+  }
+
+  function renderNotes() {
+    const note = slides[i].querySelector('.notes');
+    if (notesOn && note) {
+      notesPanel.innerHTML = note.innerHTML;
+      notesPanel.classList.add('show');
+    } else {
+      notesPanel.classList.remove('show');
+    }
+  }
+
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('active', k === i));
+    bar.style.width = ((i) / (slides.length - 1) * 100) + '%';
+    // Auto-number every footer so inserting/removing slides never breaks paging.
+    const pg = slides[i].querySelector('.foot span:last-child');
+    if (pg) pg.textContent = String(i + 1).padStart(2, '0') + ' / ' + slides.length;
+    renderNotes();
+    location.hash = '#' + (i + 1);
+  }
+
+  function next() { show(i + 1); }
+  function prev() { show(i - 1); }
+
+  document.addEventListener('keydown', (e) => {
+    switch (e.key) {
+      case 'ArrowRight': case 'PageDown': case ' ': e.preventDefault(); next(); break;
+      case 'ArrowLeft': case 'PageUp': prev(); break;
+      case 'Home': show(0); break;
+      case 'End': show(slides.length - 1); break;
+      case 'f': case 'F':
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+        break;
+      case 'n': case 'N': notesOn = !notesOn; renderNotes(); break;
+      case 'o': case 'O': toggleOverview(); break;
+    }
+  });
+
+  // click / tap to advance (right half = next, left half = prev)
+  stage.addEventListener('click', (e) => {
+    const r = stage.getBoundingClientRect();
+    if ((e.clientX - r.left) < r.width * 0.25) prev(); else next();
+  });
+
+  // simple overview grid
+  let overview = false;
+  function toggleOverview() {
+    overview = !overview;
+    if (overview) {
+      stage.style.transform = 'translate(-50%,-50%) scale(' + (Math.min(window.innerWidth/1280, window.innerHeight/720)) + ')';
+    }
+    document.body.style.cursor = 'default';
+    // minimal: O just exits fullscreen notes for now; kept for future expansion
+    overview = false;
+  }
+
+  window.addEventListener('resize', fitStage);
+  window.addEventListener('load', () => {
+    fitStage();
+    const fromHash = parseInt((location.hash || '').replace('#','')) - 1;
+    show(Number.isInteger(fromHash) && fromHash >= 0 ? fromHash : 0);
+    loadQR();
+  });
+
+  // Render the QR code. Try an online generator; if offline, draw a labelled fallback.
+  function loadQR() {
+    const url = 'https://taxbenchmark.ai';
+    const img = document.getElementById('qr');
+    if (!img) return;
+    const src = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=0&data=' + encodeURIComponent(url);
+    img.onerror = () => {
+      // Offline fallback: swap the <img> for a styled placeholder box.
+      const box = img.parentElement;
+      box.innerHTML = '<div style="width:240px;height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#1e3a8a;font-family:var(--mono)"><div style="font-size:15px;letter-spacing:.1em">QR OFFLINE</div><div style="font-size:18px;margin-top:10px;font-weight:600">taxbenchmark.ai</div><div style="font-size:11px;margin-top:14px;color:#6b7280;max-width:200px">Generate a QR for this URL before the talk and drop the PNG in /presentation.</div></div>';
+    };
+    img.src = src;
+  }
+
+  window.show=show;
+  fitStage();
+</script>
+</body>
+</html>
