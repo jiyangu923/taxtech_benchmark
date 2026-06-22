@@ -68,6 +68,16 @@
   .sc b{font-family:var(--mono);font-size:24px;color:var(--primary);width:34px;text-align:right;}
   .qr-box{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;display:inline-flex;}
   .qr-box img{width:200px;height:200px;display:block;}
+  /* infra table */
+  .infratab{display:flex;flex-direction:column;}
+  .infratab .ihead,.infratab .irow{display:grid;grid-template-columns:232px 1fr 1fr;gap:16px;align-items:center;padding:6px 12px;}
+  .infratab .ihead{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:#9aa3b2;border-bottom:1.5px solid var(--line);}
+  .infratab .irow{border-bottom:1px solid #efeeea;}
+  .infratab .lname{font-weight:700;font-size:15px;color:var(--ink);}
+  .infratab .ind{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .infratab .meta{font-family:var(--mono);font-size:12px;color:var(--primary);font-weight:600;}
+  .infratab .irow.hl{background:var(--amber-tint);border-radius:8px;}
+  .infratab .irow.hl .meta{color:var(--amber);}
   #notes{position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:auto;background:rgba(13,17,23,.96);color:#e7ecf5;padding:18px 26px;display:none;font-size:16px;line-height:1.5;border-top:2px solid var(--amber);z-index:50;}
   #notes.show{display:block;}
   #notes h4{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#f6d99a;margin-bottom:8px;}
@@ -257,23 +267,25 @@
   <!-- 8 · THE INFRA REQUIRED -->
   <section class="slide">
     <div class="eyebrow">Under the hood</div>
-    <h2>What that foundation requires — and who supplies it</h2>
-    <div class="spacer" style="max-height:10px"></div>
-    <p class="lead" style="max-width:70ch;margin-bottom:14px">Nine disciplines, each its own industry. The work isn't picking a vendor — it's <strong>integrating all nine.</strong></p>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Data platform / lakehouse</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Snowflake · Databricks · BigQuery</p></div>
-      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Streaming &amp; pipelines</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Kafka/Confluent · Flink · Fivetran</p></div>
-      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Integration &amp; connectors</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">SAP/Oracle · Vertex/Avalara · MuleSoft</p></div>
-      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Master data &amp; catalog</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Collibra · Alation · Atlan</p></div>
-      <div class="card" style="padding:14px 16px;border-color:var(--amber);background:var(--amber-tint)"><h3 style="font-size:16px">Graph / knowledge graph</h3><p style="font-family:var(--mono);font-size:12px;color:var(--amber);margin-top:5px">Neo4j · TigerGraph · Neptune</p></div>
-      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Retrieval / vector</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Pinecone · Weaviate · pgvector</p></div>
-      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">AI / ML platform</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Bedrock · SageMaker · Vertex AI</p></div>
-      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Governance &amp; security</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">Immuta · OneTrust · Okta</p></div>
-      <div class="card" style="padding:14px 16px"><h3 style="font-size:16px">Eval &amp; observability</h3><p style="font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:5px">LangSmith · Arize · Braintrust</p></div>
+    <h2>Every layer has an industry — and a Meta system</h2>
+    <p class="lead" style="max-width:80ch;margin-top:6px">The "AI" is just the models. Everything else is infrastructure — and we already run an internal version of nearly all of it.</p>
+    <div class="spacer" style="max-height:12px"></div>
+    <div class="infratab">
+      <div class="ihead"><div>LAYER</div><div>INDUSTRY</div><div>META · INTERNAL</div></div>
+      <div class="irow"><div class="lname">UI / experience</div><div class="ind">web &amp; app · copilot UI · workflow</div><div class="meta">React · Relay</div></div>
+      <div class="irow"><div class="lname">Models <span style="font-weight:400;color:var(--muted);font-size:12px">(the AI)</span></div><div class="ind">Claude · GPT · Gemini</div><div class="meta">Llama · PyTorch</div></div>
+      <div class="irow"><div class="lname">Retrieval / vector</div><div class="ind">Pinecone · Weaviate · pgvector</div><div class="meta">FAISS</div></div>
+      <div class="irow hl"><div class="lname">Graph / knowledge graph</div><div class="ind">Neo4j · TigerGraph · Neptune</div><div class="meta">TAO · Dragon</div></div>
+      <div class="irow"><div class="lname">Master data &amp; catalog</div><div class="ind">Collibra · Alation · Atlan</div><div class="meta">Nemo (catalog) · lineage</div></div>
+      <div class="irow"><div class="lname">Integration &amp; connectors</div><div class="ind">SAP/Oracle · Vertex/Avalara · MuleSoft</div><div class="meta">internal finance systems</div></div>
+      <div class="irow"><div class="lname">Streaming &amp; pipelines</div><div class="ind">Kafka/Confluent · Flink · Fivetran</div><div class="meta">Scribe · Dataswarm · Scuba</div></div>
+      <div class="irow"><div class="lname">Data platform / lakehouse</div><div class="ind">Snowflake · Databricks · BigQuery</div><div class="meta">Presto · Hive · Tectonic</div></div>
+      <div class="irow"><div class="lname">Governance &amp; security</div><div class="ind">Immuta · OneTrust · Okta</div><div class="meta">Privacy Aware Infrastructure</div></div>
+      <div class="irow"><div class="lname">Eval &amp; observability</div><div class="ind">LangSmith · Arize · Braintrust</div><div class="meta">Scuba · ODS</div></div>
     </div>
     <div class="spacer"></div>
-    <p class="lead" style="font-size:21px">Each box is its own engineering team in most companies. <strong>The foundation is all nine, integrated.</strong></p>
-    <aside class="notes"><h4>Notes</h4><p>Nine disciplines, each a real industry with named vendors. The point is the surface area: nobody sells "the foundation" — you integrate all nine.</p><p><strong>Graph (highlighted):</strong> relationships are first-class in tax — entity ↔ jurisdiction ↔ product ↔ transaction, ownership structures for transfer pricing, tax-law citation graphs, and lineage itself is a graph. That's what makes audit explainable. Neo4j / TigerGraph / Amazon Neptune are the typical engines.</p></aside>
+    <p class="lead" style="font-size:21px">The moat isn't the model — it's already running <strong>all ten layers.</strong></p>
+    <aside class="notes"><h4>Notes</h4><p>Reframe: the "AI" is just the model layer — a commodity. The other nine layers are the real infrastructure, plus the UI on top. The killer column is META · INTERNAL: we already run an in-house system for nearly every layer (TAO for graph, FAISS for vector, Presto/Hive for data, Scribe/Dataswarm for streaming, PyTorch/Llama for models, React/Relay for UI). That's why we can move — most companies would have to buy and integrate all ten from scratch.</p><p>Internal names here are well-known public Meta examples — confirm/swap for what your org actually uses, and drop the ones you can't name publicly.</p></aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>08</span></div>
   </section>
 
