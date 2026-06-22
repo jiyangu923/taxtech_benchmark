@@ -70,14 +70,15 @@
   .qr-box img{width:200px;height:200px;display:block;}
   /* infra table */
   .infratab{display:flex;flex-direction:column;}
-  .infratab .ihead,.infratab .irow{display:grid;grid-template-columns:232px 1fr 1fr;gap:16px;align-items:center;padding:6px 12px;}
+  .infratab .ihead,.infratab .irow{display:grid;grid-template-columns:194px 1.32fr 1.08fr;gap:16px;align-items:center;padding:5px 12px;}
   .infratab .ihead{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:#9aa3b2;border-bottom:1.5px solid var(--line);}
   .infratab .irow{border-bottom:1px solid #efeeea;}
   .infratab .lname{font-weight:700;font-size:15px;color:var(--ink);}
-  .infratab .ind{font-family:var(--mono);font-size:12px;color:var(--muted);}
-  .infratab .meta{font-family:var(--mono);font-size:12px;color:var(--primary);font-weight:600;}
+  .infratab .wht{font-size:13.5px;color:var(--ink-2);line-height:1.3;}
+  .infratab .ex{font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.3;}
+  .infratab .ex .m{color:var(--primary);font-weight:600;}
   .infratab .irow.hl{background:var(--amber-tint);border-radius:8px;}
-  .infratab .irow.hl .meta{color:var(--amber);}
+  .infratab .irow.hl .ex .m{color:var(--amber);}
   #notes{position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:auto;background:rgba(13,17,23,.96);color:#e7ecf5;padding:18px 26px;display:none;font-size:16px;line-height:1.5;border-top:2px solid var(--amber);z-index:50;}
   #notes.show{display:block;}
   #notes h4{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#f6d99a;margin-bottom:8px;}
@@ -266,26 +267,25 @@
 
   <!-- 8 · THE INFRA REQUIRED -->
   <section class="slide">
-    <div class="eyebrow">Under the hood</div>
-    <h2>Every layer has an industry — and a Meta system</h2>
-    <p class="lead" style="max-width:80ch;margin-top:6px">The "AI" is just the models. Everything else is infrastructure — and we already run an internal version of nearly all of it.</p>
+    <div class="eyebrow">Under the hood — in plain terms</div>
+    <h2>The "AI" is just the models. The rest is the work.</h2>
+    <p class="lead" style="max-width:82ch;margin-top:6px">Most of this isn't the model at all — it's skills, connectivity, knowledge and controls. Here's the stack without the jargon:</p>
     <div class="spacer" style="max-height:12px"></div>
     <div class="infratab">
-      <div class="ihead"><div>LAYER</div><div>INDUSTRY</div><div>META · INTERNAL</div></div>
-      <div class="irow"><div class="lname">UI / experience</div><div class="ind">web &amp; app · copilot UI · workflow</div><div class="meta">React · Relay</div></div>
-      <div class="irow"><div class="lname">Models <span style="font-weight:400;color:var(--muted);font-size:12px">(the AI)</span></div><div class="ind">Claude · GPT · Gemini</div><div class="meta">Llama · PyTorch</div></div>
-      <div class="irow"><div class="lname">Retrieval / vector</div><div class="ind">Pinecone · Weaviate · pgvector</div><div class="meta">FAISS</div></div>
-      <div class="irow hl"><div class="lname">Graph / knowledge graph</div><div class="ind">Neo4j · TigerGraph · Neptune</div><div class="meta">TAO · Dragon</div></div>
-      <div class="irow"><div class="lname">Master data &amp; catalog</div><div class="ind">Collibra · Alation · Atlan</div><div class="meta">Nemo (catalog) · lineage</div></div>
-      <div class="irow"><div class="lname">Integration &amp; connectors</div><div class="ind">SAP/Oracle · Vertex/Avalara · MuleSoft</div><div class="meta">internal finance systems</div></div>
-      <div class="irow"><div class="lname">Streaming &amp; pipelines</div><div class="ind">Kafka/Confluent · Flink · Fivetran</div><div class="meta">Scribe · Dataswarm · Scuba</div></div>
-      <div class="irow"><div class="lname">Data platform / lakehouse</div><div class="ind">Snowflake · Databricks · BigQuery</div><div class="meta">Presto · Hive · Tectonic</div></div>
-      <div class="irow"><div class="lname">Governance &amp; security</div><div class="ind">Immuta · OneTrust · Okta</div><div class="meta">Privacy Aware Infrastructure</div></div>
-      <div class="irow"><div class="lname">Eval &amp; observability</div><div class="ind">LangSmith · Arize · Braintrust</div><div class="meta">Scuba · ODS</div></div>
+      <div class="ihead"><div>LAYER</div><div>WHAT IT DOES</div><div>EXAMPLES · META</div></div>
+      <div class="irow"><div class="lname">Experience</div><div class="wht">Where teams ask questions &amp; review answers</div><div class="ex">apps · copilots <span class="m">Meta: React</span></div></div>
+      <div class="irow"><div class="lname">AI skills</div><div class="wht">The tasks AI can do — prep a return, draft a memo, reconcile</div><div class="ex">Claude Skills · agents <span class="m">Meta: internal skills</span></div></div>
+      <div class="irow"><div class="lname">Skill management</div><div class="wht">Approve, version &amp; control which skills run — and who may use them</div><div class="ex">registry · guardrails <span class="m">Meta: governance</span></div></div>
+      <div class="irow"><div class="lname">MCP / connectors</div><div class="wht">The universal adapter so AI can reach your systems</div><div class="ex">MCP · ERP/tax-engine links <span class="m">Meta: tool gateway</span></div></div>
+      <div class="irow"><div class="lname">Models <span style="font-weight:400;color:var(--muted);font-size:12px">(the AI)</span></div><div class="wht">The reasoning engine — a swappable commodity</div><div class="ex">Claude · GPT · Gemini <span class="m">Meta: Llama</span></div></div>
+      <div class="irow"><div class="lname">Knowledge</div><div class="wht">Your tax law, rates &amp; positions — grounded and cited</div><div class="ex">search / RAG <span class="m">Meta: FAISS</span></div></div>
+      <div class="irow hl"><div class="lname">Relationships <span style="font-weight:400;color:var(--muted);font-size:12px">(graph)</span></div><div class="wht">Entity ↔ jurisdiction ↔ product · ownership chains</div><div class="ex">Neo4j · Neptune <span class="m">Meta: TAO</span></div></div>
+      <div class="irow"><div class="lname">Data foundation</div><div class="wht">Clean, real-time tax data</div><div class="ex">Snowflake · Databricks <span class="m">Meta: data platform</span></div></div>
+      <div class="irow"><div class="lname">Trust &amp; controls</div><div class="wht">Security, privacy, audit trail, accuracy checks</div><div class="ex">Immuta · OneTrust <span class="m">Meta: privacy infra</span></div></div>
     </div>
     <div class="spacer"></div>
-    <p class="lead" style="font-size:21px">The moat isn't the model — it's already running <strong>all ten layers.</strong></p>
-    <aside class="notes"><h4>Notes</h4><p>Reframe: the "AI" is just the model layer — a commodity. The other nine layers are the real infrastructure, plus the UI on top. The killer column is META · INTERNAL: we already run an in-house system for nearly every layer (TAO for graph, FAISS for vector, Presto/Hive for data, Scribe/Dataswarm for streaming, PyTorch/Llama for models, React/Relay for UI). That's why we can move — most companies would have to buy and integrate all ten from scratch.</p><p>Internal names here are well-known public Meta examples — confirm/swap for what your org actually uses, and drop the ones you can't name publicly.</p></aside>
+    <p class="lead" style="font-size:21px">The moat isn't the model — it's running <strong>every layer, together.</strong></p>
+    <aside class="notes"><h4>Notes</h4><p>Audience-friendly altitude. Lead with the plain "what it does" column. The three the room cares about: <strong>AI skills</strong> (the actual tasks — like an employee's capabilities), <strong>skill management</strong> (approving/versioning/controlling which skills run and who can use them — governance you already understand), and <strong>MCP</strong> (the universal adapter that lets AI safely reach the ERP, tax engine, and portals).</p><p>Frontier labs supply the horizontal pieces — models, skills, MCP — and want you building on their ecosystem. The vertical depth (your tax knowledge, data, relationships, controls) is yours to own. Examples/Meta names are illustrative — swap for what you actually use.</p></aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>08</span></div>
   </section>
 
@@ -308,9 +308,9 @@
         <div style="display:flex;flex-direction:column;gap:9px;margin-top:12px">
           <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Data platform</div><div style="font-size:15px;color:var(--ink-2)">pull the real order — $2M, ship-to TX, the product SKU</div></div>
           <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--amber);width:128px;flex:0 0 auto">Graph</div><div style="font-size:15px;color:var(--ink-2)">which legal entity sold it · TX state→county→city · is the product taxable</div></div>
-          <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Retrieval</div><div style="font-size:15px;color:var(--ink-2)">today's Texas rule &amp; rate — <strong>with a citation</strong></div></div>
+          <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Knowledge</div><div style="font-size:15px;color:var(--ink-2)">today's Texas rule &amp; rate — <strong>with a citation</strong></div></div>
           <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Models</div><div style="font-size:15px;color:var(--ink-2)">reason over all of it to an answer</div></div>
-          <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Governance</div><div style="font-size:15px;color:var(--ink-2)">check who may see it · log every step</div></div>
+          <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Trust &amp; controls</div><div style="font-size:15px;color:var(--ink-2)">check who may see it · log every step</div></div>
           <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Eval + lineage</div><div style="font-size:15px;color:var(--ink-2)">confidence check; unsure → human · every number traces back</div></div>
         </div>
       </div>
@@ -370,7 +370,7 @@
           <text x="300" y="78" text-anchor="middle" font-size="15" font-weight="600" fill="#1e3a8a">AI CAPABILITY</text>
           <text x="300" y="96" text-anchor="middle" font-size="11" fill="#6b7280">models · talent</text>
           <text x="150" y="338" text-anchor="middle" font-size="15" font-weight="600" fill="#0c7bb3">ENGINEERING</text>
-          <text x="150" y="356" text-anchor="middle" font-size="11" fill="#6b7280">9 infra disciplines</text>
+          <text x="150" y="356" text-anchor="middle" font-size="11" fill="#6b7280">the full stack</text>
           <text x="452" y="338" text-anchor="middle" font-size="15" font-weight="600" fill="#A8772E">TAX NEED</text>
           <text x="452" y="356" text-anchor="middle" font-size="11" fill="#6b7280">scale · jurisdictions</text>
           <!-- AI-labs marker in AI-only lobe -->
@@ -383,18 +383,18 @@
       </div>
       <div class="col">
         <div class="card">
-          <h3>Why not the AI labs?</h3>
+          <h3>Why not the frontier labs?</h3>
           <ul class="clean" style="margin-top:10px">
-            <li style="font-size:17px">Anthropic &amp; OpenAI have world-class AI — but that's <strong>one circle, not three</strong>.</li>
-            <li style="font-size:17px">Lighter <strong>broad-engineering</strong> investment — focused on model R&amp;D, not a full enterprise data platform.</li>
-            <li style="font-size:17px">Early, <strong>small tax footprint</strong> — one is just standing up a tax engine (Vertex).</li>
+            <li style="font-size:16px">They're building the <strong>ecosystem</strong> — models, skills, MCP — and want you on their platform.</li>
+            <li style="font-size:16px">But their <strong>vertical</strong> AI investment is coding-deep; for tax it's still surface-level.</li>
+            <li style="font-size:16px">Lighter broad-engineering footprint, and an early tax footprint — one is just standing up a tax engine.</li>
           </ul>
         </div>
       </div>
     </div>
     <div class="spacer"></div>
-    <p class="lead">You can't model your way there. It takes <strong>AI × engineering × real tax need — together.</strong></p>
-    <aside class="notes"><h4>Notes</h4><p>The competitive insight. Leading the AI transformation of tax isn't about the best model — it's the intersection. AI labs own the AI circle but lack broad eng investment and have minimal tax need (still early — just setting up a tax engine). Meta sits where all three overlap. Keep it confident, not boastful.</p></aside>
+    <p class="lead">The horizontal AI is theirs to sell. The <strong>vertical tax foundation is yours to own</strong> — and it takes all three circles.</p>
+    <aside class="notes"><h4>Notes</h4><p>The competitive insight. Frontier labs (Anthropic/OpenAI) are building the horizontal ecosystem — models, skills, MCP — and they want enterprises building on it. But their vertical depth is in coding; tax (and other verticals) is still surface-level. So they own the horizontal AI; the vertical tax foundation — knowledge, data, relationships, controls — is yours. Meta sits where AI × engineering × real tax need overlap. Confident, not boastful.</p></aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>10</span></div>
   </section>
 
