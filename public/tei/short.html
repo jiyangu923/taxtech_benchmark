@@ -289,6 +289,38 @@
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>08</span></div>
   </section>
 
+  <!-- 8b · WHY AI NEEDS THE LAYERS (concrete example) -->
+  <section class="slide">
+    <div class="eyebrow">Make it concrete</div>
+    <h2>Why the model alone isn't enough</h2>
+    <div class="spacer" style="max-height:14px"></div>
+    <div class="card" style="background:#eef1fb;border-color:#dbe1f6;padding:16px 22px">
+      <p style="font-size:22px;color:var(--ink);font-weight:600">“Did we charge the right sales tax on this $2M order shipped to Texas?”</p>
+    </div>
+    <div class="spacer" style="max-height:16px"></div>
+    <div class="row" style="align-items:stretch;gap:20px">
+      <div class="card" style="flex:0 0 33%;background:#fbf3f3;border-color:#f0d9d9">
+        <h3 style="color:var(--bad)">The model alone</h3>
+        <p style="margin-top:8px">Knows Texas sales tax <em>in general</em>. But not <strong>your</strong> order, your nexus, today's rate — or how to prove it.</p>
+      </div>
+      <div class="card col">
+        <h3 class="primary">With the foundation, it can…</h3>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-top:12px">
+          <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Data platform</div><div style="font-size:15px;color:var(--ink-2)">pull the real order — $2M, ship-to TX, the product SKU</div></div>
+          <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--amber);width:128px;flex:0 0 auto">Graph</div><div style="font-size:15px;color:var(--ink-2)">which legal entity sold it · TX state→county→city · is the product taxable</div></div>
+          <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Retrieval</div><div style="font-size:15px;color:var(--ink-2)">today's Texas rule &amp; rate — <strong>with a citation</strong></div></div>
+          <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Models</div><div style="font-size:15px;color:var(--ink-2)">reason over all of it to an answer</div></div>
+          <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Governance</div><div style="font-size:15px;color:var(--ink-2)">check who may see it · log every step</div></div>
+          <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--primary);width:128px;flex:0 0 auto">Eval + lineage</div><div style="font-size:15px;color:var(--ink-2)">confidence check; unsure → human · every number traces back</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead" style="font-size:21px">The model is one slice of the answer. The <strong>infrastructure is the rest</strong> — and the part that holds up in an audit.</p>
+    <aside class="notes"><h4>Notes</h4><p>Make it tangible with one question everyone understands. The model can talk about Texas sales tax, but it can't answer <em>this</em> question without the layers: the data (the real order), the graph (entity + jurisdiction + product taxability), retrieval (the current rule, cited), governance (permissions + logging), and eval/lineage (confidence + traceability). That's why "just add a chatbot" fails — and why the foundation is the work.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>09</span></div>
+  </section>
+
   <!-- 9 · WHY HARD / WHY POSITIONED -->
   <section class="slide">
     <div class="eyebrow">The honest part</div>
