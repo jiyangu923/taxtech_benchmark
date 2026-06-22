@@ -42,17 +42,18 @@
 | 19 | **Coding = leading indicator** | 3 | **The proof.** Stage 1 done, 2 in progress, 3 emerging. Approval gate constant. |
 | 20 | **The harness diffuses** | 3 | **The mechanism.** Stage 2/3 harness doesn't exist yet; built in coding first, diffuses to tax. Most startups still foundation-stage. |
 | 21 | **Foundation across the lifecycle** | 3 | **Your case study.** One AI-native foundation under Planning / Compliance & Reporting / Audit. Foundation first. |
-| 22 | First vs last to automate | 2 | Volume/structure automate; judgment/accountability stay human. |
-| 23 | Divider: Implications | 0.5 | What it means for your team. |
-| 24 | Build vs buy | 2 | Buy the commodity, own the context. |
-| 25 | Org & talent | 2 | Team inverts. The "credibly both" hire. Resolve ownership. |
-| 26 | Risks / trust | 2.5 | Each risk maps to a layer. The stack *is* the risk strategy. |
-| 27 | Maturity model | 2 | "Be honest — who's above Level 0?" Climb in order. |
-| 28 | Action: 5 moves | 2 | Data foundation · eval set · ownership · one workflow · model-agnostic. |
-| 29 | Recap | 1 | Callback to 3 shifts. "Infrastructure compounds." |
-| 30 | Benchmark / join | 1 | Community infrastructure for the field. |
-| 31 | QR / try it live | 0.5 | Scan to join. |
-| 32 | Thank you / Q&A | — | "Tell me what's broken in your stack." |
+| 22 | **The flywheel** | 2.5 | **The payoff.** Connect end-to-end → audit-ready lineage → feedback → foundation compounds. Audit closes the loop = Stage 2 fuel. |
+| 23 | First vs last to automate | 2 | Volume/structure automate; judgment/accountability stay human. |
+| 24 | Divider: Implications | 0.5 | What it means for your team. |
+| 25 | Build vs buy | 2 | Buy the commodity, own the context. |
+| 26 | Org & talent | 2 | Team inverts. The "credibly both" hire. Resolve ownership. |
+| 27 | Risks / trust | 2.5 | Each risk maps to a layer. The stack *is* the risk strategy. |
+| 28 | Maturity model | 2 | "Be honest — who's above Level 0?" Climb in order. |
+| 29 | Action: 5 moves | 2 | Data foundation · eval set · ownership · one workflow · model-agnostic. |
+| 30 | Recap | 1 | Callback to 3 shifts. "Infrastructure compounds." |
+| 31 | Benchmark / join | 1 | Community infrastructure for the field. |
+| 32 | QR / try it live | 0.5 | Scan to join. |
+| 33 | Thank you / Q&A | — | "Tell me what's broken in your stack." |
 
 > **Slides 20–21 are the heart of the argument.** Slide 20: the Stage 2/3 harness
 > doesn't exist yet anywhere — it's invented in coding (most investment) and
