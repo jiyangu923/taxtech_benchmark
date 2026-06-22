@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>From Claude to Tax — Building AI-Native Infrastructure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --primary:#1e3a8a; --primary-2:#2c4ea8; --secondary:#4f46e5; --accent:#0ea5e9;
+    --canvas:#FAFAF9; --ink:#14181f; --ink-2:#3a4150; --muted:#6b7280;
+    --amber:#A8772E; --amber-tint:#f3ead9; --line:#e6e6e3;
+    --good:#047857; --warn:#b45309; --bad:#b91c1c;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{background:#0d1117;font-family:var(--sans);color:var(--ink);overflow:hidden;}
+  #stage{position:fixed;top:50%;left:50%;width:1280px;height:720px;
+    transform:translate(-50%,-50%) scale(var(--scale,1));transform-origin:center center;
+    background:var(--canvas);overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.55);}
+  .slide{position:absolute;inset:0;padding:64px 84px;display:none;flex-direction:column;background:var(--canvas);}
+  .slide.active{display:flex;}
+  .slide::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--primary);}
+  .eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);font-weight:600;margin-bottom:18px;}
+  h1{font-size:60px;line-height:1.04;letter-spacing:-.02em;font-weight:800;color:var(--ink);}
+  h2{font-size:42px;line-height:1.08;letter-spacing:-.015em;font-weight:700;color:var(--ink);}
+  .lead{font-size:24px;line-height:1.5;color:var(--ink-2);font-weight:400;max-width:60ch;}
+  .small{font-size:17px;color:var(--muted);}
+  p{font-size:20px;line-height:1.5;color:var(--ink-2);}
+  .primary{color:var(--primary);} .accent-amber{color:var(--amber);}
+  strong{color:var(--ink);font-weight:700;}
+  .spacer{flex:1;}
+  .row{display:flex;gap:28px;} .col{flex:1;}
+  .center{align-items:center;justify-content:center;text-align:center;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+  ul.clean{list-style:none;display:flex;flex-direction:column;gap:14px;margin-top:8px;}
+  ul.clean li{position:relative;padding-left:28px;font-size:20px;line-height:1.4;color:var(--ink-2);}
+  ul.clean li::before{content:"";position:absolute;left:0;top:9px;width:9px;height:9px;border-radius:2px;background:var(--primary);}
+  ul.clean li strong{color:var(--ink);}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px 26px;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  .card h3{font-size:22px;font-weight:700;letter-spacing:-.01em;color:var(--ink);margin-bottom:8px;}
+  .card p{font-size:17px;line-height:1.45;}
+  .tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);background:#eef1fb;border:1px solid #dbe1f6;border-radius:999px;padding:5px 12px;font-weight:600;}
+  .foot{position:absolute;left:84px;right:84px;bottom:26px;display:flex;align-items:center;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.04em;}
+  .foot .brand{color:var(--ink-2);font-weight:600;}
+  .progress{position:absolute;bottom:0;left:0;height:4px;background:var(--amber);transition:width .25s ease;z-index:5;}
+  .title-slide{background:linear-gradient(160deg,#16285f 0%,var(--primary) 55%,#233d8e 100%);}
+  .title-slide::before{background:var(--amber);}
+  .title-slide,.title-slide h1,.title-slide .lead,.title-slide .eyebrow,.title-slide p{color:#fff;}
+  .title-slide .eyebrow{color:#f6d99a;} .title-slide .lead{color:#d7ddf3;}
+  .title-slide .byline{font-family:var(--mono);font-size:15px;color:#aeb9e6;letter-spacing:.04em;}
+  .title-slide .foot{color:#93a0d4;} .title-slide .foot .brand{color:#cdd5f3;}
+  /* stack/layer */
+  .layer{display:flex;align-items:center;gap:18px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:14px 20px;}
+  .layer .num{font-family:var(--mono);font-size:14px;color:#fff;background:var(--primary);width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:600;flex:0 0 auto;}
+  .layer .name{font-weight:700;font-size:19px;flex:0 0 auto;}
+  .layer .desc{font-size:16px;color:var(--muted);}
+  .layer.hl{border-color:var(--amber);background:var(--amber-tint);}
+  .layer.hl .num{background:var(--amber);}
+  /* scorecard */
+  .sc{display:flex;align-items:center;gap:12px;}
+  .sc .scbar{flex:1;height:14px;background:#eceae6;border-radius:999px;overflow:hidden;}
+  .sc .scbar span{display:block;height:100%;border-radius:999px;}
+  .sc b{font-family:var(--mono);font-size:24px;color:var(--primary);width:34px;text-align:right;}
+  .qr-box{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;display:inline-flex;}
+  .qr-box img{width:200px;height:200px;display:block;}
+  #notes{position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:auto;background:rgba(13,17,23,.96);color:#e7ecf5;padding:18px 26px;display:none;font-size:16px;line-height:1.5;border-top:2px solid var(--amber);z-index:50;}
+  #notes.show{display:block;}
+  #notes h4{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#f6d99a;margin-bottom:8px;}
+  #notes p{color:#c9d2e3;font-size:16px;margin-bottom:8px;}
+  .slide .notes{display:none !important;}
+  #help{position:fixed;top:14px;right:16px;z-index:60;font-family:var(--mono);font-size:11px;color:#5a6677;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:6px 10px;letter-spacing:.04em;}
+  @media print{
+    #help{display:none;}
+    @page{size:1280px 720px;margin:0;}
+    html,body{height:auto;background:#fff;overflow:visible;}
+    #help,#notes,.progress{display:none !important;}
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+    #stage{position:static;transform:none !important;left:auto;top:auto;width:1280px;height:auto;box-shadow:none;overflow:visible;}
+    .slide{display:flex !important;position:relative;width:1280px;height:720px;break-after:page;page-break-after:always;break-inside:avoid;}
+    .slide:last-of-type{break-after:auto;page-break-after:auto;}
+  }
+</style>
+</head>
+<body>
+<div id="help">← → navigate · F fullscreen · N notes</div>
+<div id="stage"><div class="progress" id="bar"></div>
+
+  <!-- 1 · TITLE -->
+  <section class="slide title-slide">
+    <div class="eyebrow">TEI Conference · Keynote</div>
+    <div class="spacer" style="max-height:40px"></div>
+    <h1>From Claude to Tax</h1>
+    <p class="lead" style="margin-top:20px">How AI evolves in three stages — what we can already see in software, and what we're building at Meta to bring it to tax.</p>
+    <div class="spacer"></div>
+    <div class="byline">A practical look at the infrastructure that makes it real.</div>
+    <aside class="notes"><h4>Notes</h4><p>Set the frame: I'll use Claude / AI coding as the visible example, then show what we're doing in tax at Meta, and the infrastructure it takes. Simple story, one arc.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>01</span></div>
+  </section>
+
+  <!-- 2 · THE EXAMPLE: CLAUDE -->
+  <section class="slide">
+    <div class="eyebrow">Start with what we can see</div>
+    <h2>Coding is the leading indicator</h2>
+    <p class="lead" style="max-width:64ch;margin-top:10px"><strong>Claude Code</strong> made AI-native development the default. Coding is where AI hit first — so it's the map for what's coming next, including tax.</p>
+    <div class="spacer" style="max-height:6px"></div>
+    <svg viewBox="0 0 1000 340" style="width:1000px;display:block;margin:0 auto;font-family:'Geist Mono',monospace">
+      <!-- axes -->
+      <line x1="80" y1="300" x2="950" y2="300" stroke="#d8d6d1" stroke-width="2"/>
+      <line x1="80" y1="40" x2="80" y2="300" stroke="#d8d6d1" stroke-width="2"/>
+      <text x="892" y="326" font-size="13" fill="#9aa3b2" letter-spacing="1">TIME →</text>
+      <text x="64" y="296" font-size="13" fill="#9aa3b2" transform="rotate(-90 64,296)" letter-spacing="1">AI MATURITY →</text>
+      <!-- adoption S-curve -->
+      <path d="M80,288 C 360,288 380,90 940,70" fill="none" stroke="#1e3a8a" stroke-width="4"/>
+      <!-- 2-3 year gap connector -->
+      <path d="M300,250 L 660,118" stroke="#A8772E" stroke-width="2.5" stroke-dasharray="7 6"/>
+      <text x="430" y="170" font-size="15" fill="#A8772E" font-weight="600">~2–3 years</text>
+      <!-- tax dot -->
+      <circle cx="300" cy="250" r="10" fill="#A8772E"/>
+      <text x="300" y="284" text-anchor="middle" font-size="14" fill="#A8772E" font-weight="600">TAX · today</text>
+      <!-- coding dot -->
+      <circle cx="660" cy="118" r="10" fill="#1e3a8a"/>
+      <text x="660" y="104" text-anchor="middle" font-size="14" fill="#1e3a8a" font-weight="600">CODING · today</text>
+    </svg>
+    <div class="spacer"></div>
+    <p class="lead">Same curve, a few years apart — <strong>watch coding and you can read tax's map ahead.</strong></p>
+    <aside class="notes"><h4>Notes</h4><p>One visual carries the whole thesis: coding sits far up the adoption S-curve; tax is near the start; the gap is ~2–3 years. Claude Code is the concrete, recognizable example.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>02</span></div>
+  </section>
+
+  <!-- 3 · THE THREE STAGES (staircase) -->
+  <section class="slide">
+    <div class="eyebrow">The pattern</div>
+    <h2>AI evolves in three stages — climbed in order</h2>
+    <div class="spacer" style="max-height:20px"></div>
+    <div style="display:flex;align-items:flex-end;gap:22px;height:392px">
+      <div style="flex:1;height:212px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px 24px;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(0,0,0,.03)">
+        <div style="font-family:var(--mono);font-size:34px;color:#c3c9d4;font-weight:600;line-height:1">01</div>
+        <h3 style="font-size:23px;margin-top:8px">AI-Native Foundation</h3>
+        <p style="font-size:16px;color:var(--ink-2);margin-top:6px">AI &amp; data built in, not bolted on. Copilots assist; humans own.</p>
+      </div>
+      <div style="flex:1;height:300px;background:#eef1fb;border:1px solid #dbe1f6;border-radius:16px;padding:22px 24px;display:flex;flex-direction:column;box-shadow:0 2px 8px rgba(30,58,138,.08)">
+        <div style="font-family:var(--mono);font-size:34px;color:#9fb0e0;font-weight:600;line-height:1">02</div>
+        <h3 style="font-size:23px;margin-top:8px">Continuous Learning</h3>
+        <p style="font-size:16px;color:var(--ink-2);margin-top:6px">Learns from feedback &amp; outcomes, and adapts on its own. Accuracy compounds.</p>
+      </div>
+      <div style="flex:1;height:388px;background:var(--primary);border-radius:16px;padding:24px 26px;display:flex;flex-direction:column;box-shadow:0 14px 30px rgba(30,58,138,.28)">
+        <div style="font-family:var(--mono);font-size:34px;color:#7e8fc8;font-weight:600;line-height:1">03</div>
+        <h3 style="font-size:23px;margin-top:8px;color:#fff">Proactive Management</h3>
+        <p style="font-size:16px;color:#cfd6f1;margin-top:6px">Acts <em>before</em> you ask. Near-autonomous — but a human still approves.</p>
+        <div class="spacer"></div>
+        <div style="font-family:var(--mono);font-size:12px;color:#aeb9e6;letter-spacing:.1em">↑ EACH STEP NEEDS THE ONE BELOW</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">You can't skip a step. The order isn't optional.</p>
+    <aside class="notes"><h4>Notes</h4><p>The staircase says it without words: stages build on each other, rising toward autonomy, human approval retained at the top. Walk all three.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>03</span></div>
+  </section>
+
+  <!-- 4 · SCORECARD -->
+  <section class="slide">
+    <div class="eyebrow">Where coding stands</div>
+    <h2>Score the three stages, 0–100</h2>
+    <div class="spacer" style="max-height:18px"></div>
+    <div style="display:grid;grid-template-columns:210px 1fr 1fr 1fr;gap:14px 18px;align-items:center">
+      <div></div>
+      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 1 · Foundation</div></div>
+      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 2 · Cont. Learning</div></div>
+      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 3 · Proactive</div></div>
+      <div><div style="font-weight:700;font-size:21px;color:var(--ink)">Coding</div><div class="small" style="font-size:13px">the leading indicator</div></div>
+      <div class="sc"><div class="scbar"><span style="width:90%;background:var(--primary)"></span></div><b>90</b></div>
+      <div class="sc"><div class="scbar"><span style="width:40%;background:var(--primary)"></span></div><b>40</b></div>
+      <div class="sc"><div class="scbar"><span style="width:20%;background:var(--primary)"></span></div><b>20</b></div>
+      <div><div style="font-weight:700;font-size:21px;color:var(--ink)">Tax</div><div class="small" style="font-size:13px">today</div></div>
+      <div class="sc"><div class="scbar"><span style="width:15%;background:var(--amber)"></span></div><b style="color:var(--amber)">15</b></div>
+      <div class="sc"><div class="scbar"><span style="width:5%;background:var(--amber)"></span></div><b style="color:var(--amber)">5</b></div>
+      <div class="sc"><div class="scbar"><span style="width:2%;background:var(--amber)"></span></div><b style="color:var(--amber)">0</b></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">Coding has finished Stage 1 and is mid-Stage 2. Tax is at the very start — <strong>same curve, ~2–3 years apart.</strong></p>
+    <aside class="notes"><h4>Notes</h4><p>Directional scores. The point is the shape, not the digits. Coding 90/40/20; tax 15/5/0. Invite the room to argue the numbers.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>04</span></div>
+  </section>
+
+  <!-- 5 · IT DIFFUSES -->
+  <section class="slide">
+    <div class="eyebrow">Why this matters for tax</div>
+    <h2>Coding figures it out first — then it diffuses</h2>
+    <div class="spacer" style="max-height:20px"></div>
+    <div class="row" style="align-items:stretch;gap:20px">
+      <div class="col" style="flex:0 0 38%;background:var(--primary);border-radius:16px;padding:26px;color:#fff;display:flex;flex-direction:column;justify-content:center">
+        <div class="tag" style="color:#fff;background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.25);align-self:flex-start">The frontier</div>
+        <h3 style="color:#fff;font-size:30px;margin-top:14px">Coding</h3>
+        <p style="color:#cfd6f1;font-size:17px;margin-top:8px">Most investment, most talent — the harness gets invented here first.</p>
+      </div>
+      <div class="col center" style="flex:0 0 8%;font-family:var(--mono);color:var(--amber);font-size:14px;letter-spacing:.1em"><div style="text-align:center">DIFFUSES →</div></div>
+      <div class="col" style="display:flex;flex-direction:column;gap:10px;justify-content:center">
+        <div class="layer"><div class="num" style="background:var(--amber)">+</div><div class="name">Tax</div><div class="desc">adopts the proven harness as it arrives</div></div>
+        <div class="layer" style="opacity:.7"><div class="num" style="background:#9aa3b2">+</div><div class="name">Finance &amp; Legal</div><div class="desc">next in line</div></div>
+        <div class="layer" style="opacity:.5"><div class="num" style="background:#b6bcc7">+</div><div class="name">Other verticals</div><div class="desc">follow the same path</div></div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">The harness for Stage 2 &amp; 3 doesn't fully exist yet — anywhere. <strong>We don't need to invent it. We need to be ready when it arrives.</strong></p>
+    <aside class="notes"><h4>Notes</h4><p>Honest core: the Stage 2/3 tooling is unbuilt; it's being figured out in coding and diffuses outward. So the rational move for tax is to build the part we control now — the foundation.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>05</span></div>
+  </section>
+
+  <!-- 6 · WHAT WE'RE DOING AT META -->
+  <section class="slide">
+    <div class="eyebrow">Our play at Meta</div>
+    <h2>So we start at Stage 1 — across the whole tax lifecycle</h2>
+    <div class="spacer" style="max-height:16px"></div>
+    <p class="lead" style="max-width:66ch;margin-bottom:18px">We're building <strong>one</strong> AI-native foundation — and every stage of the tax lifecycle draws from it.</p>
+    <div class="grid-3">
+      <div class="card center"><h3 class="primary">Tax Planning</h3><p style="margin-top:8px">Scenario modeling &amp; structuring, grounded in our positions and the law.</p></div>
+      <div class="card center"><h3 class="primary">Compliance &amp; Reporting</h3><p style="margin-top:8px">High-volume, rules-based work on real-time data — the natural first mover.</p></div>
+      <div class="card center"><h3 class="primary">Tax Audit</h3><p style="margin-top:8px">Controversy &amp; defense on the same lineage, sources, and document trail.</p></div>
+    </div>
+    <div class="spacer" style="max-height:14px"></div>
+    <div class="layer hl" style="justify-content:center;padding:18px"><div class="num">1</div><div class="name" style="font-size:21px">One AI-Native Foundation</div><div class="desc" style="font-size:16px">shared data · grounding · governance — under all three</div></div>
+    <div class="spacer"></div>
+    <p class="lead">Foundation first. Build it once, build it well.</p>
+    <aside class="notes"><h4>Notes</h4><p>The transition to "us." Present first-person if cleared to attribute to Meta. The mistake is three separate AI projects; the win is one shared foundation under Planning, Compliance &amp; Reporting, and Audit.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>06</span></div>
+  </section>
+
+  <!-- 7 · THE FLYWHEEL -->
+  <section class="slide">
+    <div class="eyebrow">Why foundation-first pays off</div>
+    <h2>Connect end-to-end — a flywheel kicks in</h2>
+    <p class="lead" style="max-width:74ch;margin-top:8px">Connect Planning → Compliance → Audit on one foundation and each loop compounds — <strong>audit closes the loop.</strong></p>
+    <div style="position:relative;width:1000px;height:392px;margin:6px auto 0">
+      <svg width="316" height="316" viewBox="0 0 360 360" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)">
+        <circle cx="180" cy="180" r="150" fill="none" stroke="#dbe1f6" stroke-width="2"/>
+        <polygon points="188,30 176,23 176,37" fill="#A8772E"/><polygon points="172,330 184,323 184,337" fill="#A8772E"/>
+      </svg>
+      <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:140px;height:140px;border-radius:50%;background:var(--primary);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-shadow:0 10px 26px rgba(30,58,138,.32)">
+        <div style="font-size:28px;line-height:1">&#8635;</div><div style="font-family:var(--mono);font-size:12px;letter-spacing:.14em;margin-top:6px">FLYWHEEL</div><div style="font-size:11px;color:#cfd6f1;margin-top:5px;max-width:108px;line-height:1.3">audit closes the loop</div>
+      </div>
+      <div class="card" style="position:absolute;left:50%;top:0;transform:translate(-50%,0);width:250px;padding:11px 16px"><h3 style="font-size:16px">1 · Connect end-to-end</h3><p style="font-size:13.5px;margin-top:2px">Planning → Compliance → Audit on one foundation</p></div>
+      <div class="card" style="position:absolute;left:100%;top:50%;transform:translate(-100%,-50%);width:250px;padding:11px 16px"><h3 style="font-size:16px">2 · Audit-ready lineage</h3><p style="font-size:13.5px;margin-top:2px">Every number traces to source — defensible on demand</p></div>
+      <div class="card" style="position:absolute;left:50%;bottom:0;transform:translate(-50%,0);width:250px;padding:11px 16px"><h3 style="font-size:16px">3 · Feedback captured</h3><p style="font-size:13.5px;margin-top:2px">Audit outcomes &amp; corrections become learning signal</p></div>
+      <div class="card" style="position:absolute;left:0;top:50%;transform:translate(0,-50%);width:250px;padding:11px 16px"><h3 style="font-size:16px">4 · Foundation compounds</h3><p style="font-size:13.5px;margin-top:2px">Cleaner data → better planning &amp; compliance → more to connect</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead" style="font-size:21px">Each turn makes the data cleaner and the foundation smarter — <strong>the exact feedback engine Stage 2 will run on.</strong></p>
+    <aside class="notes"><h4>Notes</h4><p>The payoff. Foundation-first isn't deferred gratification — connecting end-to-end compounds immediately. Audit is the linchpin: it makes the work defensible AND generates the richest feedback.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>07</span></div>
+  </section>
+
+  <!-- 8 · THE INFRA REQUIRED -->
+  <section class="slide">
+    <div class="eyebrow">Under the hood</div>
+    <h2>What that foundation actually requires</h2>
+    <div class="spacer" style="max-height:12px"></div>
+    <p class="lead" style="max-width:64ch;margin-bottom:16px">"Foundation" is not one thing you buy. It's eight infrastructure disciplines — each hard alone, only valuable integrated.</p>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:13px">
+      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Data platform / lakehouse</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Snowflake · Databricks · BigQuery</p></div>
+      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Streaming &amp; pipelines</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Kafka · Flink · CDC — not batch</p></div>
+      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Integration &amp; connectors</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">ERP · tax engines · APIs · MCP</p></div>
+      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Semantic &amp; master data</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Entity / jurisdiction · lineage</p></div>
+      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Retrieval / knowledge</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Vector store · embeddings (RAG)</p></div>
+      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">AI / ML platform</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Serving · GPU · agent orchestration</p></div>
+      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Governance &amp; security</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Access · PII / privacy · audit logs</p></div>
+      <div class="card" style="padding:15px 16px"><h3 style="font-size:16px">Eval &amp; observability</h3><p style="font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-top:6px">Test harness · monitoring · tracing</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">Each box is its own engineering team in most companies. <strong>The foundation is all eight, integrated.</strong></p>
+    <aside class="notes"><h4>Notes</h4><p>Show real infra depth — this is the AI-infrastructure payoff. The point is the surface area: a tax function assembling all eight, integrated, is the real challenge.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>08</span></div>
+  </section>
+
+  <!-- 9 · WHY HARD / WHY POSITIONED -->
+  <section class="slide">
+    <div class="eyebrow">The honest part</div>
+    <h2>Hard for most — but we have a head start</h2>
+    <div class="spacer" style="max-height:18px"></div>
+    <div class="grid-2">
+      <div class="card">
+        <h3 style="color:var(--bad)">Why it's hard</h3>
+        <ul class="clean" style="margin-top:10px">
+          <li style="font-size:17px">Fragmented, messy data across ERPs &amp; jurisdictions</li>
+          <li style="font-size:17px">Real-time / streaming is a specialized skill set</li>
+          <li style="font-size:17px">Talent fluent in tax <em>and</em> AI is doubly rare</li>
+          <li style="font-size:17px">Split ownership: Tax vs. Finance Systems vs. IT</li>
+          <li style="font-size:17px">Tax is a cost center — hard to fund infra</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 class="primary">Why Meta is positioned</h3>
+        <ul class="clean" style="margin-top:10px">
+          <li style="font-size:17px">Hyperscale data infrastructure already exists</li>
+          <li style="font-size:17px">Real-time / event-driven by default</li>
+          <li style="font-size:17px">World-class platform, data &amp; ML engineers</li>
+          <li style="font-size:17px">AI platform &amp; compute in-house, not procured</li>
+          <li style="font-size:17px">Engineering-owned tax tech — ships like a product team</li>
+        </ul>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">The barriers most teams hit are largely <strong>already solved here</strong> — so we get to start where others can't.</p>
+    <aside class="notes"><h4>Notes</h4><p>Frame as fortunate positioning, not bragging. The left column is exactly what's already solved on the right. Transferable lesson: anchor your tax foundation to wherever real data/ML infra already lives in your company. Genericize if not cleared to name Meta.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>09</span></div>
+  </section>
+
+  <!-- 10 · TAKEAWAY / CLOSE -->
+  <section class="slide title-slide center">
+    <div class="eyebrow">The takeaway</div>
+    <div class="spacer" style="max-height:24px"></div>
+    <h1 style="font-size:50px;max-width:22ch">Build the foundation now. Be ready when the harness arrives.</h1>
+    <p class="lead" style="margin-top:22px;max-width:48ch">Coding shows the path. The three stages are real. The winning move in tax is Stage 1 — done well, across the lifecycle.</p>
+    <div class="spacer"></div>
+    <div class="row center" style="gap:40px;align-items:center">
+      <div class="qr-box"><img id="qr" alt="QR to taxbenchmark.ai" src="" /></div>
+      <div style="text-align:left">
+        <p class="byline" style="margin-bottom:8px">Benchmark your tax-tech function</p>
+        <div style="font-family:var(--mono);font-size:28px;color:#fff;font-weight:600">taxbenchmark.ai</div>
+        <p class="byline" style="margin-top:14px">Thank you · contact@taxbenchmark.ai</p>
+      </div>
+    </div>
+    <aside class="notes"><h4>Notes</h4><p>Land the one-liner. Recap the arc: Claude shows it, three stages, coding leads &amp; diffuses, we build the foundation across the lifecycle, the flywheel compounds. Then open for questions.</p></aside>
+    <div class="foot"><span class="brand">taxbenchmark.ai</span><span>10</span></div>
+  </section>
+
+</div>
+<div id="notes"></div>
+<script>
+  const stage=document.getElementById('stage');
+  const slides=Array.from(document.querySelectorAll('.slide'));
+  const bar=document.getElementById('bar');
+  const notesPanel=document.getElementById('notes');
+  let i=0, notesOn=false;
+  function fitStage(){const sx=window.innerWidth/1280,sy=window.innerHeight/720;stage.style.setProperty('--scale',Math.min(sx,sy));}
+  function renderNotes(){const note=slides[i].querySelector('.notes');if(notesOn&&note){notesPanel.innerHTML=note.innerHTML;notesPanel.classList.add('show');}else{notesPanel.classList.remove('show');}}
+  function show(n){i=Math.max(0,Math.min(slides.length-1,n));slides.forEach((s,k)=>s.classList.toggle('active',k===i));bar.style.width=(i/(slides.length-1)*100)+'%';const pg=slides[i].querySelector('.foot span:last-child');if(pg)pg.textContent=String(i+1).padStart(2,'0')+' / '+slides.length;renderNotes();location.hash='#'+(i+1);}
+  function next(){show(i+1);} function prev(){show(i-1);}
+  document.addEventListener('keydown',e=>{switch(e.key){case 'ArrowRight':case 'PageDown':case ' ':e.preventDefault();next();break;case 'ArrowLeft':case 'PageUp':prev();break;case 'Home':show(0);break;case 'End':show(slides.length-1);break;case 'f':case 'F':if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();break;case 'n':case 'N':notesOn=!notesOn;renderNotes();break;}});
+  stage.addEventListener('click',e=>{const r=stage.getBoundingClientRect();if((e.clientX-r.left)<r.width*0.25)prev();else next();});
+  window.addEventListener('resize',fitStage);
+  window.addEventListener('load',()=>{fitStage();const fromHash=parseInt((location.hash||'').replace('#',''))-1;show(Number.isInteger(fromHash)&&fromHash>=0?fromHash:0);loadQR();});
+  function loadQR(){const url='https://taxbenchmark.ai';const img=document.getElementById('qr');if(!img)return;img.onerror=()=>{const box=img.parentElement;box.innerHTML='<div style="width:200px;height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#1e3a8a;font-family:var(--mono)"><div style="font-size:14px;letter-spacing:.1em">taxbenchmark.ai</div><div style="font-size:10px;margin-top:10px;color:#6b7280;max-width:170px">Drop a qr.png here before the talk.</div></div>';};img.src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data='+encodeURIComponent(url);}
+  window.show=show; fitStage();
+</script>
+</body>
+</html>
