@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * Single endpoint for the Claude API integration. Supports two modes:
@@ -20,6 +21,13 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const DEFAULT_MODEL = 'claude-haiku-4-5';
 const DEFAULT_MAX_TOKENS = 4000;
+
+// ─── Per-user AI rate limiting ──────────────────────────────────────────────
+// Claude Haiku 4.5 pricing, USD per 1M tokens. Cached input is ~90% cheaper;
+// cache writes are 1.25x base input. https://platform.claude.com (pricing)
+const PRICE_PER_MTOK = { input: 1.0, output: 5.0, cacheRead: 0.10, cacheWrite: 1.25 };
+const DAILY_LIMIT_USD = 5;            // per non-admin user, per rolling window
+const WINDOW_MS = 24 * 60 * 60 * 1000;
 
 interface SystemBlock {
   type: 'text';
@@ -65,11 +73,72 @@ function pickUsage(u: any): UsageOut {
   };
 }
 
-async function runNonStreaming(client: Anthropic, body: ClaudeRequestBody, res: VercelResponse) {
+type Meter = (u: UsageOut) => Promise<void>;
+
+// Pure: USD cost of one call from its token usage.
+function computeCostUsd(u: UsageOut): number {
+  return (
+    (u.input_tokens / 1e6) * PRICE_PER_MTOK.input +
+    (u.output_tokens / 1e6) * PRICE_PER_MTOK.output +
+    (u.cache_read_input_tokens / 1e6) * PRICE_PER_MTOK.cacheRead +
+    (u.cache_creation_input_tokens / 1e6) * PRICE_PER_MTOK.cacheWrite
+  );
+}
+
+interface UsageRow {
+  window_started_at: string;
+  cost_usd: number | string;
+  input_tokens?: number;
+  output_tokens?: number;
+}
+interface WindowState { windowStartMs: number; used: number; inTok: number; outTok: number; }
+
+// Pure: resolve the active rolling window from the stored row + current time.
+// A window >= 24h old is expired → start fresh (used resets to 0).
+function resolveWindow(row: UsageRow | null, nowMs: number): WindowState {
+  if (!row) return { windowStartMs: nowMs, used: 0, inTok: 0, outTok: 0 };
+  const startMs = new Date(row.window_started_at).getTime();
+  if (Number.isNaN(startMs) || nowMs - startMs >= WINDOW_MS) {
+    return { windowStartMs: nowMs, used: 0, inTok: 0, outTok: 0 };
+  }
+  return {
+    windowStartMs: startMs,
+    used: Number(row.cost_usd) || 0,
+    inTok: row.input_tokens || 0,
+    outTok: row.output_tokens || 0,
+  };
+}
+
+function bearerToken(req: VercelRequest): string | null {
+  const auth = (req.headers['authorization'] as string | undefined) || '';
+  const m = /^Bearer\s+(.+)$/.exec(auth);
+  return m ? m[1] : null;
+}
+
+// Best-effort: add this call's cost to the user's window. A failure here must
+// not break the response (the user already got their answer), so we swallow +
+// log; slight under-counting on a DB hiccup is acceptable for a soft cap.
+async function recordUsage(admin: any, userId: string, state: WindowState, usage: UsageOut): Promise<void> {
+  try {
+    await admin.from('ai_usage').upsert({
+      user_id: userId,
+      window_started_at: new Date(state.windowStartMs).toISOString(),
+      cost_usd: state.used + computeCostUsd(usage),
+      input_tokens: state.inTok + usage.input_tokens,
+      output_tokens: state.outTok + usage.output_tokens,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+  } catch (e: any) {
+    console.warn('ai_usage record failed:', e?.message);
+  }
+}
+
+async function runNonStreaming(client: Anthropic, body: ClaudeRequestBody, res: VercelResponse, meter?: Meter) {
   const response = await client.messages.create(buildParams(body) as any);
   const textBlock = response.content.find((b: any) => b.type === 'text') as { text: string } | undefined;
   const text = textBlock?.text ?? '';
   const usage = pickUsage(response.usage);
+  if (meter) await meter(usage);
   if (body.outputFormat) {
     try {
       return res.status(200).json({ text, json: JSON.parse(text), usage });
@@ -83,7 +152,7 @@ async function runNonStreaming(client: Anthropic, body: ClaudeRequestBody, res: 
   return res.status(200).json({ text, usage });
 }
 
-async function runStreaming(client: Anthropic, body: ClaudeRequestBody, res: VercelResponse) {
+async function runStreaming(client: Anthropic, body: ClaudeRequestBody, res: VercelResponse, meter?: Meter) {
   // Server-Sent Events. Keep-alive headers so middleboxes don't buffer/close.
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -106,6 +175,7 @@ async function runStreaming(client: Anthropic, body: ClaudeRequestBody, res: Ver
     const textBlock = final.content.find((b: any) => b.type === 'text') as { text: string } | undefined;
     const text = textBlock?.text ?? '';
     const usage = pickUsage(final.usage);
+    if (meter) await meter(usage);
     write({ type: 'done', text, usage });
     res.end();
   } catch (e: any) {
@@ -129,12 +199,53 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'messages required' });
   }
 
-  const client = new Anthropic({ apiKey });
-
-  if (body.stream) {
-    return runStreaming(client, body, res);
+  // ── Per-user auth + rolling daily spend limit ──
+  // This endpoint was previously open to anyone; auth here both identifies the
+  // user for metering AND closes that hole.
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !serviceKey || !anonKey) {
+    return res.status(500).json({ error: 'Auth backend not configured' });
   }
-  return runNonStreaming(client, body, res);
+  const token = bearerToken(req);
+  if (!token) return res.status(401).json({ error: 'Sign in to use the AI assistant.' });
+
+  const userClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+  const { data: userData, error: userErr } = await userClient.auth.getUser(token);
+  if (userErr || !userData?.user) {
+    return res.status(401).json({ error: 'Your session expired — sign in again.' });
+  }
+  const userId = userData.user.id;
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+
+  const [profileRes, usageRes] = await Promise.all([
+    admin.from('profiles').select('role').eq('id', userId).maybeSingle(),
+    admin.from('ai_usage')
+      .select('window_started_at, cost_usd, input_tokens, output_tokens')
+      .eq('user_id', userId).maybeSingle(),
+  ]);
+  const isAdmin = (profileRes.data as any)?.role === 'admin';
+
+  let meter: Meter | undefined;
+  if (!isAdmin) {
+    const state = resolveWindow((usageRes.data as UsageRow) ?? null, Date.now());
+    if (state.used >= DAILY_LIMIT_USD) {
+      const resetsAtMs = state.windowStartMs + WINDOW_MS;
+      const hours = Math.max(1, Math.ceil((resetsAtMs - Date.now()) / 3_600_000));
+      return res.status(429).json({
+        error: `You've reached your daily AI limit ($${DAILY_LIMIT_USD} of usage). It resets in about ${hours} hour${hours === 1 ? '' : 's'}.`,
+        resetsAt: new Date(resetsAtMs).toISOString(),
+      });
+    }
+    meter = (u) => recordUsage(admin, userId, state, u);
+  }
+
+  const client = new Anthropic({ apiKey });
+  if (body.stream) {
+    return runStreaming(client, body, res, meter);
+  }
+  return runNonStreaming(client, body, res, meter);
 }
 
 // 60s — generous for Haiku, leaves room for long structured-output traces.
@@ -152,5 +263,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 // Exported for tests — pure helpers, no env/network dependencies.
-export { buildParams, pickUsage, DEFAULT_MODEL, DEFAULT_MAX_TOKENS };
+export { buildParams, pickUsage, computeCostUsd, resolveWindow, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, DAILY_LIMIT_USD, WINDOW_MS, PRICE_PER_MTOK };
 export type { ClaudeRequestBody, UsageOut, SystemBlock };

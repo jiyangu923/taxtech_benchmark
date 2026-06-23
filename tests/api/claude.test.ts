@@ -1,0 +1,69 @@
+import { describe, it, expect } from 'vitest';
+import { computeCostUsd, resolveWindow, DAILY_LIMIT_USD, WINDOW_MS } from '../../api/claude';
+
+const usage = (o: Partial<{ input: number; output: number; cacheRead: number; cacheWrite: number }>) => ({
+  input_tokens: o.input ?? 0,
+  output_tokens: o.output ?? 0,
+  cache_read_input_tokens: o.cacheRead ?? 0,
+  cache_creation_input_tokens: o.cacheWrite ?? 0,
+});
+
+describe('computeCostUsd (Haiku 4.5 pricing)', () => {
+  it('charges $1/M input and $5/M output', () => {
+    expect(computeCostUsd(usage({ input: 1_000_000 }))).toBeCloseTo(1.0, 6);
+    expect(computeCostUsd(usage({ output: 1_000_000 }))).toBeCloseTo(5.0, 6);
+  });
+
+  it('charges discounted cache reads ($0.10/M) and cache writes ($1.25/M)', () => {
+    expect(computeCostUsd(usage({ cacheRead: 1_000_000 }))).toBeCloseTo(0.10, 6);
+    expect(computeCostUsd(usage({ cacheWrite: 1_000_000 }))).toBeCloseTo(1.25, 6);
+  });
+
+  it('sums all components', () => {
+    expect(computeCostUsd(usage({ input: 200_000, output: 100_000, cacheRead: 1_000_000 })))
+      .toBeCloseTo(0.2 + 0.5 + 0.10, 6);
+  });
+
+  it('is zero for empty usage', () => {
+    expect(computeCostUsd(usage({}))).toBe(0);
+  });
+});
+
+describe('resolveWindow (rolling 24h)', () => {
+  const now = 1_700_000_000_000;
+
+  it('starts a fresh window when there is no row', () => {
+    const s = resolveWindow(null, now);
+    expect(s.used).toBe(0);
+    expect(s.windowStartMs).toBe(now);
+  });
+
+  it('keeps the existing window when it is < 24h old', () => {
+    const start = new Date(now - 60 * 60 * 1000).toISOString(); // 1h ago
+    const s = resolveWindow({ window_started_at: start, cost_usd: 2.5, input_tokens: 10, output_tokens: 20 }, now);
+    expect(s.used).toBe(2.5);
+    expect(s.windowStartMs).toBe(now - 60 * 60 * 1000);
+    expect(s.inTok).toBe(10);
+    expect(s.outTok).toBe(20);
+  });
+
+  it('resets when the window is >= 24h old', () => {
+    const start = new Date(now - 25 * 60 * 60 * 1000).toISOString(); // 25h ago
+    const s = resolveWindow({ window_started_at: start, cost_usd: 4.9 }, now);
+    expect(s.used).toBe(0);
+    expect(s.windowStartMs).toBe(now);
+  });
+
+  it('parses numeric-string cost_usd (Postgres numeric returns a string)', () => {
+    const start = new Date(now - 1000).toISOString();
+    const s = resolveWindow({ window_started_at: start, cost_usd: '3.25' }, now);
+    expect(s.used).toBe(3.25);
+  });
+});
+
+describe('limit constants', () => {
+  it('caps at $5 per rolling 24h', () => {
+    expect(DAILY_LIMIT_USD).toBe(5);
+    expect(WINDOW_MS).toBe(24 * 60 * 60 * 1000);
+  });
+});
