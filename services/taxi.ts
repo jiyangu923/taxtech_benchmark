@@ -147,7 +147,12 @@ export async function askTaxi(
       outputFormat: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
     });
     return json;
-  } catch (error) {
+  } catch (error: any) {
+    // Surface the daily-limit message to the user instead of the generic
+    // fallback so they know to wait rather than think the AI is broken.
+    if (error?.status === 429) {
+      return { analysis: error.message, chart: null, followUps: [] };
+    }
     console.error('AI Request Failed', error);
     return FALLBACK;
   }
@@ -176,7 +181,12 @@ export async function streamTaxi(
       outputFormat: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
     }, onDelta);
     return { result: json, usage };
-  } catch (error) {
+  } catch (error: any) {
+    // Surface the daily-limit message as the answer so the user sees why,
+    // instead of the generic "encountered an error" fallback.
+    if (error?.status === 429) {
+      return { result: { analysis: error.message, chart: null, followUps: [] }, usage: null };
+    }
     console.error('AI Request Failed', error);
     return { result: FALLBACK, usage: null };
   }

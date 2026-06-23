@@ -45,14 +45,27 @@ export interface StructuredResponse<T> {
   usage: ClaudeUsage;
 }
 
+// Attach the user's Supabase access token so the /api/claude proxy can
+// identify them for per-user rate limiting. Loaded lazily and guarded so this
+// module stays importable in tests that don't wire up Supabase.
+async function authHeader(): Promise<Record<string, string>> {
+  try {
+    const { supabase } = await import('./api');
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 async function postClaude<T>(body: Record<string, unknown>): Promise<T> {
   const resp = await fetch('/api/claude', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify(body),
   });
   const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`);
+  if (!resp.ok) throw Object.assign(new Error(data?.error || `HTTP ${resp.status}`), { status: resp.status });
   return data as T;
 }
 
@@ -80,12 +93,12 @@ export async function streamClaudeStructured<T>(
 ): Promise<StructuredResponse<T>> {
   const resp = await fetch('/api/claude', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify({ ...args, stream: true }),
   });
   if (!resp.ok || !resp.body) {
     const errBody = await resp.json().catch(() => ({}));
-    throw new Error(errBody?.error || `HTTP ${resp.status}`);
+    throw Object.assign(new Error(errBody?.error || `HTTP ${resp.status}`), { status: resp.status });
   }
 
   const reader = resp.body.getReader();
