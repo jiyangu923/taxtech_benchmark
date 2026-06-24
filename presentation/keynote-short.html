@@ -79,6 +79,16 @@
   .infratab .ex .m{color:var(--primary);font-weight:600;}
   .infratab .irow.hl{background:var(--amber-tint);border-radius:8px;}
   .infratab .irow.hl .ex .m{color:var(--amber);}
+  /* agent anatomy map */
+  .agentmap{display:flex;flex-direction:column;}
+  .agentmap .ahead,.agentmap .arow{display:grid;grid-template-columns:1.3fr 56px 1fr;align-items:center;gap:10px;padding:9px 14px;}
+  .agentmap .ahead{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:#9aa3b2;border-bottom:1.5px solid var(--line);}
+  .agentmap .arow{border-bottom:1px solid #efeeea;}
+  .agentmap .and{font-size:18px;color:var(--ink-2);display:flex;align-items:center;}
+  .agentmap .and b{color:var(--ink);font-weight:700;margin-right:5px;}
+  .agentmap .ai{font-size:22px;margin-right:12px;flex:0 0 auto;}
+  .agentmap .aar{text-align:center;color:var(--amber);font-weight:700;font-size:18px;}
+  .agentmap .ainf{font-family:var(--mono);font-size:15px;color:var(--primary);font-weight:600;}
   #notes{position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:auto;background:rgba(13,17,23,.96);color:#e7ecf5;padding:18px 26px;display:none;font-size:16px;line-height:1.5;border-top:2px solid var(--amber);z-index:50;}
   #notes.show{display:block;}
   #notes h4{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#f6d99a;margin-bottom:8px;}
@@ -311,25 +321,23 @@
 
   <!-- 8 · THE INFRA REQUIRED -->
   <section class="slide">
-    <div class="eyebrow">Under the hood — in plain terms</div>
-    <h2>The "AI" is just the models. The rest is the work.</h2>
-    <p class="lead" style="max-width:82ch;margin-top:6px">Most of this isn't the model at all — it's skills, connectivity, knowledge and controls. Here's the stack without the jargon:</p>
-    <div class="spacer" style="max-height:12px"></div>
-    <div class="infratab">
-      <div class="ihead"><div>LAYER</div><div>WHAT IT DOES</div><div>EXAMPLES · META</div></div>
-      <div class="irow"><div class="lname">Experience</div><div class="wht">Where teams ask questions &amp; review answers</div><div class="ex">apps · copilots <span class="m">Meta: React</span></div></div>
-      <div class="irow"><div class="lname">AI skills</div><div class="wht">The tasks AI can do — prep a return, draft a memo, reconcile</div><div class="ex">Claude Skills · agents <span class="m">Meta: internal skills</span></div></div>
-      <div class="irow"><div class="lname">Skill management</div><div class="wht">Approve, version &amp; control which skills run — and who may use them</div><div class="ex">registry · guardrails <span class="m">Meta: governance</span></div></div>
-      <div class="irow"><div class="lname">MCP / connectors</div><div class="wht">The universal adapter so AI can reach your systems</div><div class="ex">MCP · ERP/tax-engine links <span class="m">Meta: tool gateway</span></div></div>
-      <div class="irow"><div class="lname">Models <span style="font-weight:400;color:var(--muted);font-size:12px">(the AI)</span></div><div class="wht">The reasoning engine — a swappable commodity</div><div class="ex">Claude · GPT · Gemini <span class="m">Meta: Llama</span></div></div>
-      <div class="irow"><div class="lname">Knowledge</div><div class="wht">Your tax law, rates &amp; positions — grounded and cited</div><div class="ex">search / RAG <span class="m">Meta: FAISS</span></div></div>
-      <div class="irow hl"><div class="lname">Relationships <span style="font-weight:400;color:var(--muted);font-size:12px">(graph)</span></div><div class="wht">Entity ↔ jurisdiction ↔ product · ownership chains</div><div class="ex">Neo4j · Neptune <span class="m">Meta: TAO</span></div></div>
-      <div class="irow"><div class="lname">Data foundation</div><div class="wht">Clean, real-time tax data</div><div class="ex">Snowflake · Databricks <span class="m">Meta: data platform</span></div></div>
-      <div class="irow"><div class="lname">Trust &amp; controls</div><div class="wht">Security, privacy, audit trail, accuracy checks</div><div class="ex">Immuta · OneTrust <span class="m">Meta: privacy infra</span></div></div>
+    <div class="eyebrow">In plain terms</div>
+    <h2>An AI agent is like a new team member</h2>
+    <p class="lead" style="max-width:80ch;margin-top:6px">Think about what a person needs to do the job. An agent needs the same things — and <strong>each one is a piece of infrastructure.</strong></p>
+    <div class="spacer" style="max-height:14px"></div>
+    <div class="agentmap">
+      <div class="ahead"><div>THE AGENT NEEDS…</div><div></div><div>…WHICH IS INFRASTRUCTURE</div></div>
+      <div class="arow"><div class="and"><span class="ai">🧠</span><b>A brain</b> — to reason &amp; decide</div><div class="aar">→</div><div class="ainf">Foundational AI model</div></div>
+      <div class="arow"><div class="and"><span class="ai">🧩</span><b>Skills</b> — the tasks it can do</div><div class="aar">→</div><div class="ainf">Skill library + management</div></div>
+      <div class="arow"><div class="and"><span class="ai">🖐</span><b>Hands</b> — to act in your systems</div><div class="aar">→</div><div class="ainf">Tool calling (MCP)</div></div>
+      <div class="arow"><div class="and"><span class="ai">💾</span><b>Memory</b> — to remember past work</div><div class="aar">→</div><div class="ainf">Memory store</div></div>
+      <div class="arow"><div class="and"><span class="ai">📚</span><b>Knowledge</b> — your tax law &amp; data</div><div class="aar">→</div><div class="ainf">Data foundation</div></div>
+      <div class="arow"><div class="and"><span class="ai">🎯</span><b>Context</b> — the task in front of it</div><div class="aar">→</div><div class="ainf">Grounding / retrieval</div></div>
+      <div class="arow"><div class="and"><span class="ai">🛡️</span><b>Guardrails</b> — judgment &amp; sign-off</div><div class="aar">→</div><div class="ainf">Trust &amp; controls</div></div>
     </div>
     <div class="spacer"></div>
-    <p class="lead" style="font-size:21px">The moat isn't the model — it's running <strong>every layer, together.</strong></p>
-    <aside class="notes"><h4>Notes</h4><p>Audience-friendly altitude. Lead with the plain "what it does" column. The three the room cares about: <strong>AI skills</strong> (the actual tasks — like an employee's capabilities), <strong>skill management</strong> (approving/versioning/controlling which skills run and who can use them — governance you already understand), and <strong>MCP</strong> (the universal adapter that lets AI safely reach the ERP, tax engine, and portals).</p><p>Frontier labs supply the horizontal pieces — models, skills, MCP — and want you building on their ecosystem. The vertical depth (your tax knowledge, data, relationships, controls) is yours to own. Examples/Meta names are illustrative — swap for what you actually use.</p></aside>
+    <p class="lead" style="font-size:21px">The model is just the brain. <strong>Everything else is the infrastructure</strong> — and that's the work.</p>
+    <aside class="notes"><h4>Notes</h4><p>Make it human. An AI agent is like onboarding a new team member: it needs a brain (the model), skills (what it can do), hands to act in your systems (tool calling via MCP), memory, your knowledge &amp; data, the context of the task, and guardrails (permissions, audit, human sign-off). Each maps to one piece of infrastructure.</p><p>The punchline: the model — the part everyone fixates on — is just the brain. The other six pieces are the real work, and they're what most companies don't have. (We do — tie back to the "why Meta" slide.)</p></aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>08</span></div>
   </section>
 
