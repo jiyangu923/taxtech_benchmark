@@ -66,6 +66,7 @@
   .sc .scbar{flex:1;height:14px;background:#eceae6;border-radius:999px;overflow:hidden;}
   .sc .scbar span{display:block;height:100%;border-radius:999px;}
   .sc b{font-family:var(--mono);font-size:24px;color:var(--primary);width:34px;text-align:right;}
+  .sc .sclbl{font-family:var(--mono);font-size:11px;color:var(--ink-2);width:44px;flex:0 0 auto;text-align:left;}
   .qr-box{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;display:inline-flex;}
   .qr-box img{width:200px;height:200px;display:block;}
   /* infra table */
@@ -117,101 +118,53 @@
   <section class="slide title-slide">
     <div class="eyebrow">TEI Conference · Keynote</div>
     <div class="spacer" style="max-height:40px"></div>
-    <h1>From Claude to Tax</h1>
-    <p class="lead" style="margin-top:20px">How AI evolves in three stages — what we can already see in software, and what we're building at Meta to bring it to tax.</p>
+    <h1>From Coding to Tax</h1>
+    <p class="lead" style="margin-top:20px">AI matured first in software. The same three stages are coming to tax — here's the map, and what we're building at Meta to get there.</p>
     <div class="spacer"></div>
     <div class="byline">A practical look at the infrastructure that makes it real.</div>
     <aside class="notes"><h4>Notes</h4><p>Set the frame: I'll use Claude / AI coding as the visible example, then show what we're doing in tax at Meta, and the infrastructure it takes. Simple story, one arc.</p></aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>01</span></div>
   </section>
 
-  <!-- 2 · THE EXAMPLE: CLAUDE -->
+  <!-- 2 · CODING vs TAX — THREE STAGES + SCORES -->
   <section class="slide">
-    <div class="eyebrow">Start with what we can see</div>
-    <h2>Coding is the leading indicator</h2>
-    <p class="lead" style="max-width:72ch;margin-top:10px">Chat was AI's first act. <strong>Coding is the next</strong> — AI doing real work, not just talking. <strong>Claude Code</strong> made it the default, so coding is the map for what reaches tax next.</p>
-    <div class="spacer" style="max-height:6px"></div>
-    <svg viewBox="0 0 1000 340" style="width:1000px;display:block;margin:0 auto;font-family:'Geist Mono',monospace">
-      <!-- axes -->
-      <line x1="80" y1="300" x2="950" y2="300" stroke="#d8d6d1" stroke-width="2"/>
-      <line x1="80" y1="40" x2="80" y2="300" stroke="#d8d6d1" stroke-width="2"/>
-      <text x="892" y="326" font-size="13" fill="#9aa3b2" letter-spacing="1">TIME →</text>
-      <text x="64" y="296" font-size="13" fill="#9aa3b2" transform="rotate(-90 64,296)" letter-spacing="1">AI MATURITY →</text>
-      <!-- adoption S-curve -->
-      <path d="M80,288 C 360,288 380,90 940,70" fill="none" stroke="#1e3a8a" stroke-width="4"/>
-      <!-- 2-3 year gap connector -->
-      <path d="M300,250 L 660,118" stroke="#A8772E" stroke-width="2.5" stroke-dasharray="7 6"/>
-      <text x="430" y="170" font-size="15" fill="#A8772E" font-weight="600">~2–3 years</text>
-      <!-- tax dot -->
-      <circle cx="300" cy="250" r="10" fill="#A8772E"/>
-      <text x="300" y="284" text-anchor="middle" font-size="14" fill="#A8772E" font-weight="600">TAX · today</text>
-      <!-- coding dot -->
-      <circle cx="660" cy="118" r="10" fill="#1e3a8a"/>
-      <text x="660" y="104" text-anchor="middle" font-size="14" fill="#1e3a8a" font-weight="600">CODING · today</text>
-    </svg>
+    <div class="eyebrow">Where we stand</div>
+    <h2>The same three stages — coding leads, tax follows</h2>
+    <p class="lead" style="max-width:86ch;margin-top:6px">AI's first act was chat; the next is <strong>coding</strong> — real work, not just talk. Coding is our leading indicator, so here's coding vs tax on each stage (scored 0–100).</p>
+    <div class="spacer" style="max-height:16px"></div>
+    <div class="grid-3">
+      <div class="card" style="display:flex;flex-direction:column">
+        <span class="tag">Stage 1</span>
+        <h3 style="font-size:21px;margin-top:12px">AI-Native Foundation</h3>
+        <p style="font-size:14px;color:var(--ink-2);margin-top:5px">AI at every surface of the workflow — not a bolt-on.</p>
+        <div class="spacer" style="max-height:12px"></div>
+        <div class="sc" style="margin-top:4px"><span class="sclbl">Coding</span><div class="scbar"><span style="width:90%;background:var(--primary)"></span></div><b style="font-size:18px">90</b></div>
+        <div class="sc" style="margin-top:6px"><span class="sclbl">Tax</span><div class="scbar"><span style="width:15%;background:var(--amber)"></span></div><b style="font-size:18px;color:var(--amber)">15</b></div>
+        <div style="margin-top:12px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px"><span style="font-family:var(--mono);font-size:10px;color:var(--primary)">IN CODING</span> API · Chat · IDE · review</div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column">
+        <span class="tag">Stage 2</span>
+        <h3 style="font-size:21px;margin-top:12px">Continuous Learning</h3>
+        <p style="font-size:14px;color:var(--ink-2);margin-top:5px">Learns from your edits &amp; outcomes; accuracy compounds.</p>
+        <div class="spacer" style="max-height:12px"></div>
+        <div class="sc" style="margin-top:4px"><span class="sclbl">Coding</span><div class="scbar"><span style="width:40%;background:var(--primary)"></span></div><b style="font-size:18px">40</b></div>
+        <div class="sc" style="margin-top:6px"><span class="sclbl">Tax</span><div class="scbar"><span style="width:5%;background:var(--amber)"></span></div><b style="font-size:18px;color:var(--amber)">5</b></div>
+        <div style="margin-top:12px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px"><span style="font-family:var(--mono);font-size:10px;color:var(--primary)">IN CODING</span> learns from accepts &amp; fixes</div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column">
+        <span class="tag">Stage 3</span>
+        <h3 style="font-size:21px;margin-top:12px">Proactive Management</h3>
+        <p style="font-size:14px;color:var(--ink-2);margin-top:5px">Acts before you ask — a human still approves.</p>
+        <div class="spacer" style="max-height:12px"></div>
+        <div class="sc" style="margin-top:4px"><span class="sclbl">Coding</span><div class="scbar"><span style="width:20%;background:var(--primary)"></span></div><b style="font-size:18px">20</b></div>
+        <div class="sc" style="margin-top:6px"><span class="sclbl">Tax</span><div class="scbar"><span style="width:2%;background:var(--amber)"></span></div><b style="font-size:18px;color:var(--amber)">0</b></div>
+        <div style="margin-top:12px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px"><span style="font-family:var(--mono);font-size:10px;color:var(--primary)">IN CODING</span> agents open a PR · you approve</div>
+      </div>
+    </div>
     <div class="spacer"></div>
-    <p class="lead">Same curve, a few years apart — <strong>watch coding and you can read tax's map ahead.</strong></p>
-    <aside class="notes"><h4>Notes</h4><p>One visual carries the whole thesis: coding sits far up the adoption S-curve; tax is near the start; the gap is ~2–3 years. Claude Code is the concrete, recognizable example.</p></aside>
+    <p class="lead">Same path, ~2–3 years apart — <strong>coding is the map, and tax gets to read it ahead.</strong></p>
+    <aside class="notes"><h4>Notes</h4><p>This one slide merges the framework and the scores. Walk the three stages left-to-right; for each, contrast where coding is (90 / 40 / 20) with where tax is (15 / 5 / 0). Scores are directional — the point is the shape: coding has finished Stage 1 and is mid-Stage 2; tax is just starting Stage 1. Two constants: you climb the stages in order, and a human stays in the loop at every stage (in coding the merge; in tax the filing). Invite the room to argue the numbers.</p></aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>02</span></div>
-  </section>
-
-  <!-- 3 · THE THREE STAGES (staircase) -->
-  <section class="slide">
-    <div class="eyebrow">The pattern</div>
-    <h2>AI evolves in three stages — climbed in order</h2>
-    <div class="spacer" style="max-height:20px"></div>
-    <div style="display:flex;align-items:flex-end;gap:22px;height:392px">
-      <div style="flex:1;height:236px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 24px;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(0,0,0,.03)">
-        <div style="font-family:var(--mono);font-size:32px;color:#c3c9d4;font-weight:600;line-height:1">01</div>
-        <h3 style="font-size:22px;margin-top:8px">AI-Native Foundation</h3>
-        <p style="font-size:15px;color:var(--ink-2);margin-top:6px">AI at <strong>every surface</strong> of the workflow — not a bolt-on. Humans own every step.</p>
-        <div class="spacer"></div>
-        <div style="font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px"><span style="font-family:var(--mono);font-size:11px;color:var(--primary)">IN CODING</span><br>everywhere — API · Chat · IDE · code review</div>
-      </div>
-      <div style="flex:1;height:316px;background:#eef1fb;border:1px solid #dbe1f6;border-radius:16px;padding:20px 24px;display:flex;flex-direction:column;box-shadow:0 2px 8px rgba(30,58,138,.08)">
-        <div style="font-family:var(--mono);font-size:32px;color:#9fb0e0;font-weight:600;line-height:1">02</div>
-        <h3 style="font-size:22px;margin-top:8px">Continuous Learning</h3>
-        <p style="font-size:15px;color:var(--ink-2);margin-top:6px">Learns from your edits &amp; outcomes and adapts on its own. Accuracy compounds.</p>
-        <div class="spacer"></div>
-        <div style="font-size:13px;color:var(--muted);border-top:1px solid #dbe1f6;padding-top:8px"><span style="font-family:var(--mono);font-size:11px;color:var(--primary)">IN CODING</span><br>learns from accepts &amp; fixes</div>
-      </div>
-      <div style="flex:1;height:392px;background:var(--primary);border-radius:16px;padding:22px 26px;display:flex;flex-direction:column;box-shadow:0 14px 30px rgba(30,58,138,.28)">
-        <div style="font-family:var(--mono);font-size:32px;color:#7e8fc8;font-weight:600;line-height:1">03</div>
-        <h3 style="font-size:22px;margin-top:8px;color:#fff">Proactive Management</h3>
-        <p style="font-size:15px;color:#cfd6f1;margin-top:6px">Acts <em>before</em> you ask. Near-autonomous — but a human still approves.</p>
-        <div class="spacer"></div>
-        <div style="font-size:13px;color:#aeb9e6;border-top:1px solid rgba(255,255,255,.18);padding-top:8px"><span style="font-family:var(--mono);font-size:11px;color:#cdd5f3">IN CODING</span><br>agents open a PR · you approve the merge</div>
-      </div>
-    </div>
-    <div class="spacer"></div>
-    <p class="lead">You can't skip a step — and the human approval gate survives all the way to the top.</p>
-    <aside class="notes"><h4>Notes</h4><p>Elaborate each stage and ground it in coding. <strong>Stage 1 = AI at every surface of the workflow</strong> — Claude is reachable from the API, from Chat, inside the IDE, and in the code-review tool. That ubiquity <em>is</em> the foundation; it's not one feature, it's everywhere. (The tax analog: AI available across every tax workflow surface.) Stage 2 = the tool learns from your accepts, edits and fixes. Stage 3 = agents proactively open a PR, but a human still approves the merge. They build in order; the human stays in the loop — in coding it's the merge, in tax it's the filing.</p></aside>
-    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>03</span></div>
-  </section>
-
-  <!-- 4 · SCORECARD -->
-  <section class="slide">
-    <div class="eyebrow">Where coding stands</div>
-    <h2>Score the three stages, 0–100</h2>
-    <div class="spacer" style="max-height:18px"></div>
-    <div style="display:grid;grid-template-columns:210px 1fr 1fr 1fr;gap:14px 18px;align-items:center">
-      <div></div>
-      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 1 · Foundation</div></div>
-      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 2 · Cont. Learning</div></div>
-      <div style="text-align:center"><div class="tag" style="margin:0 auto">Stage 3 · Proactive</div></div>
-      <div><div style="font-weight:700;font-size:21px;color:var(--ink)">Coding</div><div class="small" style="font-size:13px">the leading indicator</div></div>
-      <div class="sc"><div class="scbar"><span style="width:90%;background:var(--primary)"></span></div><b>90</b></div>
-      <div class="sc"><div class="scbar"><span style="width:40%;background:var(--primary)"></span></div><b>40</b></div>
-      <div class="sc"><div class="scbar"><span style="width:20%;background:var(--primary)"></span></div><b>20</b></div>
-      <div><div style="font-weight:700;font-size:21px;color:var(--ink)">Tax</div><div class="small" style="font-size:13px">today</div></div>
-      <div class="sc"><div class="scbar"><span style="width:15%;background:var(--amber)"></span></div><b style="color:var(--amber)">15</b></div>
-      <div class="sc"><div class="scbar"><span style="width:5%;background:var(--amber)"></span></div><b style="color:var(--amber)">5</b></div>
-      <div class="sc"><div class="scbar"><span style="width:2%;background:var(--amber)"></span></div><b style="color:var(--amber)">0</b></div>
-    </div>
-    <div class="spacer"></div>
-    <p class="lead">Coding has finished Stage 1 and is mid-Stage 2. Tax is at the very start — <strong>same curve, ~2–3 years apart.</strong></p>
-    <aside class="notes"><h4>Notes</h4><p>Directional scores. The point is the shape, not the digits. Coding 90/40/20; tax 15/5/0. Invite the room to argue the numbers.</p></aside>
-    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>04</span></div>
   </section>
 
   <!-- 5 · IT DIFFUSES -->
