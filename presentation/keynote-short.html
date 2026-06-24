@@ -118,8 +118,9 @@
   <section class="slide title-slide">
     <div class="eyebrow">TEI Conference · Keynote</div>
     <div class="spacer" style="max-height:40px"></div>
-    <h1>From Coding to Tax</h1>
-    <p class="lead" style="margin-top:20px">AI matured first in software. The same three stages are coming to tax — here's the map, and what we're building at Meta to get there.</p>
+    <h1>Vertical AI Agents</h1>
+    <p style="font-family:var(--mono);font-size:24px;color:#f6d99a;margin-top:16px;letter-spacing:.02em">From coding to tax</p>
+    <p class="lead" style="margin-top:18px">AI matured first in software. The same playbook is coming to tax — here's the map, and what we're building at Meta to get there.</p>
     <div class="spacer"></div>
     <div class="byline">A practical look at the infrastructure that makes it real.</div>
     <aside class="notes"><h4>Notes</h4><p>Set the frame: I'll use Claude / AI coding as the visible example, then show what we're doing in tax at Meta, and the infrastructure it takes. Simple story, one arc.</p></aside>
@@ -130,40 +131,43 @@
   <section class="slide">
     <div class="eyebrow">Where we stand</div>
     <h2>The same three stages — coding leads, tax follows</h2>
-    <p class="lead" style="max-width:86ch;margin-top:6px">AI's first act was chat; the next is <strong>coding</strong> — real work, not just talk. Coding is our leading indicator, so here's coding vs tax on each stage (scored 0–100).</p>
-    <div class="spacer" style="max-height:16px"></div>
+    <p class="lead" style="max-width:90ch;margin-top:6px">AI's first act was chat; the next is <strong>coding</strong> — real work, not just talk. Coding is our leading indicator. Here's coding vs <strong>Meta's tax build</strong> vs the broader tax field (0–100).</p>
+    <div class="spacer" style="max-height:12px"></div>
     <div class="grid-3">
       <div class="card" style="display:flex;flex-direction:column">
         <span class="tag">Stage 1</span>
-        <h3 style="font-size:21px;margin-top:12px">AI-Native Foundation</h3>
+        <h3 style="font-size:21px;margin-top:10px">AI-Native Foundation</h3>
         <p style="font-size:14px;color:var(--ink-2);margin-top:5px">AI at every surface of the workflow — not a bolt-on.</p>
-        <div class="spacer" style="max-height:12px"></div>
-        <div class="sc" style="margin-top:4px"><span class="sclbl">Coding</span><div class="scbar"><span style="width:90%;background:var(--primary)"></span></div><b style="font-size:18px">90</b></div>
-        <div class="sc" style="margin-top:6px"><span class="sclbl">Tax</span><div class="scbar"><span style="width:15%;background:var(--amber)"></span></div><b style="font-size:18px;color:var(--amber)">15</b></div>
-        <div style="margin-top:12px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px"><span style="font-family:var(--mono);font-size:10px;color:var(--primary)">IN CODING</span> API · Chat · IDE · review</div>
+        <div class="spacer" style="max-height:10px"></div>
+        <div class="sc" style="margin-top:4px"><span class="sclbl">Coding</span><div class="scbar"><span style="width:90%;background:var(--primary)"></span></div><b style="font-size:17px">90</b></div>
+        <div class="sc" style="margin-top:5px"><span class="sclbl" style="color:var(--amber)">Meta</span><div class="scbar"><span style="width:80%;background:var(--amber)"></span></div><b style="font-size:17px;color:var(--amber)">80</b></div>
+        <div class="sc" style="margin-top:5px"><span class="sclbl">Field</span><div class="scbar"><span style="width:15%;background:#c0c5cf"></span></div><b style="font-size:17px;color:#8a93a1">15</b></div>
+        <div style="margin-top:10px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:7px"><span style="font-family:var(--mono);font-size:10px;color:var(--primary)">CODING</span> API · Chat · IDE · review</div>
       </div>
       <div class="card" style="display:flex;flex-direction:column">
         <span class="tag">Stage 2</span>
-        <h3 style="font-size:21px;margin-top:12px">Continuous Learning</h3>
-        <p style="font-size:14px;color:var(--ink-2);margin-top:5px">Learns from your edits &amp; outcomes; accuracy compounds.</p>
-        <div class="spacer" style="max-height:12px"></div>
-        <div class="sc" style="margin-top:4px"><span class="sclbl">Coding</span><div class="scbar"><span style="width:40%;background:var(--primary)"></span></div><b style="font-size:18px">40</b></div>
-        <div class="sc" style="margin-top:6px"><span class="sclbl">Tax</span><div class="scbar"><span style="width:5%;background:var(--amber)"></span></div><b style="font-size:18px;color:var(--amber)">5</b></div>
-        <div style="margin-top:12px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px"><span style="font-family:var(--mono);font-size:10px;color:var(--primary)">IN CODING</span> learns from accepts &amp; fixes</div>
+        <h3 style="font-size:21px;margin-top:10px">Continuous Learning</h3>
+        <p style="font-size:14px;color:var(--ink-2);margin-top:5px">Learns from edits &amp; outcomes; accuracy compounds.</p>
+        <div class="spacer" style="max-height:10px"></div>
+        <div class="sc" style="margin-top:4px"><span class="sclbl">Coding</span><div class="scbar"><span style="width:40%;background:var(--primary)"></span></div><b style="font-size:17px">40</b></div>
+        <div class="sc" style="margin-top:5px"><span class="sclbl" style="color:var(--amber)">Meta</span><div class="scbar"><span style="width:10%;background:var(--amber)"></span></div><b style="font-size:17px;color:var(--amber)">10</b></div>
+        <div class="sc" style="margin-top:5px"><span class="sclbl">Field</span><div class="scbar"><span style="width:5%;background:#c0c5cf"></span></div><b style="font-size:17px;color:#8a93a1">5</b></div>
+        <div style="margin-top:10px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:7px"><span style="font-family:var(--mono);font-size:10px;color:var(--bad)">HARD</span> only coding truly trains — rest is skills + context</div>
       </div>
       <div class="card" style="display:flex;flex-direction:column">
         <span class="tag">Stage 3</span>
-        <h3 style="font-size:21px;margin-top:12px">Proactive Management</h3>
+        <h3 style="font-size:21px;margin-top:10px">Proactive Management</h3>
         <p style="font-size:14px;color:var(--ink-2);margin-top:5px">Acts before you ask — a human still approves.</p>
-        <div class="spacer" style="max-height:12px"></div>
-        <div class="sc" style="margin-top:4px"><span class="sclbl">Coding</span><div class="scbar"><span style="width:20%;background:var(--primary)"></span></div><b style="font-size:18px">20</b></div>
-        <div class="sc" style="margin-top:6px"><span class="sclbl">Tax</span><div class="scbar"><span style="width:2%;background:var(--amber)"></span></div><b style="font-size:18px;color:var(--amber)">0</b></div>
-        <div style="margin-top:12px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px"><span style="font-family:var(--mono);font-size:10px;color:var(--primary)">IN CODING</span> agents open a PR · you approve</div>
+        <div class="spacer" style="max-height:10px"></div>
+        <div class="sc" style="margin-top:4px"><span class="sclbl">Coding</span><div class="scbar"><span style="width:20%;background:var(--primary)"></span></div><b style="font-size:17px">20</b></div>
+        <div class="sc" style="margin-top:5px"><span class="sclbl" style="color:var(--amber)">Meta</span><div class="scbar"><span style="width:5%;background:var(--amber)"></span></div><b style="font-size:17px;color:var(--amber)">5</b></div>
+        <div class="sc" style="margin-top:5px"><span class="sclbl">Field</span><div class="scbar"><span style="width:2%;background:#c0c5cf"></span></div><b style="font-size:17px;color:#8a93a1">0</b></div>
+        <div style="margin-top:10px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:7px"><span style="font-family:var(--mono);font-size:10px;color:var(--primary)">CODING</span> agents open a PR · you approve</div>
       </div>
     </div>
     <div class="spacer"></div>
-    <p class="lead">Same path, ~2–3 years apart — <strong>coding is the map, and tax gets to read it ahead.</strong></p>
-    <aside class="notes"><h4>Notes</h4><p>This one slide merges the framework and the scores. Walk the three stages left-to-right; for each, contrast where coding is (90 / 40 / 20) with where tax is (15 / 5 / 0). Scores are directional — the point is the shape: coding has finished Stage 1 and is mid-Stage 2; tax is just starting Stage 1. Two constants: you climb the stages in order, and a human stays in the loop at every stage (in coding the merge; in tax the filing). Invite the room to argue the numbers.</p></aside>
+    <p class="lead" style="font-size:21px"><strong>Meta's foundation is nearly at coding's</strong> — Stage 2 is the frontier for everyone. <span style="color:var(--muted);font-size:15px">Meta = projected year-end · Field = most tax teams today.</span></p>
+    <aside class="notes"><h4>Notes</h4><p>Coding 90/40/20; <strong>Meta</strong> (projected year-end, compliance live) 80/10/5; the broader <strong>tax field</strong> 15/5/0. The story: Meta's Stage 1 foundation is nearly at coding's 90 — far ahead of the field — driven by compliance going live with very high coverage. But Stage 2 is low for everyone but coding: only the coding vertical has true model <em>training</em> in the loop. Tax and other verticals improve via <strong>skills + context</strong> — powerful, but hard to scale. That's the frontier. Scores are directional — invite debate.</p></aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>02</span></div>
   </section>
 
@@ -260,7 +264,7 @@
     <div class="spacer" style="max-height:18px"></div>
     <div class="grid-2" style="gap:18px">
       <div class="card"><h3 class="primary">Planning</h3><p style="margin-top:6px;font-size:16px">Skills for <strong>new product initiatives</strong> — model the tax impact of a launch before it ships.</p></div>
-      <div class="card"><h3 class="primary">Compliance &amp; Reporting</h3><p style="margin-top:6px;font-size:16px">Returns &amp; filings, automated across <strong>10+ countries</strong>.</p></div>
+      <div class="card"><h3 class="primary">Compliance &amp; Reporting</h3><p style="margin-top:6px;font-size:16px">In testing now — <strong>live by year-end</strong> with very high coverage across <strong>10+ countries</strong>.</p></div>
     </div>
     <div class="spacer" style="max-height:14px"></div>
     <div class="card" style="padding:16px 22px">
@@ -283,27 +287,51 @@
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>07</span></div>
   </section>
 
-  <!-- 7 · THE FLYWHEEL -->
+  <!-- 7 · THE FLYWHEEL (human-in-the-loop → continuous learning) -->
   <section class="slide">
-    <div class="eyebrow">Why foundation-first pays off</div>
-    <h2>Connect end-to-end — a flywheel kicks in</h2>
-    <p class="lead" style="max-width:74ch;margin-top:8px">Connect Planning → Compliance → Audit on one foundation and each loop compounds — <strong>audit closes the loop.</strong></p>
-    <div style="position:relative;width:1000px;height:392px;margin:6px auto 0">
-      <svg width="316" height="316" viewBox="0 0 360 360" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)">
-        <circle cx="180" cy="180" r="150" fill="none" stroke="#dbe1f6" stroke-width="2"/>
-        <polygon points="188,30 176,23 176,37" fill="#A8772E"/><polygon points="172,330 184,323 184,337" fill="#A8772E"/>
-      </svg>
-      <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:140px;height:140px;border-radius:50%;background:var(--primary);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-shadow:0 10px 26px rgba(30,58,138,.32)">
-        <div style="font-size:28px;line-height:1">&#8635;</div><div style="font-family:var(--mono);font-size:12px;letter-spacing:.14em;margin-top:6px">FLYWHEEL</div><div style="font-size:11px;color:#cfd6f1;margin-top:5px;max-width:108px;line-height:1.3">audit closes the loop</div>
+    <div class="eyebrow">Stage 2 · the hard part</div>
+    <h2>Humans in the loop — the engine behind continuous learning</h2>
+    <div class="spacer" style="max-height:6px"></div>
+    <div class="row" style="align-items:center;gap:26px">
+      <div style="flex:0 0 460px;position:relative;width:460px;height:420px">
+        <svg viewBox="0 0 460 420" width="460" height="420" style="position:absolute;left:0;top:0">
+          <defs>
+            <linearGradient id="flow" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#1e3a8a"/><stop offset="1" stop-color="#A8772E"/>
+            </linearGradient>
+          </defs>
+          <circle cx="230" cy="200" r="150" fill="none" stroke="url(#flow)" stroke-width="3"/>
+          <g fill="#A8772E">
+            <polygon points="-7,-6 7,0 -7,6" transform="translate(336,94) rotate(45)"/>
+            <polygon points="-7,-6 7,0 -7,6" transform="translate(336,306) rotate(135)"/>
+            <polygon points="-7,-6 7,0 -7,6" transform="translate(124,306) rotate(225)"/>
+            <polygon points="-7,-6 7,0 -7,6" transform="translate(124,94) rotate(315)"/>
+          </g>
+        </svg>
+        <div style="position:absolute;left:230px;top:200px;transform:translate(-50%,-50%);width:132px;height:132px;border-radius:50%;background:var(--primary);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-shadow:0 12px 30px rgba(30,58,138,.34)">
+          <div style="font-size:24px;line-height:1">&#8635;</div>
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.08em;margin-top:6px;line-height:1.25">HUMAN-IN-<br>THE-LOOP</div>
+          <div style="font-size:10px;color:#cfd6f1;margin-top:4px">drives the learning</div>
+        </div>
+        <div style="position:absolute;left:230px;top:50px;transform:translate(-50%,-50%);width:152px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 10px;box-shadow:0 5px 16px rgba(0,0,0,.08)"><div style="font-size:20px">🤖</div><div style="font-size:13px;font-weight:600;color:var(--ink);margin-top:1px">AI drafts the work</div></div>
+        <div style="position:absolute;left:380px;top:200px;transform:translate(-50%,-50%);width:152px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 10px;box-shadow:0 5px 16px rgba(0,0,0,.08)"><div style="font-size:20px">🧑</div><div style="font-size:13px;font-weight:600;color:var(--ink);margin-top:1px">Human reviews &amp; corrects</div></div>
+        <div style="position:absolute;left:230px;top:350px;transform:translate(-50%,-50%);width:152px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 10px;box-shadow:0 5px 16px rgba(0,0,0,.08)"><div style="font-size:20px">📈</div><div style="font-size:13px;font-weight:600;color:var(--ink);margin-top:1px">Feedback captured</div></div>
+        <div style="position:absolute;left:80px;top:200px;transform:translate(-50%,-50%);width:152px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 10px;box-shadow:0 5px 16px rgba(0,0,0,.08)"><div style="font-size:20px">✨</div><div style="font-size:13px;font-weight:600;color:var(--ink);margin-top:1px">AI improves</div></div>
       </div>
-      <div class="card" style="position:absolute;left:50%;top:0;transform:translate(-50%,0);width:250px;padding:11px 16px"><h3 style="font-size:16px">1 · Connect end-to-end</h3><p style="font-size:13.5px;margin-top:2px">Planning → Compliance → Audit on one foundation</p></div>
-      <div class="card" style="position:absolute;left:100%;top:50%;transform:translate(-100%,-50%);width:250px;padding:11px 16px"><h3 style="font-size:16px">2 · Audit-ready lineage</h3><p style="font-size:13.5px;margin-top:2px">Every number traces to source — defensible on demand</p></div>
-      <div class="card" style="position:absolute;left:50%;bottom:0;transform:translate(-50%,0);width:250px;padding:11px 16px"><h3 style="font-size:16px">3 · Feedback captured</h3><p style="font-size:13.5px;margin-top:2px">Audit outcomes &amp; corrections become learning signal</p></div>
-      <div class="card" style="position:absolute;left:0;top:50%;transform:translate(0,-50%);width:250px;padding:11px 16px"><h3 style="font-size:16px">4 · Foundation compounds</h3><p style="font-size:13.5px;margin-top:2px">Cleaner data → better planning &amp; compliance → more to connect</p></div>
+      <div class="col">
+        <div class="card" style="background:#fbf3f3;border-color:#f0d9d9">
+          <h3 style="color:var(--bad)">No true continuous learning — yet</h3>
+          <ul class="clean" style="margin-top:12px">
+            <li style="font-size:16px">Today we turn the wheel <strong>by hand</strong> — people correct, the AI improves via <strong>skills + context</strong>.</li>
+            <li style="font-size:16px">Only the <strong>coding</strong> vertical actually <strong>trains the model</strong> in the loop.</li>
+            <li style="font-size:16px">For tax — and every other vertical — real continuous learning is <strong>unsolved, and hard to scale</strong>.</li>
+          </ul>
+        </div>
+      </div>
     </div>
     <div class="spacer"></div>
-    <p class="lead" style="font-size:21px">Each turn makes the data cleaner and the foundation smarter — <strong>the exact feedback engine Stage 2 will run on.</strong></p>
-    <aside class="notes"><h4>Notes</h4><p>The payoff. Foundation-first isn't deferred gratification — connecting end-to-end compounds immediately. Audit is the linchpin: it makes the work defensible AND generates the richest feedback.</p></aside>
+    <p class="lead" style="font-size:21px">Human-in-the-loop is how we improve now — and the <strong>data engine</strong> for continuous learning when it arrives.</p>
+    <aside class="notes"><h4>Notes</h4><p>The flywheel today is human-powered: AI drafts → a human reviews &amp; corrects → that feedback is captured → the AI improves (via skills + context) → repeat. That human-in-the-loop is what assists the AI and drives improvement now. But be honest: there is <strong>no true continuous learning</strong> outside coding yet — only the coding vertical actually trains the model in the loop. Everywhere else, tax included, we lean on skills enhancement and context: powerful, but hard to scale. That's exactly why Stage 2 scores are low for everyone but coding — and it's the frontier we're driving toward.</p></aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>07</span></div>
   </section>
 
@@ -424,11 +452,11 @@
       </div>
       <div class="col">
         <div class="card">
-          <h3>Why not the frontier labs?</h3>
+          <h3>The frontier labs? Not yet.</h3>
           <ul class="clean" style="margin-top:10px">
             <li style="font-size:16px">They're building the <strong>ecosystem</strong> — models, skills, MCP — and want you on their platform.</li>
-            <li style="font-size:16px">But their <strong>vertical</strong> AI investment is coding-deep; for tax it's still surface-level.</li>
-            <li style="font-size:16px">Lighter broad-engineering footprint, and an early tax footprint — one is just standing up a tax engine.</li>
+            <li style="font-size:16px">But they have <strong>many verticals to chase</strong> — tax is just one of them.</li>
+            <li style="font-size:16px">So they'll ship <strong>generic skills</strong> — but won't go deep into <em>your</em> process and data.</li>
           </ul>
         </div>
       </div>
