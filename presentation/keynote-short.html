@@ -81,9 +81,11 @@
   .infratab .irow.hl .ex .m{color:var(--amber);}
   /* agent anatomy map */
   .agentmap{display:flex;flex-direction:column;}
-  .agentmap .ahead,.agentmap .arow{display:grid;grid-template-columns:1.3fr 56px 1fr;align-items:center;gap:10px;padding:9px 14px;}
+  .agentmap .ahead,.agentmap .arow{display:grid;grid-template-columns:1.3fr 56px 1fr;align-items:center;gap:10px;padding:7px 14px;}
   .agentmap .ahead{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:#9aa3b2;border-bottom:1.5px solid var(--line);}
   .agentmap .arow{border-bottom:1px solid #efeeea;}
+  .agentmap .arow.hl{background:var(--amber-tint);border-radius:8px;}
+  .agentmap .arow.hl .ainf{color:var(--amber);}
   .agentmap .and{font-size:18px;color:var(--ink-2);display:flex;align-items:center;}
   .agentmap .and b{color:var(--ink);font-weight:700;margin-right:5px;}
   .agentmap .ai{font-size:22px;margin-right:12px;flex:0 0 auto;}
@@ -332,12 +334,13 @@
       <div class="arow"><div class="and"><span class="ai">🖐</span><b>Hands</b> — to act in your systems</div><div class="aar">→</div><div class="ainf">Tool calling (MCP)</div></div>
       <div class="arow"><div class="and"><span class="ai">💾</span><b>Memory</b> — to remember past work</div><div class="aar">→</div><div class="ainf">Memory store</div></div>
       <div class="arow"><div class="and"><span class="ai">📚</span><b>Knowledge</b> — your tax law &amp; data</div><div class="aar">→</div><div class="ainf">Data foundation</div></div>
+      <div class="arow hl"><div class="and"><span class="ai">🕸️</span><b>Relationships</b> — how entities, jurisdictions &amp; products connect</div><div class="aar">→</div><div class="ainf">Knowledge graph</div></div>
       <div class="arow"><div class="and"><span class="ai">🎯</span><b>Context</b> — the task in front of it</div><div class="aar">→</div><div class="ainf">Grounding / retrieval</div></div>
       <div class="arow"><div class="and"><span class="ai">🛡️</span><b>Guardrails</b> — judgment &amp; sign-off</div><div class="aar">→</div><div class="ainf">Trust &amp; controls</div></div>
     </div>
     <div class="spacer"></div>
     <p class="lead" style="font-size:21px">The model is just the brain. <strong>Everything else is the infrastructure</strong> — and that's the work.</p>
-    <aside class="notes"><h4>Notes</h4><p>Make it human. An AI agent is like onboarding a new team member: it needs a brain (the model), skills (what it can do), hands to act in your systems (tool calling via MCP), memory, your knowledge &amp; data, the context of the task, and guardrails (permissions, audit, human sign-off). Each maps to one piece of infrastructure.</p><p>The punchline: the model — the part everyone fixates on — is just the brain. The other six pieces are the real work, and they're what most companies don't have. (We do — tie back to the "why Meta" slide.)</p></aside>
+    <aside class="notes"><h4>Notes</h4><p>Make it human. An AI agent is like onboarding a new team member: it needs a brain (the model), skills (what it can do), hands to act in your systems (tool calling via MCP), memory, your knowledge &amp; data, the context of the task, and guardrails (permissions, audit, human sign-off). Each maps to one piece of infrastructure.</p><p><strong>Relationships / knowledge graph</strong> is the one tax people undervalue: knowing the facts isn't enough — the agent must know how entity, jurisdiction, product and transaction connect (and lineage, which makes audit defensible, is a graph). The punchline: the model — the part everyone fixates on — is just the brain. The other seven pieces are the real work, and they're what most companies don't have. (We do — tie back to the "why Meta" slide.)</p></aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>08</span></div>
   </section>
 
