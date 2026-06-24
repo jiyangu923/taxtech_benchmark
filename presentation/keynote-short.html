@@ -111,7 +111,7 @@
 </style>
 </head>
 <body>
-<div id="help">← → navigate · F fullscreen · N notes</div>
+<div id="help">← → nav · N notes · <span id="fsbtn" style="cursor:pointer;text-decoration:underline">⛶ Fullscreen</span> <span style="opacity:.6">(or F11)</span></div>
 <div id="stage"><div class="progress" id="bar"></div>
 
   <!-- 1 · TITLE -->
@@ -588,7 +588,15 @@
   function renderNotes(){const note=slides[i].querySelector('.notes');if(notesOn&&note){notesPanel.innerHTML=note.innerHTML;notesPanel.classList.add('show');}else{notesPanel.classList.remove('show');}}
   function show(n){i=Math.max(0,Math.min(slides.length-1,n));slides.forEach((s,k)=>s.classList.toggle('active',k===i));bar.style.width=(i/(slides.length-1)*100)+'%';const pg=slides[i].querySelector('.foot span:last-child');if(pg)pg.textContent=String(i+1).padStart(2,'0')+' / '+slides.length;renderNotes();location.hash='#'+(i+1);}
   function next(){show(i+1);} function prev(){show(i-1);}
-  document.addEventListener('keydown',e=>{switch(e.key){case 'ArrowRight':case 'PageDown':case ' ':e.preventDefault();next();break;case 'ArrowLeft':case 'PageUp':prev();break;case 'Home':show(0);break;case 'End':show(slides.length-1);break;case 'f':case 'F':if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();break;case 'n':case 'N':notesOn=!notesOn;renderNotes();break;}});
+  function toggleFs(){
+    var el=document.documentElement;
+    var req=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
+    var exit=document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen||document.msExitFullscreen;
+    var fsel=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement;
+    try{ if(!fsel){ if(req){var p=req.call(el); if(p&&p.catch)p.catch(function(){});} } else if(exit){ var q=exit.call(document); if(q&&q.catch)q.catch(function(){}); } }catch(e){}
+  }
+  document.addEventListener('keydown',e=>{switch(e.key){case 'ArrowRight':case 'PageDown':case ' ':e.preventDefault();next();break;case 'ArrowLeft':case 'PageUp':prev();break;case 'Home':show(0);break;case 'End':show(slides.length-1);break;case 'f':case 'F':toggleFs();break;case 'n':case 'N':notesOn=!notesOn;renderNotes();break;}});
+  document.getElementById('fsbtn').addEventListener('click',function(e){e.stopPropagation();toggleFs();});
   stage.addEventListener('click',e=>{const r=stage.getBoundingClientRect();if((e.clientX-r.left)<r.width*0.25)prev();else next();});
   window.addEventListener('resize',fitStage);
   window.addEventListener('load',()=>{fitStage();const fromHash=parseInt((location.hash||'').replace('#',''))-1;show(Number.isInteger(fromHash)&&fromHash>=0?fromHash:0);loadQR();});
