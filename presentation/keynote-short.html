@@ -117,14 +117,53 @@
   <!-- 1 · TITLE -->
   <section class="slide title-slide">
     <div class="eyebrow">TEI Conference · Keynote</div>
-    <div class="spacer" style="max-height:40px"></div>
-    <h1>Vertical AI Agents</h1>
-    <p style="font-family:var(--mono);font-size:24px;color:#f6d99a;margin-top:16px;letter-spacing:.02em">From coding to tax</p>
-    <p class="lead" style="margin-top:18px">AI matured first in software. The same playbook is coming to tax — here's the map, and what we're building at Meta to get there.</p>
     <div class="spacer"></div>
-    <div class="byline">Less a roadmap than a year of learning — including what we got wrong.</div>
-    <aside class="notes"><h4>Notes</h4><p>Set the frame: I'll use Claude / AI coding as the visible example, then show what we're doing in tax at Meta, and the infrastructure it takes. Simple story, one arc.</p></aside>
+    <h1 style="font-size:74px;line-height:1.0">Vertical AI Agents</h1>
+    <div style="display:flex;align-items:center;gap:14px;margin-top:18px">
+      <div style="height:2px;width:56px;background:#f6d99a"></div>
+      <p style="font-family:var(--mono);font-size:26px;color:#f6d99a;letter-spacing:.02em;margin:0">From coding to tax</p>
+    </div>
+    <p class="lead" style="margin-top:22px;max-width:62ch">AI matured first in software. The same playbook is coming to tax — here's the map, what we're building at Meta, and what we got wrong along the way.</p>
+    <div class="spacer"></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px">
+      <div class="byline">Less a roadmap than a year of learning.</div>
+      <div class="byline" style="text-align:right;color:#cdd5f3">[Your name] · Tax Technology @ Meta</div>
+    </div>
+    <aside class="notes"><h4>Notes</h4><p>Open warm and low-stakes: "I'm not selling anything, and I don't have this figured out." Frame the arc: coding is the visible example, here's what we're building in tax at Meta, the infrastructure it takes — and the year of mistakes that taught us. Add your name/role to the bottom-right.</p></aside>
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>01</span></div>
+  </section>
+
+  <!-- 1b · AGENDA -->
+  <section class="slide">
+    <div class="eyebrow">Where we're going</div>
+    <h2>The arc — four quick acts, then your pushback</h2>
+    <div class="spacer" style="max-height:22px"></div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:center;gap:22px;border-bottom:1px solid #efeeea;padding-bottom:14px">
+        <div style="font-family:var(--mono);font-size:30px;font-weight:600;color:#c3c9d4;width:44px;flex:0 0 auto">01</div>
+        <div style="flex:0 0 280px"><strong style="font-size:20px;color:var(--ink)">The pattern</strong></div>
+        <div style="font-size:17px;color:var(--ink-2)">Coding is the leading indicator — AI evolves in three stages</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:22px;border-bottom:1px solid #efeeea;padding-bottom:14px">
+        <div style="font-family:var(--mono);font-size:30px;font-weight:600;color:#c3c9d4;width:44px;flex:0 0 auto">02</div>
+        <div style="flex:0 0 280px"><strong style="font-size:20px;color:var(--ink)">Our bet</strong></div>
+        <div style="font-size:17px;color:var(--ink-2)">One AI foundation across the whole tax lifecycle</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:22px;border-bottom:1px solid #efeeea;padding-bottom:14px">
+        <div style="font-family:var(--mono);font-size:30px;font-weight:600;color:#c3c9d4;width:44px;flex:0 0 auto">03</div>
+        <div style="flex:0 0 280px"><strong style="font-size:20px;color:var(--ink)">The reality</strong></div>
+        <div style="font-size:17px;color:var(--ink-2)">40+ skills in a year — and what humbled us</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:22px;padding-bottom:2px">
+        <div style="font-family:var(--mono);font-size:30px;font-weight:600;color:var(--amber);width:44px;flex:0 0 auto">04</div>
+        <div style="flex:0 0 280px"><strong style="font-size:20px;color:var(--ink)">The how</strong></div>
+        <div style="font-size:17px;color:var(--ink-2)">The infrastructure an AI agent actually needs</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">And throughout — <strong>argue with me.</strong> Most of this is still a work in progress.</p>
+    <aside class="notes"><h4>Notes</h4><p>Quick orientation so the room knows the shape. Keep it to ~20 seconds. The "argue with me" line sets an approachable, collaborative tone from the start.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>02</span></div>
   </section>
 
   <!-- 2 · CODING vs TAX — THREE STAGES + SCORES -->
@@ -369,11 +408,28 @@
     <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>07</span></div>
   </section>
 
+  <!-- 7c · AI IS AN INTERN -->
+  <section class="slide">
+    <div class="eyebrow">The mental model that unlocked it</div>
+    <h2>Treat AI like a brilliant intern</h2>
+    <p class="lead" style="max-width:82ch;margin-top:8px">Fast, capable, eager — and on day one it knows <strong>nothing about your world</strong>. You don't just hand it the work. You onboard it.</p>
+    <div class="spacer" style="max-height:22px"></div>
+    <div class="grid-3">
+      <div class="card center"><div style="font-size:34px">📍</div><h3 style="margin-top:8px;font-size:20px">Where the data lives</h3><p style="margin-top:6px;font-size:15px">Which systems, which fields, what's the source of truth.</p></div>
+      <div class="card center"><div style="font-size:34px">📝</div><h3 style="margin-top:8px;font-size:20px">What "good" looks like</h3><p style="margin-top:6px;font-size:15px">The reply format, the structure, the tone of a real answer.</p></div>
+      <div class="card center"><div style="font-size:34px">⚖️</div><h3 style="margin-top:8px;font-size:20px">Your judgment criteria</h3><p style="margin-top:6px;font-size:15px">How you weigh risk — the calls only experience makes.</p></div>
+    </div>
+    <div class="spacer"></div>
+    <p class="lead">…and you <strong>write it all down.</strong> The teaching <em>is</em> the work — and the work is infrastructure.</p>
+    <aside class="notes"><h4>Notes</h4><p>The reframe that changed how we work — and a callback to "what humbled us." You wouldn't drop an audit on a new intern and walk away; you'd show them where to pull data, what a good response looks like, and how you weigh risk — and you'd document it. AI is the same. Once you see it as onboarding, the whole infrastructure question becomes obvious — which is the next slide.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>08</span></div>
+  </section>
+
   <!-- 8 · THE INFRA REQUIRED -->
   <section class="slide">
-    <div class="eyebrow">In plain terms</div>
-    <h2>An AI agent is like a new team member</h2>
-    <p class="lead" style="max-width:80ch;margin-top:6px">Think about what a person needs to do the job. An agent needs the same things — and <strong>each one is a piece of infrastructure.</strong></p>
+    <div class="eyebrow">What the intern needs</div>
+    <h2>Onboard the intern — and each thing it needs is infrastructure</h2>
+    <p class="lead" style="max-width:84ch;margin-top:6px">Same as a new hire: give it a brain, skills, hands, memory, and your knowledge — <strong>each one is a piece of infrastructure.</strong></p>
     <div class="spacer" style="max-height:14px"></div>
     <div class="agentmap">
       <div class="ahead"><div>THE AGENT NEEDS…</div><div></div><div>…WHICH IS INFRASTRUCTURE</div></div>
@@ -504,20 +560,20 @@
   <!-- 10 · TAKEAWAY / CLOSE -->
   <section class="slide title-slide center">
     <div class="eyebrow">The takeaway</div>
-    <div class="spacer" style="max-height:24px"></div>
-    <h1 style="font-size:50px;max-width:22ch">Build the foundation now. Be ready when the harness arrives.</h1>
-    <p class="lead" style="margin-top:22px;max-width:48ch">Coding shows the path. The three stages are real. The winning move in tax is Stage 1 — done well, across the lifecycle.</p>
-    <div class="spacer"></div>
-    <div class="row center" style="gap:40px;align-items:center">
-      <div class="qr-box"><img id="qr" alt="QR to taxbenchmark.ai" src="" /></div>
-      <div style="text-align:left">
-        <p class="byline" style="margin-bottom:8px">Benchmark your tax-tech function</p>
-        <div style="font-family:var(--mono);font-size:28px;color:#fff;font-weight:600">taxbenchmark.ai</div>
-        <p class="byline" style="margin-top:14px">Thank you · contact@taxbenchmark.ai</p>
-      </div>
+    <div class="spacer" style="max-height:18px"></div>
+    <h1 style="font-size:52px;max-width:20ch">Tax is where coding was a few years ago.</h1>
+    <p class="lead" style="margin-top:20px;max-width:50ch">We don't have to predict the future — we get to read it. Build the foundation now, treat the AI like the intern it is, and let your people move up to judgment.</p>
+    <div class="spacer" style="max-height:30px"></div>
+    <div class="pill-row" style="justify-content:center;gap:12px">
+      <span style="font-family:var(--mono);font-size:14px;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:8px 16px">Foundation first</span>
+      <span style="font-family:var(--mono);font-size:14px;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:8px 16px">Teach the intern</span>
+      <span style="font-family:var(--mono);font-size:14px;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:8px 16px">People move up</span>
     </div>
-    <aside class="notes"><h4>Notes</h4><p>Land the one-liner. Recap the arc: Claude shows it, three stages, coding leads &amp; diffuses, we build the foundation across the lifecycle, the flywheel compounds. Then open for questions.</p></aside>
-    <div class="foot"><span class="brand">taxbenchmark.ai</span><span>10</span></div>
+    <div class="spacer"></div>
+    <div style="font-family:var(--mono);font-size:22px;color:#f6d99a;font-weight:600">I'm still figuring this out. Where do you think I'm wrong?</div>
+    <p class="byline" style="margin-top:16px;color:#cdd5f3">Thank you · [Your name] · Tax Technology @ Meta</p>
+    <aside class="notes"><h4>Notes</h4><p>Recap the arc in one breath: coding is the leading indicator, three stages, we're building the foundation across the tax lifecycle, AI is an intern you teach, people move up to judgment. Then end on the question — not a mic-drop. Inviting pushback is the most approachable way to open Q&A. Add your name.</p></aside>
+    <div class="foot"><span class="brand">Tax AI Infrastructure</span><span>10</span></div>
   </section>
 
 </div>
