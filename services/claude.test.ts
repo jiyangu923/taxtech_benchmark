@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { parseSseFrames } from './claude';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { parseSseFrames, streamClaudeStructured, STREAM_IDLE_MS } from './claude';
 
 describe('parseSseFrames', () => {
   it('extracts a single delta event from a complete frame', () => {
@@ -51,5 +51,41 @@ describe('parseSseFrames', () => {
   it('preserves an error event verbatim', () => {
     const { events } = parseSseFrames('data: {"type":"error","message":"upstream failed"}\n\n');
     expect(events).toEqual([{ type: 'error', message: 'upstream failed' }]);
+  });
+});
+
+describe('streamClaudeStructured idle timeout', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+  it('aborts and rejects when no data arrives within STREAM_IDLE_MS', async () => {
+    // A body whose reader never yields on its own, but whose read() rejects the
+    // instant the request's AbortSignal fires — mirroring how a real fetch body
+    // errors when the connection is aborted. Without the idle guard this read
+    // would await forever and the whole call would hang.
+    const fetchMock = vi.fn((_url: string, opts: any) => {
+      const signal: AbortSignal = opts.signal;
+      const reader = {
+        read: () => new Promise((_resolve, reject) => {
+          const bail = () => reject(signal.reason ?? new Error('aborted'));
+          if (signal.aborted) bail();
+          else signal.addEventListener('abort', bail, { once: true });
+        }),
+      };
+      return Promise.resolve({ ok: true, body: { getReader: () => reader } });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const promise = streamClaudeStructured({
+      messages: [{ role: 'user', content: 'hi' }],
+      outputFormat: {},
+    });
+    // Attach the rejection handler before advancing timers so the abort has a
+    // listener (no unhandled rejection).
+    const assertion = expect(promise).rejects.toThrow(/stalled/i);
+    await vi.advanceTimersByTimeAsync(STREAM_IDLE_MS + 100);
+    await assertion;
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
   });
 });

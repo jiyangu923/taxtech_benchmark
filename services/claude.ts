@@ -79,6 +79,13 @@ export async function askClaudeStructured<T>(
   return postClaude<StructuredResponse<T>>({ ...args });
 }
 
+// A streamed answer can be slow to first byte — cold start plus a prompt-cache
+// warm can take ~25s before the first token — but a *healthy* stream is never
+// idle for long once it starts flowing. If no bytes arrive for this window we
+// treat the socket as dead and abort, so the caller's error path runs instead
+// of hanging forever. Exported for tests.
+export const STREAM_IDLE_MS = 60_000;
+
 /**
  * Streaming variant. Calls `onDelta(text, accumulated)` for each chunk
  * (accumulated is the full text-so-far — convenient for progressive UI
@@ -91,69 +98,92 @@ export async function streamClaudeStructured<T>(
   args: BaseArgs & { outputFormat: Record<string, unknown> },
   onDelta?: (chunk: string, accumulated: string) => void,
 ): Promise<StructuredResponse<T>> {
-  const resp = await fetch('/api/claude', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-    body: JSON.stringify({ ...args, stream: true }),
-  });
-  if (!resp.ok || !resp.body) {
-    const errBody = await resp.json().catch(() => ({}));
-    throw Object.assign(new Error(errBody?.error || `HTTP ${resp.status}`), { status: resp.status });
-  }
-
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let accumulated = '';
-  let finalText = '';
-  let finalUsage: ClaudeUsage | null = null;
-  let streamError: string | null = null;
-
-  // SSE frame parser: events are separated by `\n\n`; each event is
-  // `data: <json>`. We buffer across reads because a single chunk can hold
-  // multiple events or split one in half.
-  const drainEvents = () => {
-    let idx: number;
-    while ((idx = buffer.indexOf('\n\n')) >= 0) {
-      const frame = buffer.slice(0, idx);
-      buffer = buffer.slice(idx + 2);
-      const dataLine = frame.split('\n').find(l => l.startsWith('data: '));
-      if (!dataLine) continue;
-      let payload: any;
-      try {
-        payload = JSON.parse(dataLine.slice(6));
-      } catch {
-        continue;
-      }
-      if (payload.type === 'delta' && typeof payload.text === 'string') {
-        accumulated += payload.text;
-        onDelta?.(payload.text, accumulated);
-      } else if (payload.type === 'done') {
-        finalText = payload.text || accumulated;
-        finalUsage = payload.usage || null;
-      } else if (payload.type === 'error') {
-        streamError = payload.message || 'stream error';
-      }
-    }
+  // Guard the whole request — connect, response, and every body read — with an
+  // idle deadline. Without it, a stalled socket leaves `reader.read()` awaiting
+  // forever: streamTaxi's await never settles, the caller's `finally` never
+  // runs, and the Taxi UI is stuck ("thinking" spinner, disabled composer) with
+  // no recovery but a hard reload. Aborting makes the pending read reject, which
+  // propagates to streamTaxi's catch and surfaces the fallback answer instead.
+  const ctrl = new AbortController();
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  const bumpIdle = () => {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(
+      () => ctrl.abort(new DOMException('Taxi stream stalled — no data received', 'TimeoutError')),
+      STREAM_IDLE_MS,
+    );
   };
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (value) buffer += decoder.decode(value, { stream: true });
-    drainEvents();
-    if (done) break;
-  }
-
-  if (streamError) throw new Error(streamError);
-  if (!finalUsage) throw new Error('Stream ended without a done event');
-
-  let parsed: T;
   try {
-    parsed = JSON.parse(finalText) as T;
-  } catch (e: any) {
-    throw new Error(`Model returned invalid JSON: ${e?.message || 'parse error'}`);
+    bumpIdle();
+    const resp = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      body: JSON.stringify({ ...args, stream: true }),
+      signal: ctrl.signal,
+    });
+    if (!resp.ok || !resp.body) {
+      const errBody = await resp.json().catch(() => ({}));
+      throw Object.assign(new Error(errBody?.error || `HTTP ${resp.status}`), { status: resp.status });
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let accumulated = '';
+    let finalText = '';
+    let finalUsage: ClaudeUsage | null = null;
+    let streamError: string | null = null;
+
+    // SSE frame parser: events are separated by `\n\n`; each event is
+    // `data: <json>`. We buffer across reads because a single chunk can hold
+    // multiple events or split one in half.
+    const drainEvents = () => {
+      let idx: number;
+      while ((idx = buffer.indexOf('\n\n')) >= 0) {
+        const frame = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        const dataLine = frame.split('\n').find(l => l.startsWith('data: '));
+        if (!dataLine) continue;
+        let payload: any;
+        try {
+          payload = JSON.parse(dataLine.slice(6));
+        } catch {
+          continue;
+        }
+        if (payload.type === 'delta' && typeof payload.text === 'string') {
+          accumulated += payload.text;
+          onDelta?.(payload.text, accumulated);
+        } else if (payload.type === 'done') {
+          finalText = payload.text || accumulated;
+          finalUsage = payload.usage || null;
+        } else if (payload.type === 'error') {
+          streamError = payload.message || 'stream error';
+        }
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      bumpIdle(); // a read returned (data or EOF) — the socket is alive; reset the clock
+      if (value) buffer += decoder.decode(value, { stream: true });
+      drainEvents();
+      if (done) break;
+    }
+
+    if (streamError) throw new Error(streamError);
+    if (!finalUsage) throw new Error('Stream ended without a done event');
+
+    let parsed: T;
+    try {
+      parsed = JSON.parse(finalText) as T;
+    } catch (e: any) {
+      throw new Error(`Model returned invalid JSON: ${e?.message || 'parse error'}`);
+    }
+    return { text: finalText, json: parsed, usage: finalUsage };
+  } finally {
+    if (idleTimer) clearTimeout(idleTimer);
   }
-  return { text: finalText, json: parsed, usage: finalUsage };
 }
 
 // ─── Exported for tests ──────────────────────────────────────────────────────
