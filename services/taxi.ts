@@ -1,4 +1,4 @@
-import { Submission } from '../types';
+import { Submission, KbArticle } from '../types';
 import * as C from '../constants';
 import SURVEY_TOOLTIPS from '../surveyTooltips';
 import {
@@ -97,9 +97,35 @@ export interface TaxiResponse {
   followUps: string[];
 }
 
+// How many curated KB articles to inject as industry context, and a
+// defensive per-summary cap so one long paste can't blow up the prompt.
+const MAX_KB_ARTICLES = 20;
+const MAX_KB_SUMMARY_CHARS = 900;
+
+/**
+ * Renders curated industry news into a compact text block for the system
+ * prompt. Empty input → empty string (no header, so the model never sees a
+ * dangling "INDUSTRY CONTEXT" section).
+ */
+function buildKbContext(articles: KbArticle[]): string {
+  const items = articles.slice(0, MAX_KB_ARTICLES);
+  if (items.length === 0) return '';
+  const lines = items.map(a => {
+    const date = (a.published_at || '').slice(0, 10);
+    const summary = a.summary.length > MAX_KB_SUMMARY_CHARS
+      ? a.summary.slice(0, MAX_KB_SUMMARY_CHARS) + '…'
+      : a.summary;
+    const tags = a.tags?.length ? ` [${a.tags.join(', ')}]` : '';
+    return `- (${date}) ${a.title}${tags}: ${summary}`;
+  });
+  return `\n\n--- INDUSTRY CONTEXT (curated news & knowledge) ---\nUse these when relevant to the user's question; cite items by title. Do not invent news beyond this list.\n${lines.join('\n')}`;
+}
+
 // Static reference data goes in the system prompt — same for every request.
 // Per-user data (which submission is "yours") goes in the message body.
-function buildSystem(allSubmissions: Submission[]): SystemBlock[] {
+// KB articles join the CACHED block: they change rarely, so the cache
+// re-warms on the first question after a curation change and hits after.
+function buildSystem(allSubmissions: Submission[], kbArticles: KbArticle[] = []): SystemBlock[] {
   const benchmarkContext = {
     benchmarkData: allSubmissions,
     metadata: {
@@ -118,7 +144,7 @@ function buildSystem(allSubmissions: Submission[]): SystemBlock[] {
   return [
     {
       type: 'text',
-      text: `${SYSTEM_INSTRUCTION}\n\n--- BENCHMARK DATASET ---\n${JSON.stringify(benchmarkContext)}`,
+      text: `${SYSTEM_INSTRUCTION}\n\n--- BENCHMARK DATASET ---\n${JSON.stringify(benchmarkContext)}${buildKbContext(kbArticles)}`,
       cache_control: { type: 'ephemeral' },
     },
   ];
@@ -173,10 +199,11 @@ export async function askTaxi(
   userSubmission: Submission,
   allSubmissions: Submission[],
   history: TaxiHistoryTurn[] = [],
+  kbArticles: KbArticle[] = [],
 ): Promise<TaxiResponse> {
   try {
     const { json } = await askClaudeStructured<TaxiResponse>({
-      system: buildSystem(allSubmissions),
+      system: buildSystem(allSubmissions, kbArticles),
       messages: buildMessages(question, userSubmission, history),
       outputFormat: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
     });
@@ -207,11 +234,12 @@ export async function streamTaxi(
   userSubmission: Submission,
   allSubmissions: Submission[],
   history: TaxiHistoryTurn[] = [],
+  kbArticles: KbArticle[] = [],
   onDelta?: (chunk: string, accumulated: string) => void,
 ): Promise<{ result: TaxiResponse; usage: ClaudeUsage | null }> {
   try {
     const { json, usage } = await streamClaudeStructured<TaxiResponse>({
-      system: buildSystem(allSubmissions),
+      system: buildSystem(allSubmissions, kbArticles),
       messages: buildMessages(question, userSubmission, history),
       outputFormat: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
     }, onDelta);
@@ -228,4 +256,4 @@ export async function streamTaxi(
 }
 
 // Exported for tests.
-export { SYSTEM_INSTRUCTION, RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, FALLBACK, MAX_HISTORY_TURNS };
+export { SYSTEM_INSTRUCTION, RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES };

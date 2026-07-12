@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { api } from './api';
-import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus } from '../types';
+import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus, KbArticle, KbArticleDraft } from '../types';
 import { Session, ChatMessage } from '../pages/Taxi.helpers';
 
 /**
@@ -23,6 +23,8 @@ export const queryKeys = {
   releaseLetters: ['releaseLetters'] as const,
   publicCommunityMembers: ['communityMembers', 'public'] as const,
   allCommunityMembers: ['communityMembers', 'all'] as const,
+  kbArticles: ['kbArticles', 'all'] as const,
+  publishedKbArticles: ['kbArticles', 'published'] as const,
 };
 
 // ─── Reads ───────────────────────────────────────────────────────────────────
@@ -273,6 +275,54 @@ export function useSendCommunityInvite() {
     // The server stamps invited_at + confirm_token_expires_at, so refresh
     // the admin list to show "Invite sent · expires …" badges.
     onSuccess: () => invalidateCommunityMembers(qc),
+  });
+}
+
+// ─── Knowledge Base ──────────────────────────────────────────────────────────
+
+function invalidateKbArticles(qc: ReturnType<typeof useQueryClient>) {
+  // Covers both the admin list and the published (Taxi-context) list.
+  qc.invalidateQueries({ queryKey: ['kbArticles'] });
+}
+
+export function useKbArticles(opts?: Omit<UseQueryOptions<KbArticle[]>, 'queryKey' | 'queryFn'>) {
+  return useQuery<KbArticle[]>({
+    queryKey: queryKeys.kbArticles,
+    queryFn: () => api.listKbArticles(),
+    ...opts,
+  });
+}
+
+export function usePublishedKbArticles(opts?: Omit<UseQueryOptions<KbArticle[]>, 'queryKey' | 'queryFn'>) {
+  return useQuery<KbArticle[]>({
+    queryKey: queryKeys.publishedKbArticles,
+    queryFn: () => api.listPublishedKbArticles(),
+    ...opts,
+  });
+}
+
+export function useCreateKbArticle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (draft: KbArticleDraft) => api.createKbArticle(draft),
+    onSuccess: () => invalidateKbArticles(qc),
+  });
+}
+
+export function useUpdateKbArticle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<KbArticleDraft> }) =>
+      api.updateKbArticle(id, patch),
+    onSuccess: () => invalidateKbArticles(qc),
+  });
+}
+
+export function useDeleteKbArticle() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteKbArticle(id),
+    onSuccess: () => invalidateKbArticles(qc),
   });
 }
 
