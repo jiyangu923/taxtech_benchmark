@@ -3,6 +3,8 @@ export interface ChatMessage {
   analysis: string;
   chart?: { title: string; data: Array<{ name: string; value: number }> } | null;
   followUps?: string[];
+  /** KB article titles the model reported using (evidence chips). Absent on legacy messages. */
+  sources?: string[];
 }
 
 export interface Session {

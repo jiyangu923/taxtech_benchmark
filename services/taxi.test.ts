@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES } from './taxi';
+import { RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, sanitizeSources, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES } from './taxi';
 
 const mockFetch = vi.fn();
 
@@ -187,8 +187,31 @@ describe('taxi helpers', () => {
     expect(blocks).toHaveLength(1);
     expect(blocks[0].text).toContain('ViDA package adopted');
     expect(blocks[0].cache_control).toEqual({ type: 'ephemeral' });
-    // No articles → no dangling header.
-    expect(buildSystem(fakeAll)[0].text).not.toContain('INDUSTRY CONTEXT');
+    // No articles → no dangling section header (the word pair still appears
+    // in the system GUIDELINES, which is fine — only the block must be absent).
+    expect(buildSystem(fakeAll)[0].text).not.toContain('--- INDUSTRY CONTEXT');
+  });
+
+  it('RESPONSE_SCHEMA requires the sources array (evidence chips contract)', () => {
+    expect((RESPONSE_SCHEMA as any).required).toContain('sources');
+    expect((RESPONSE_SCHEMA as any).properties.sources.items.type).toBe('string');
+  });
+
+  it('sanitizeSources keeps only titles that exist in the real KB', () => {
+    const kb = [{ title: 'France delays e-invoicing' }, { title: 'ViDA timeline' }] as any[];
+    expect(sanitizeSources(['France delays e-invoicing', 'Totally invented article'], kb))
+      .toEqual(['France delays e-invoicing']);
+    expect(sanitizeSources(['ViDA timeline', 42, null], kb)).toEqual(['ViDA timeline']);
+  });
+
+  it('sanitizeSources returns [] for non-array input or empty KB', () => {
+    expect(sanitizeSources('nope', [{ title: 'x' }] as any[])).toEqual([]);
+    expect(sanitizeSources(undefined, [] as any[])).toEqual([]);
+    expect(sanitizeSources(['anything'], [] as any[])).toEqual([]);
+  });
+
+  it('FALLBACK carries an empty sources array', () => {
+    expect(FALLBACK.sources).toEqual([]);
   });
 
   it('RESPONSE_SCHEMA has additionalProperties:false on every object (required by structured outputs)', () => {
