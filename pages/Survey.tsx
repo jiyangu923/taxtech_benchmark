@@ -470,7 +470,7 @@ const Survey: React.FC = () => {
           <span className="text-gray-700">
             Editing your submission from <strong>{new Date(existingSubmittedAt).toLocaleDateString()}</strong>
             {existingStatus && <> — current status: <strong className="capitalize">{existingStatus}</strong></>}
-            . Submitting again will replace it and reset status to <strong>pending</strong>.
+            . Submitting again replaces it with an updated entry that stays <strong>approved</strong> — your benchmark and Taxi refresh instantly.
           </span>
         </div>
       )}
