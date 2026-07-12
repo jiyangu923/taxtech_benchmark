@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Send, Loader2, Lock, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, Menu, X } from 'lucide-react';
+import { ArrowUp, Lock, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, Menu, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -35,10 +35,9 @@ interface TaxiProps { user: User | null; }
 
 const SUGGESTED_PROMPTS = [
   'How do I compare on FTEs?',
-  'What are the common AI use cases?',
-  'Am I a market leader or follower?',
   'Where are my biggest automation gaps?',
-  'How does my tech stack compare?',
+  'What e-invoicing deadlines hit in 2026?',
+  'Am I a market leader or follower?',
 ];
 
 const Taxi: React.FC<TaxiProps> = ({ user }) => {
@@ -63,6 +62,20 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const deleteSessionMutation = useDeleteChatSession();
 
   const [pendingSession, setPendingSession] = useState<Session | null>(null);
+
+  // The question currently in flight — echoed as a user bubble with a
+  // thinking indicator until the answer lands in the session.
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+
+  // Auto-growing composer (ChatGPT/Claude-style): height tracks content up
+  // to ~6 lines, reset after send.
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const autoGrowComposer = () => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  };
   const [activeId, setActiveId] = useState<string>(() =>
     localStorage.getItem(ACTIVE_SESSION_KEY) || ''
   );
@@ -166,7 +179,9 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     const query = (q || aiInput).trim();
     if (!query || (!mySubmission && !isAdmin) || isAiLoading || !activeSession) return;
     setIsAiLoading(true);
+    setPendingQuestion(query);
     setAiInput('');
+    if (composerRef.current) composerRef.current.style.height = 'auto';
     scrollToBottom();
     try {
       // Pass the conversation so far so follow-ups keep their context
@@ -199,6 +214,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
       }
     } finally {
       setIsAiLoading(false);
+      setPendingQuestion(null);
       scrollToBottom();
     }
   };
@@ -271,6 +287,37 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     deleteSessionMutation.mutate(id);
   };
 
+  const firstName = (user?.name || '').trim().split(/\s+/)[0] || '';
+
+  // One composer, two homes: centered mid-screen in the empty state,
+  // docked at the bottom once a conversation exists.
+  const composer = (
+    <div className="bg-white border border-gray-300 rounded-2xl shadow-sm focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/5 transition-shadow px-4 pt-3 pb-2.5">
+      <textarea
+        ref={composerRef}
+        rows={1}
+        placeholder="Message Taxi — benchmarks, peers, regulations…"
+        className="w-full resize-none outline-none text-[15px] leading-6 text-gray-900 placeholder:text-gray-400 bg-transparent max-h-40"
+        value={aiInput}
+        onChange={e => { setAiInput(e.target.value); autoGrowComposer(); }}
+        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiQuery(); } }}
+        disabled={isAiLoading}
+        aria-label="Message Taxi"
+      />
+      <div className="flex items-center justify-between mt-1">
+        <span className="hidden sm:block font-mono text-[9px] uppercase tracking-wider text-gray-300 select-none">Shift+Enter for new line</span>
+        <button
+          onClick={() => handleAiQuery()}
+          disabled={isAiLoading || !aiInput.trim()}
+          className="ml-auto w-8 h-8 rounded-full bg-primary text-white grid place-items-center hover:bg-indigo-900 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Send"
+        >
+          <ArrowUp className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+
   if (!isAdmin && (!mySubmission || mySubmission.status === 'pending')) {
     return (
       <div className="max-w-2xl mx-auto py-20 px-4">
@@ -304,19 +351,14 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
           ${mobileDrawerOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-        <div className="px-4 pt-4 pb-3 border-b border-gray-200">
-          <div className="flex items-center justify-between gap-2 mb-4">
-            <Link to="/" className="flex items-center gap-2.5 group min-w-0">
-              <div className="w-7 h-7 border-[1.5px] border-gray-900 rounded-md grid place-items-center font-mono text-[12px] font-semibold text-gray-900 group-hover:border-primary group-hover:text-primary transition-colors flex-shrink-0">
-                b
-              </div>
-              <span className="font-display text-[16px] font-semibold tracking-tight text-gray-900 truncate">
-                taxbenchmark<span className="text-amber-acc">.</span>ai
-              </span>
-            </Link>
+        <div className="px-3 pt-3 pb-2">
+          {/* The navbar above already carries the brand — the sidebar stays
+              purely functional (Claude/ChatGPT style). */}
+          <div className="lg:hidden flex items-center justify-between px-1 mb-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Chats</span>
             <button
               onClick={() => setMobileDrawerOpen(false)}
-              className="lg:hidden p-1.5 rounded-md text-gray-500 hover:bg-gray-100 flex-shrink-0"
+              className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100"
               aria-label="Close sessions"
             >
               <X className="h-5 w-5" />
@@ -324,10 +366,10 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
           </div>
           <button
             onClick={handleNewChat}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-500 text-white rounded-xl font-bold shadow-sm hover:bg-indigo-600 active:scale-[0.98] transition-all"
+            className="w-full flex items-center gap-2 px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl font-semibold text-sm text-gray-800 hover:border-gray-300 hover:bg-gray-50 active:scale-[0.99] transition-all"
           >
-            <Plus className="h-4 w-4" />
-            <span>New Chat</span>
+            <Plus className="h-4 w-4 text-primary" />
+            <span>New chat</span>
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-3">
@@ -440,128 +482,132 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
         </div>
       </aside>
 
-      {/* Chat column */}
+      {/* Chat column — no banner: the conversation owns the full height.
+          Desktop identity lives in the empty-state greeting + per-message
+          rows; mobile gets a slim bar for the drawer toggle. */}
       <div className="flex flex-col flex-1 min-w-0">
-        {/* Header */}
-        <header className="bg-gradient-to-br from-indigo-500 to-indigo-400 text-white px-4 py-5 sm:px-10 sm:py-6 shadow-md">
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <button
-                onClick={() => setMobileDrawerOpen(true)}
-                className="lg:hidden p-2 -ml-1 rounded-lg text-white hover:bg-white/10 transition-colors flex-shrink-0"
-                aria-label="Open chat sessions"
-              >
-                <Menu className="h-6 w-6" />
-              </button>
-              <img src={taxiAvatar} alt="Taxi" className="w-12 h-12 rounded-full shadow-lg flex-shrink-0" />
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-indigo-300" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Powered by Claude</span>
-                </div>
-                <h1 className="font-display text-xl sm:text-2xl font-medium truncate">Ask Taxi</h1>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Chat scroll area */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-8">
-          <div className="max-w-4xl mx-auto space-y-8">
-            {aiHistory.length === 0 && (
-              <div className="py-12 text-center">
-                <img src={taxiAvatar} alt="Taxi" className="w-24 h-24 mx-auto mb-6 rounded-full shadow-xl" />
-                <h2 className="font-display text-2xl font-semibold text-gray-700 mb-3">Hey, I'm Taxi.</h2>
-                <p className="text-gray-500 font-medium max-w-lg mx-auto text-lg leading-7">Ask me about your maturity level, automation gaps, FTE benchmarks, or how you stack up against peers.</p>
-              </div>
-            )}
-            {aiHistory.map((item, i) => (
-              <div key={i} className="space-y-4 animate-fadeIn">
-                <div className="flex justify-end">
-                  <div className="bg-indigo-500 text-white px-6 py-4 rounded-2xl text-[18px] leading-[28px] font-semibold max-w-[90%] sm:max-w-[80%] shadow-lg">{item.question}</div>
-                </div>
-                <div className="flex justify-start items-start gap-3">
-                  <img src={taxiAvatar} alt="Taxi" className="w-9 h-9 rounded-full shadow-md flex-shrink-0 mt-1" />
-                  <div className="bg-white border border-gray-100 p-5 sm:p-7 rounded-3xl max-w-full sm:max-w-[90%] shadow-sm">
-                    <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-3">Taxi</p>
-                    <div className="text-[18px] text-gray-700 leading-[32px] [&_p]:my-4 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_strong]:text-gray-900 [&_ul]:my-4 [&_ul]:pl-6 [&_ul]:list-disc [&_ol]:my-4 [&_ol]:pl-6 [&_ol]:list-decimal [&_li]:my-2 [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:mt-6 [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-6 [&_h2]:mb-3 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:bg-gray-100 [&_code]:rounded [&_code]:font-mono [&_code]:text-[17px]">
-                      <ReactMarkdown>{item.analysis}</ReactMarkdown>
-                    </div>
-                    {item.chart && (
-                      <div className="mt-8 p-6 bg-gray-50 rounded-2xl border border-gray-100 h-64 min-h-[256px]" role="img" aria-label={`${item.chart.title} bar chart`}>
-                        <p className="text-[10px] font-black uppercase text-gray-400 mb-4">{item.chart.title}</p>
-                        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                          <BarChart data={item.chart.data}>
-                            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                            <YAxis tick={{ fontSize: 10 }} />
-                            <Tooltip />
-                            <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                    {item.followUps && item.followUps.length > 0 && i === aiHistory.length - 1 && (
-                      <div className="mt-6 pt-4 border-t border-gray-200">
-                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-3">Dig deeper</p>
-                        <div className="flex flex-wrap gap-2">
-                          {item.followUps.map((q: string) => (
-                            <button key={q} onClick={() => handleAiQuery(q)} className="px-5 py-3 bg-indigo-50 text-indigo-700 rounded-full text-[17px] font-semibold hover:bg-indigo-100 active:bg-indigo-200 transition-all border border-indigo-200 shadow-sm">{q}</button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {isAiLoading && (
-              <div className="flex items-center gap-3 text-primary animate-pulse">
-                <img src={taxiAvatar} alt="Taxi" className="w-9 h-9 rounded-full shadow-md" />
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span className="text-xs font-black uppercase tracking-widest">Taxi is analyzing your data...</span>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
+        <div className="lg:hidden flex items-center gap-2 px-3 py-2 border-b border-gray-200 bg-white">
+          <button
+            onClick={() => setMobileDrawerOpen(true)}
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"
+            aria-label="Open chat sessions"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <img src={taxiAvatar} alt="" className="w-6 h-6 rounded-md" />
+          <span className="text-sm font-semibold text-gray-900">Taxi</span>
         </div>
 
-        {/* Input bar */}
-        <div className="border-t border-gray-200 bg-white px-4 sm:px-6 py-4">
-          <div className="max-w-4xl mx-auto space-y-3">
-            {aiHistory.length === 0 && (
-              <div className="flex flex-wrap gap-2 justify-center">
+        {aiHistory.length === 0 && !pendingQuestion ? (
+          /* ── Empty state: the AI is literally front and center ── */
+          <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 pb-16 overflow-y-auto">
+            <div className="w-full max-w-2xl mx-auto">
+              <img src={taxiAvatar} alt="Taxi" className="w-14 h-14 mx-auto mb-5 rounded-2xl shadow-sm" />
+              <h1 className="font-display text-2xl sm:text-[27px] font-semibold tracking-tight text-gray-900 text-center mb-7 text-balance">
+                Where should we dig in{firstName ? `, ${firstName}` : ''}?
+              </h1>
+              {composer}
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
                 {SUGGESTED_PROMPTS.map(s => (
                   <button
                     key={s}
                     onClick={() => handleAiQuery(s)}
-                    className="px-5 py-3 bg-indigo-50 text-indigo-700 rounded-full text-[17px] font-semibold hover:bg-indigo-100 transition-all border border-indigo-100"
+                    className="px-3.5 py-2 bg-white border border-gray-200 rounded-full text-[13px] font-semibold text-gray-600 hover:border-gray-300 hover:text-gray-900 transition-colors"
                   >
                     {s}
                   </button>
                 ))}
               </div>
-            )}
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Ask Taxi anything about your benchmark..."
-                className="w-full pl-6 pr-16 py-5 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary text-[18px] font-medium shadow-inner"
-                value={aiInput}
-                onChange={e => setAiInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAiQuery()}
-                disabled={isAiLoading}
-              />
-              <button
-                onClick={() => handleAiQuery()}
-                disabled={isAiLoading || !aiInput.trim()}
-                className="absolute right-2 top-2 bottom-2 px-5 bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed"
-                aria-label="Send"
-              >
-                <Send className="h-5 w-5" />
-              </button>
+              <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-gray-400">
+                Powered by Claude · cites your cohort + industry sources
+              </p>
             </div>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* ── Conversation: flat answers in a reading column ── */}
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-8 pb-2">
+              <div className="max-w-3xl mx-auto space-y-9">
+                {aiHistory.map((item, i) => (
+                  <div key={i} className="animate-fadeIn">
+                    <div className="flex justify-end mb-5">
+                      <div className="bg-gray-100 text-gray-900 px-4 py-2.5 rounded-2xl text-[15px] leading-6 max-w-[85%] sm:max-w-[75%]">{item.question}</div>
+                    </div>
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <img src={taxiAvatar} alt="" className="w-6 h-6 rounded-md" />
+                      <span className="text-xs font-bold text-gray-500">Taxi</span>
+                    </div>
+                    {/* Evidence chips: the cohort is always in context; KB
+                        chips render only for titles the model reported AND
+                        that exist in the real KB (sanitized server-side). */}
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-full text-[11px] font-semibold text-gray-600">
+                        📊 Your cohort · n={allSubmissions.length}
+                      </span>
+                      {(item.sources ?? []).map(s => (
+                        <span key={s} title={s} className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-full text-[11px] font-semibold text-gray-600">
+                          📰 {s.length > 48 ? s.slice(0, 47) + '…' : s}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="text-[15px] text-gray-800 leading-7 [&_p]:my-3 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_strong]:text-gray-900 [&_ul]:my-3 [&_ul]:pl-5 [&_ul]:list-disc [&_ol]:my-3 [&_ol]:pl-5 [&_ol]:list-decimal [&_li]:my-1.5 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:mt-5 [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-5 [&_h2]:mb-2 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:bg-gray-100 [&_code]:rounded [&_code]:font-mono [&_code]:text-[13px]">
+                      <ReactMarkdown>{item.analysis}</ReactMarkdown>
+                    </div>
+                    {item.chart && (
+                      <div className="mt-4 p-4 bg-white rounded-xl border border-gray-200" role="img" aria-label={`${item.chart.title} bar chart`}>
+                        <p className="font-mono text-[10px] uppercase tracking-widest text-gray-400 mb-3">{item.chart.title}</p>
+                        <div className="h-48">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+                            <BarChart data={item.chart.data}>
+                              <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                              <YAxis tick={{ fontSize: 10 }} />
+                              <Tooltip />
+                              <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+                    {item.followUps && item.followUps.length > 0 && i === aiHistory.length - 1 && (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {item.followUps.map((q: string) => (
+                          <button key={q} onClick={() => handleAiQuery(q)} className="px-3.5 py-1.5 bg-white border border-indigo-200 text-primary rounded-full text-[13px] font-semibold hover:bg-indigo-50 active:bg-indigo-100 transition-colors">{q}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {pendingQuestion && (
+                  <div className="animate-fadeIn">
+                    <div className="flex justify-end mb-5">
+                      <div className="bg-gray-100 text-gray-900 px-4 py-2.5 rounded-2xl text-[15px] leading-6 max-w-[85%] sm:max-w-[75%]">{pendingQuestion}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <img src={taxiAvatar} alt="" className="w-6 h-6 rounded-md" />
+                      <span className="text-xs font-bold text-gray-500">Taxi</span>
+                      <span className="flex items-center gap-1 ml-1" role="status" aria-label="Taxi is thinking">
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce motion-reduce:animate-none" style={{ animationDelay: '300ms' }} />
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+            </div>
+
+            {/* ── Docked composer ── */}
+            <div className="px-4 sm:px-6 pb-4 pt-2">
+              <div className="max-w-3xl mx-auto">
+                {composer}
+                <p className="mt-2 text-center text-[11px] text-gray-400">
+                  Taxi analyzes anonymized cohort data — verify important figures.
+                </p>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

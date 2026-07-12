@@ -39,7 +39,8 @@ GUIDELINES:
 4. Translate internal codes (e.g., '100m_1b') to readable labels (e.g., '$100M - $1B') using the provided metadata.
 5. If the dataset is small, acknowledge that the benchmark is growing but still provide the best analysis you can.
 6. End with a brief actionable takeaway.
-7. Always provide 2-3 relevant follow-up questions in the followUps array. These should naturally build on the current analysis and help the user dig deeper.`;
+7. Always provide 2-3 relevant follow-up questions in the followUps array. These should naturally build on the current analysis and help the user dig deeper.
+8. In the sources array, list the EXACT titles of any INDUSTRY CONTEXT items you actually drew on for this answer (empty array if none). Never list an item you did not use — the UI shows these as evidence chips.`;
 
 // JSON Schema matching the old Gemini RESPONSE_SCHEMA. Anthropic's structured
 // outputs require `additionalProperties: false` on every object — silently
@@ -80,8 +81,13 @@ const RESPONSE_SCHEMA = {
       description: '2-3 short follow-up questions the user might want to ask next, based on what was just discussed.',
       items: { type: 'string' },
     },
+    sources: {
+      type: 'array',
+      description: 'Exact titles of the INDUSTRY CONTEXT items actually used for this answer. Empty array if none were used. Never invent titles.',
+      items: { type: 'string' },
+    },
   },
-  required: ['analysis', 'followUps'],
+  required: ['analysis', 'followUps', 'sources'],
   additionalProperties: false,
 } as const;
 
@@ -95,6 +101,18 @@ export interface TaxiResponse {
     yAxisLabel?: string;
   } | null;
   followUps: string[];
+  /** KB article titles the model reported using — sanitized against the real KB list before display. */
+  sources: string[];
+}
+
+/**
+ * Keep only sources that exist in the KB actually sent to the model — a
+ * hallucinated or paraphrased title never becomes an evidence chip.
+ */
+function sanitizeSources(raw: unknown, kbArticles: KbArticle[]): string[] {
+  if (!Array.isArray(raw)) return [];
+  const titles = new Set(kbArticles.map(a => a.title));
+  return raw.filter((s): s is string => typeof s === 'string' && titles.has(s));
 }
 
 // How many curated KB articles to inject as industry context, and a
@@ -194,6 +212,7 @@ const FALLBACK: TaxiResponse = {
   analysis: 'I apologize, but I encountered an error analyzing the data. Please try again.',
   chart: null,
   followUps: [],
+  sources: [],
 };
 
 /** Non-streaming variant — kept for tests and any caller that wants a single await. */
@@ -210,12 +229,12 @@ export async function askTaxi(
       messages: buildMessages(question, userSubmission, history),
       outputFormat: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
     });
-    return json;
+    return { ...json, sources: sanitizeSources(json.sources, kbArticles) };
   } catch (error: any) {
     // Surface the daily-limit message to the user instead of the generic
     // fallback so they know to wait rather than think the AI is broken.
     if (error?.status === 429) {
-      return { analysis: error.message, chart: null, followUps: [] };
+      return { analysis: error.message, chart: null, followUps: [], sources: [] };
     }
     console.error('AI Request Failed', error);
     return FALLBACK;
@@ -246,12 +265,12 @@ export async function streamTaxi(
       messages: buildMessages(question, userSubmission, history),
       outputFormat: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
     }, onDelta);
-    return { result: json, usage };
+    return { result: { ...json, sources: sanitizeSources(json.sources, kbArticles) }, usage };
   } catch (error: any) {
     // Surface the daily-limit message as the answer so the user sees why,
     // instead of the generic "encountered an error" fallback.
     if (error?.status === 429) {
-      return { result: { analysis: error.message, chart: null, followUps: [] }, usage: null };
+      return { result: { analysis: error.message, chart: null, followUps: [], sources: [] }, usage: null };
     }
     console.error('AI Request Failed', error);
     return { result: FALLBACK, usage: null };
@@ -259,4 +278,4 @@ export async function streamTaxi(
 }
 
 // Exported for tests.
-export { SYSTEM_INSTRUCTION, RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES };
+export { SYSTEM_INSTRUCTION, RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, sanitizeSources, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES };
