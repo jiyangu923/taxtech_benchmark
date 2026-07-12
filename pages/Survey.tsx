@@ -501,7 +501,6 @@ const Survey: React.FC = () => {
               </p>
             </div>
             {renderCheckbox("Company Profile", "companyProfile", C.OPTS_COMPANY_PROFILE, true)}
-            {renderCheckbox("Primary Goal", "participationGoal", C.OPTS_PARTICIPATION_GOAL)}
             {renderRadio("Your Role", "respondentRole", C.OPTS_RESPONDENT_ROLE, true)}
           </div>
         )}
@@ -523,19 +522,13 @@ const Survey: React.FC = () => {
                 onChange={(e) => handleChange('jurisdictionsCovered', Math.max(1, parseInt(e.target.value) || 0))}
               />
             </div>
-            {renderRadio("Org Scope", "organizationScope", C.OPTS_ORG_SCOPE)}
           </div>
         )}
 
-        {activeSection === 3 && (
-          <div className="space-y-6">
-            {renderSelect("Tech Location", "taxTechLocation", C.OPTS_TAX_TECH_ORG_LOCATION)}
-            {renderSelect("Operating Model", "centralizationModel", C.OPTS_CENTRALIZATION)}
-            {renderRadio("Outsourcing Strategy", "taxOutsourcingExtent", C.OPTS_OUTSOURCING_EXTENT)}
-            {renderRadio("Who owns tax technology decisions (budget, vendor selection, roadmap)?", "taxTechDecisionOwner", C.OPTS_DECISION_OWNER)}
-            {renderCheckbox("Build vs. Buy History (select all that apply)", "buildVsBuyExperience", C.OPTS_BUILD_BUY_EXPERIENCE)}
-          </div>
-        )}
+        {/* Sections 3 (governance) and 7 (data ecosystem) were removed in the
+            2026-06 "minimum contribution" trim — no chart/filter consumed
+            their fields. Section ids stay stable; those questions are
+            candidates for progressive collection via future refresh prompts. */}
 
         {activeSection === 4 && (
           <div className="space-y-8">
@@ -584,35 +577,28 @@ const Survey: React.FC = () => {
             {renderSelect("Withholding Tax Automation", "withholdingTaxAutomationRange", C.OPTS_AUTOMATION)}
             {renderSelect("Customs & Duties Automation", "customsDutiesAutomationRange", C.OPTS_AUTOMATION)}
             {renderSelect("Compliance Automation Coverage", "complianceAutomationCoverageRange", C.OPTS_AUTOMATION)}
-            {renderRadio("Regulatory Response", "regulatoryChangeResponseTime", C.OPTS_REGULATORY_RESPONSE)}
-          </div>
-        )}
-
-        {activeSection === 7 && (
-          <div className="space-y-6">
-            {renderRadio("Data Architecture", "taxDataArchitecture", C.OPTS_TAX_DATA_ARCH)}
-            {renderSelect("Data Hosting", "dataHostingPlatform", C.OPTS_DATA_HOSTING)}
-            {renderSelect("Filing Volume", "annualTaxFilingsRange", C.OPTS_FILINGS)}
-            {renderRadio("Data Confidence", "dataConfidence", C.OPTS_DATA_CONFIDENCE)}
           </div>
         )}
 
         {activeSection === 8 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {renderSelect("Arch Pattern", "architecturePattern", C.OPTS_ARCH_PATTERN)}
-            {renderSelect("Data Flow", "dataFlow", C.OPTS_DATA_FLOW)}
-            {renderSelect("Cloud", "cloudProvider", C.OPTS_CLOUD)}
-            {renderSelect("Dev Stack", "primaryProgrammingLanguages", C.OPTS_LANGUAGES)}
+          <div className="space-y-6">
+            {/* Data Architecture moved here from the removed Section 7 — it's
+                the one data-ecosystem field the Report charts consume. */}
+            {renderRadio("Data Architecture", "taxDataArchitecture", C.OPTS_TAX_DATA_ARCH)}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {renderSelect("Arch Pattern", "architecturePattern", C.OPTS_ARCH_PATTERN)}
+              {renderSelect("Data Flow", "dataFlow", C.OPTS_DATA_FLOW)}
+              {renderSelect("Cloud", "cloudProvider", C.OPTS_CLOUD)}
+              {renderSelect("Dev Stack", "primaryProgrammingLanguages", C.OPTS_LANGUAGES)}
+            </div>
           </div>
         )}
 
         {activeSection === 9 && (
           <div className="space-y-6">
-            {/* productRegulationEnablementCycle radio removed (2026-06): it
-                duplicated Section 6's "Regulatory Response" question (same
-                option set) and fed no analytics. */}
-            {renderInput("Financial Close Duration (Days)", "financialCloseTotalDays", "number")}
-            {renderInput("Tax Close Completion (Day of Close Cycle)", "financialCloseCompletionDay", "number")}
+            {/* The regulatory radios and financial-close numbers were removed
+                in the 2026-06 trims — no analytics consumed them, and the
+                close-cycle questions were the hardest to answer accurately. */}
             <div className="bg-green-50/50 p-6 rounded-2xl border border-green-100 flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold text-green-900">GenAI Integration<Tooltip field="aiAdopted" /></p>

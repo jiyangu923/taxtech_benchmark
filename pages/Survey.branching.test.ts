@@ -7,18 +7,18 @@ describe('visibleSectionIds', () => {
     expect(visibleSectionIds('tax_professionals')).toEqual([1, 2, 4, 6, 9]);
   });
 
-  it('gives tax technology all 9 sections', () => {
-    expect(visibleSectionIds('tax_technology')).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  it('gives tax technology the 7-step path (governance + data-ecosystem steps cut)', () => {
+    expect(visibleSectionIds('tax_technology')).toEqual([1, 2, 4, 5, 6, 8, 9]);
   });
 
-  it('shows everything when no role is chosen yet (undefined / empty)', () => {
-    expect(visibleSectionIds(undefined)).toHaveLength(9);
-    expect(visibleSectionIds('')).toHaveLength(9);
-    expect(visibleSectionIds(null)).toHaveLength(9);
+  it('falls back to the longest real path when no role is chosen yet (undefined / empty)', () => {
+    expect(visibleSectionIds(undefined)).toEqual([1, 2, 4, 5, 6, 8, 9]);
+    expect(visibleSectionIds('')).toHaveLength(7);
+    expect(visibleSectionIds(null)).toHaveLength(7);
   });
 
-  it('falls back to all sections for an unknown role value', () => {
-    expect(visibleSectionIds('mystery_role')).toHaveLength(9);
+  it('falls back to the tech path for an unknown role value', () => {
+    expect(visibleSectionIds('mystery_role')).toHaveLength(7);
   });
 
   it('always keeps the core benchmark sections (1, 2, 6, 9) for every role', () => {
@@ -57,9 +57,9 @@ describe('clampStepIndex', () => {
     expect(clampStepIndex(3, 9)).toBe(3);
   });
   it('clamps when the list shrinks (role switched mid-survey)', () => {
-    // e.g. user was on step 8 of the 9-step tech path, goes back to step 1
+    // e.g. user was on step 7 of the 7-step tech path, goes back to step 1
     // and switches to tax_professionals (5 steps).
-    expect(clampStepIndex(8, 5)).toBe(4);
+    expect(clampStepIndex(6, 5)).toBe(4);
   });
   it('never goes below zero', () => {
     expect(clampStepIndex(-2, 5)).toBe(0);
