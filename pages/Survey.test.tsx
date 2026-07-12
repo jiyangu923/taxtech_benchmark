@@ -237,11 +237,69 @@ describe('Section 5 — Percentage validation', () => {
     expect(screen.getByText('Process Maturity & Automation')).toBeTruthy();
   });
 
-  it('renders the Other % input for both tech and business groups', () => {
+  it('renders only the tech skill grid (business specialization grid was removed)', () => {
     renderSurvey();
     goToSection(5);
-    const otherLabels = screen.getAllByText('Other %');
-    expect(otherLabels).toHaveLength(2);
+    expect(screen.getAllByText('Other %')).toHaveLength(1);
+    expect(screen.queryByText('Strategy %')).toBeNull();
+    expect(screen.queryByText(/Business Specialization/i)).toBeNull();
+  });
+});
+
+// ─── Role-based branching (short path for tax professionals) ─────────────────
+
+describe('Role-based branching', () => {
+  /** Complete section 1 as a Tax Professional and advance. */
+  function startAsProfessional() {
+    fireEvent.click(screen.getByText('Public company'));
+    fireEvent.click(screen.getByText('Tax Professionals'));
+    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
+  }
+
+  it('tax professionals get the 5-step path', () => {
+    renderSurvey();
+    expect(screen.getByText('Step 1 of 9')).toBeTruthy(); // before a role is chosen
+    fireEvent.click(screen.getByText('Tax Professionals'));
+    expect(screen.getByText('Step 1 of 5')).toBeTruthy();
+  });
+
+  it('skips governance (3) straight to resources (4), and hides the tech budget question', () => {
+    renderSurvey();
+    startAsProfessional();
+    expect(screen.getByText('Organizational Profile')).toBeTruthy();
+    // Fill section 2 requirements and continue — should land on section 4, not 3.
+    const selects = screen.getAllByRole('combobox');
+    fireEvent.change(selects[1], { target: { value: '100m_500m' } });
+    fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i }));
+    expect(screen.getByText('Resource Benchmarking')).toBeTruthy();
+    expect(screen.queryByText('Operating Model & Governance')).toBeNull();
+    expect(screen.queryByText(/Total Annual Budget for Tax Technology/i)).toBeNull();
+  });
+
+  it('shows Submit on step 5 (Regulatory Agility) for tax professionals', () => {
+    renderSurvey();
+    startAsProfessional();
+    // Section 2 requirements
+    const selects = screen.getAllByRole('combobox');
+    fireEvent.change(selects[1], { target: { value: '100m_500m' } });
+    fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i })); // → 4
+    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i })); // → 6
+    expect(screen.getByText('Process Maturity & Automation')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^Continue$/i })); // → 9
+    expect(screen.getByText('Regulatory Agility')).toBeTruthy();
+    expect(screen.getByText('Step 5 of 5')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Continue$/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /Submit/i })).toBeTruthy();
+  });
+
+  it('switching role back to tax technology restores the 9-step path', () => {
+    renderSurvey();
+    fireEvent.click(screen.getByText('Tax Professionals'));
+    expect(screen.getByText('Step 1 of 5')).toBeTruthy();
+    fireEvent.click(screen.getByText('Tax Technology'));
+    expect(screen.getByText('Step 1 of 9')).toBeTruthy();
   });
 });
 
