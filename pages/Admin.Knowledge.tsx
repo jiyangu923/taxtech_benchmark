@@ -39,7 +39,10 @@ interface ExtractedItem {
 }
 
 type ImportMode = 'file' | 'url' | 'text';
-const MAX_PDF_BYTES = 3.5 * 1024 * 1024;
+// 3MB binary → ~4MB as base64 + JSON overhead, safely under Vercel's 4.5MB
+// request-body limit (3.5MB binary would base64 to ~4.7MB and 413 at the
+// platform edge before our handler ever runs).
+const MAX_PDF_BYTES = 3 * 1024 * 1024;
 
 function readFileAsText(f: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -110,7 +113,7 @@ const AdminKnowledge: React.FC = () => {
     try {
       if (name.endsWith('.pdf')) {
         if (f.size > MAX_PDF_BYTES) {
-          flash('error', 'PDF too large — keep uploads under 3.5MB (split larger documents).');
+          flash('error', 'PDF too large — keep uploads under 3MB (split larger documents).');
           return;
         }
         const pdfBase64 = await readFileAsBase64(f);
@@ -306,7 +309,7 @@ const AdminKnowledge: React.FC = () => {
 
         {importMode === 'file' && (
           <p className="text-sm text-gray-500 mb-4">
-            PDF (≤3.5MB), .txt or .md — e.g. a regulator bulletin, firm newsletter, or statute excerpt.
+            PDF (≤3MB), .txt or .md — e.g. a regulator bulletin, firm newsletter, or statute excerpt.
           </p>
         )}
         {importMode === 'url' && (

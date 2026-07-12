@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, sanitizeSources, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES } from './taxi';
+import { RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, sanitizeSources, sanitizeSubmissionForModel, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES } from './taxi';
 
 const mockFetch = vi.fn();
 
@@ -190,6 +190,38 @@ describe('taxi helpers', () => {
     // No articles → no dangling section header (the word pair still appears
     // in the system GUIDELINES, which is fine — only the block must be absent).
     expect(buildSystem(fakeAll)[0].text).not.toContain('--- INDUSTRY CONTEXT');
+  });
+
+  it('PRIVACY: identity fields never reach the model in the system prompt', () => {
+    const subs = [{
+      id: 'sub-9', userId: 'user-9', userName: 'Jane Realname',
+      companyName: 'SecretCo Inc', revenueRange: 'over_5b',
+    }] as any[];
+    const text = buildSystem(subs)[0].text;
+    expect(text).not.toContain('SecretCo');
+    expect(text).not.toContain('Jane Realname');
+    expect(text).not.toContain('sub-9');
+    expect(text).not.toContain('user-9');
+    // Analytical fields still flow through.
+    expect(text).toContain('over_5b');
+  });
+
+  it('PRIVACY: identity fields never reach the model in the user message', () => {
+    const sub = {
+      id: 'sub-9', userId: 'user-9', userName: 'Jane Realname',
+      companyName: 'SecretCo Inc', revenueRange: 'over_5b',
+    } as any;
+    const msg = buildUserMessage('How am I doing?', sub);
+    expect(msg).not.toContain('SecretCo');
+    expect(msg).not.toContain('Jane Realname');
+    expect(msg).toContain('over_5b');
+    expect(msg).toContain('How am I doing?');
+  });
+
+  it('sanitizeSubmissionForModel strips identity fields, keeps the rest, and is null-safe', () => {
+    const clean = sanitizeSubmissionForModel({ companyName: 'X', userName: 'Y', id: '1', userId: '2', industry: 'saas' } as any);
+    expect(clean).toEqual({ industry: 'saas' });
+    expect(sanitizeSubmissionForModel(null)).toBeNull();
   });
 
   it('RESPONSE_SCHEMA requires the sources array (evidence chips contract)', () => {
