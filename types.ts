@@ -225,3 +225,35 @@ export interface CommunityMemberInvitePreview {
   linkedin_url: string | null;
   photo_url: string | null;
 }
+// ─── Knowledge Base ──────────────────────────────────────────────────────────
+
+export type KbArticleStatus = 'draft' | 'published';
+
+/**
+ * A curated industry news/knowledge item. Admins maintain these in the
+ * Knowledge tab; published articles are injected into Taxi's cached system
+ * prompt as "industry context" so AI answers can reference current events
+ * alongside the benchmark data.
+ */
+export interface KbArticle {
+  id: string;
+  title: string;
+  summary: string;
+  source_url: string | null;
+  tags: string[];
+  status: KbArticleStatus;
+  published_at: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Payload to create or update a KB article from the admin form. */
+export interface KbArticleDraft {
+  title: string;
+  summary: string;
+  source_url?: string | null;
+  tags?: string[];
+  status?: KbArticleStatus;
+  published_at?: string;
+}

@@ -7,12 +7,13 @@ import {
     CheckCircle2, Users, Plus, Mail, ShieldCheck,
     UserPlus, Database, Download, Upload, AlertTriangle,
     Activity, HardDrive, Info, Settings, Search, Filter, RotateCcw,
-    ChevronDown, Bell, MessageSquare, Heart
+    ChevronDown, Bell, MessageSquare, Heart, BookOpen
 } from 'lucide-react';
 import AdminReminders from './Admin.Reminders';
 import AdminFeedback from './Admin.Feedback';
 import AdminReleases from './Admin.Releases';
 import AdminCommunity from './Admin.Community';
+import AdminKnowledge from './Admin.Knowledge';
 import { useNavigate } from 'react-router-dom';
 import * as C from '../constants';
 import {
@@ -24,7 +25,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../services/queries';
 
 const Admin: React.FC<{ user: User | null }> = ({ user }) => {
-  const [activeTab, setActiveTab] = useState<'submissions' | 'reminders' | 'feedback' | 'releases' | 'community' | 'admins' | 'system'>('submissions');
+  const [activeTab, setActiveTab] = useState<'submissions' | 'reminders' | 'feedback' | 'releases' | 'community' | 'knowledge' | 'admins' | 'system'>('submissions');
   const [selectedSub, setSelectedSub] = useState<Submission | null>(null);
   const qc = useQueryClient();
 
@@ -213,6 +214,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                 <button onClick={() => setActiveTab('feedback')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'feedback' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><MessageSquare className="h-4 w-4" /> Feedback</button>
                 <button onClick={() => setActiveTab('releases')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'releases' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Mail className="h-4 w-4" /> Releases</button>
                 <button onClick={() => setActiveTab('community')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'community' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Heart className="h-4 w-4" /> Community</button>
+                <button onClick={() => setActiveTab('knowledge')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'knowledge' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><BookOpen className="h-4 w-4" /> Knowledge</button>
                 <button onClick={() => setActiveTab('admins')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'admins' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Users className="h-4 w-4" /> Team Access</button>
                 <button onClick={() => setActiveTab('system')} className={`pb-4 px-1 border-b-4 font-bold text-sm transition-all flex items-center gap-2.5 ${activeTab === 'system' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}`}><Database className="h-4 w-4" /> System & Data</button>
             </nav>
@@ -225,6 +227,8 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
         {activeTab === 'feedback' && <AdminFeedback />}
 
         {activeTab === 'community' && <AdminCommunity />}
+
+        {activeTab === 'knowledge' && <AdminKnowledge />}
 
         {activeTab === 'submissions' && (
           <div className="space-y-6 animate-fadeIn">

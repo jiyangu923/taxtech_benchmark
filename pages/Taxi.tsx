@@ -11,6 +11,7 @@ import {
   useCreateChatSession,
   useUpdateChatSession,
   useDeleteChatSession,
+  usePublishedKbArticles,
 } from '../services/queries';
 import { streamTaxi } from '../services/taxi';
 import { User } from '../types';
@@ -43,6 +44,10 @@ const SUGGESTED_PROMPTS = [
 const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const isAdmin = user?.role === 'admin';
   const { data: allSubmissions = [] } = useSubmissions({ enabled: !!user });
+  // Curated industry news — joins Taxi's cached system prompt so answers can
+  // reference current events. Empty array (table empty / not yet migrated)
+  // degrades to the pre-KB behavior.
+  const { data: kbArticles = [] } = usePublishedKbArticles({ enabled: !!user });
   const mySubmission = React.useMemo(
     () => allSubmissions.find(s => s.userId === user?.id) || null,
     [allSubmissions, user?.id]
@@ -168,7 +173,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
       // ("what about just multinationals?"). streamTaxi caps how many
       // turns are actually sent.
       const history = activeSession.messages.map(m => ({ question: m.question, analysis: m.analysis }));
-      const { result: res } = await streamTaxi(query, mySubmission, allSubmissions, history);
+      const { result: res } = await streamTaxi(query, mySubmission, allSubmissions, history, kbArticles);
       const newMsg: ChatMessage = { question: query, ...res };
       const isPendingActive = pendingSession?.id === activeSession.id;
       const isFirst = activeSession.messages.length === 0;

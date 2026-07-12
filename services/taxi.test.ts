@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, FALLBACK, MAX_HISTORY_TURNS } from './taxi';
+import { RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES } from './taxi';
 
 const mockFetch = vi.fn();
 
@@ -148,6 +148,47 @@ describe('taxi helpers', () => {
     ];
     expect(buildMessages('q', fakeSubmission, history)).toHaveLength(1);
     expect(buildMessages('q', fakeSubmission)).toHaveLength(1);
+  });
+
+  it('buildKbContext renders published articles into a cited, dated block', () => {
+    const articles = [
+      { id: '1', title: 'France delays e-invoicing', summary: 'Mandate moved to 2027.', source_url: null, tags: ['e-invoicing', 'France'], status: 'published', published_at: '2026-06-20T00:00:00Z', created_by: null, created_at: '', updated_at: '' },
+    ] as any[];
+    const block = buildKbContext(articles);
+    expect(block).toContain('INDUSTRY CONTEXT');
+    expect(block).toContain('(2026-06-20) France delays e-invoicing');
+    expect(block).toContain('[e-invoicing, France]');
+    expect(block).toContain('Mandate moved to 2027.');
+  });
+
+  it('buildKbContext returns an empty string when there are no articles', () => {
+    expect(buildKbContext([])).toBe('');
+  });
+
+  it('buildKbContext caps at MAX_KB_ARTICLES and truncates very long summaries', () => {
+    const articles = Array.from({ length: MAX_KB_ARTICLES + 10 }, (_, i) => ({
+      id: String(i), title: `t${i}`, summary: i === 0 ? 'x'.repeat(2000) : 's',
+      source_url: null, tags: [], status: 'published',
+      published_at: '2026-01-01T00:00:00Z', created_by: null, created_at: '', updated_at: '',
+    })) as any[];
+    const block = buildKbContext(articles);
+    expect((block.match(/^- \(/gm) || []).length).toBe(MAX_KB_ARTICLES);
+    expect(block).toContain('…');
+    expect(block).not.toContain('x'.repeat(1000));
+  });
+
+  it('buildSystem embeds the KB block inside the single cached system block', () => {
+    const articles = [{
+      id: '1', title: 'ViDA package adopted', summary: 'EU-wide digital reporting.',
+      source_url: null, tags: [], status: 'published',
+      published_at: '2026-05-01T00:00:00Z', created_by: null, created_at: '', updated_at: '',
+    }] as any[];
+    const blocks = buildSystem(fakeAll, articles);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].text).toContain('ViDA package adopted');
+    expect(blocks[0].cache_control).toEqual({ type: 'ephemeral' });
+    // No articles → no dangling header.
+    expect(buildSystem(fakeAll)[0].text).not.toContain('INDUSTRY CONTEXT');
   });
 
   it('RESPONSE_SCHEMA has additionalProperties:false on every object (required by structured outputs)', () => {

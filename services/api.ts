@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { processLock } from '@supabase/auth-js';
-import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus } from '../types';
+import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus, KbArticle, KbArticleDraft } from '../types';
 import { submissionsToCsv, downloadCsv, downloadBlob } from './csv';
 import { withTimeout, STALE_SESSION_MESSAGE, AUTH_TIMEOUT_MS } from './authTimeout';
 
@@ -427,6 +427,62 @@ export const api = {
     const body = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(body.error || `HTTP ${resp.status}`);
     return body;
+  },
+
+  // ─── Knowledge Base ──────────────────────────────────────────────────────
+  //
+  // Curated industry news for the AI analyst. Admins CRUD via the Knowledge
+  // tab; published articles are read by any signed-in user (RLS-enforced)
+  // and injected into Taxi's cached system prompt.
+
+  async listKbArticles(): Promise<KbArticle[]> {
+    // Admin view — includes drafts (RLS restricts those to admins).
+    const { data, error } = await supabase
+      .from('kb_articles')
+      .select('*')
+      .order('published_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data as KbArticle[]) || [];
+  },
+
+  async listPublishedKbArticles(limit = 20): Promise<KbArticle[]> {
+    // Taxi context — newest published first, capped so the prompt stays lean.
+    const { data, error } = await supabase
+      .from('kb_articles')
+      .select('*')
+      .eq('status', 'published')
+      .order('published_at', { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return (data as KbArticle[]) || [];
+  },
+
+  async createKbArticle(draft: KbArticleDraft): Promise<KbArticle> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error('Must be logged in');
+    const { data, error } = await supabase
+      .from('kb_articles')
+      .insert({ ...draft, created_by: authUser.id })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return data as KbArticle;
+  },
+
+  async updateKbArticle(id: string, patch: Partial<KbArticleDraft>): Promise<void> {
+    const { error } = await supabase
+      .from('kb_articles')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  async deleteKbArticle(id: string): Promise<void> {
+    const { data, error } = await supabase.from('kb_articles').delete().eq('id', id).select('id');
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) {
+      throw new Error('Nothing was deleted — you may lack permission, or the article no longer exists.');
+    }
   },
 
   // ─── Release Letters ─────────────────────────────────────────────────────
