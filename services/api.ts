@@ -485,6 +485,35 @@ export const api = {
     }
   },
 
+  /**
+   * Admin-only AI ingestion: sends a file (PDF as base64), a URL, or pasted
+   * text to /api/admin/kb-ingest, which extracts structured KB articles via
+   * Claude. Returns candidates for review — nothing is saved until the admin
+   * adds them (createKbArticle).
+   */
+  async ingestKbSource(input: { text?: string; url?: string; pdfBase64?: string; filename?: string }): Promise<{
+    articles: Array<{ title: string; summary: string; tags: string[]; effective_date: string | null; source_url: string | null }>;
+    count: number;
+  }> {
+    const { data: { session } } = await withTimeout(
+      supabase.auth.getSession(),
+      AUTH_TIMEOUT_MS,
+      STALE_SESSION_MESSAGE,
+    );
+    if (!session) throw new Error('Must be logged in');
+    const resp = await fetch('/api/admin/kb-ingest', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(input),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(body.error || `HTTP ${resp.status}`);
+    return body;
+  },
+
   // ─── Release Letters ─────────────────────────────────────────────────────
   //
   // Admin writes weekly "what shipped this week" letters in markdown,
