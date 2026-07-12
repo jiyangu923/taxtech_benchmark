@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, TrendingUp, Users, Heart, ShieldCheck, Eye } from 'lucide-react';
+import { ArrowRight, CheckCircle2, TrendingUp, Users, Heart, ShieldCheck, Eye, Sparkles } from 'lucide-react';
 import { User } from '../types';
 import { usePublicStats } from '../services/queries';
 import ParticipantCounter from './ParticipantCounter';
@@ -134,13 +134,13 @@ const Hero: React.FC<{ user: User | null; stats: PublicStats | null; onOpenLogin
       <div className="lg:col-span-7">
         <div className="mb-2"><ParticipantCounter variant="eyebrow" /></div>
         <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-amber-acc-2 mb-6">
-          Indirect Tax · Benchmark Edition v1
+          Indirect Tax · AI Benchmark Analyst
         </p>
         <h1 className="font-display font-semibold text-4xl sm:text-5xl lg:text-6xl tracking-tight text-gray-900 leading-[1.05]">
-          Indirect Tax Technology <span className="text-primary">Benchmark</span>
+          Your AI Analyst for <span className="text-primary">Tax Technology</span>
         </h1>
         <p className="mt-6 text-lg text-gray-700 max-w-2xl leading-relaxed">
-          A community-built peer comparison for in-house tax-technology functions. Anonymous data, equal access, no vendor agenda.
+          Ask questions in plain English — Taxi answers with live peer data: automation rates, team size, budgets, AI adoption. Powered by the industry's only community-built benchmark. Anonymous, free, no vendor agenda.
         </p>
         <HeroCTAs user={user} onOpenLogin={onOpenLogin} />
       </div>
@@ -164,14 +164,16 @@ const HeroCTAs: React.FC<{ user: User | null; onOpenLogin: () => void }> = ({ us
   const secondaryClass = 'inline-flex items-center gap-2 px-7 py-3.5 bg-white border border-gray-300 text-gray-900 rounded-md text-base font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors';
   return (
     <div className="mt-10 flex flex-wrap gap-3">
-      {/* Primary CTA: survey for logged-in users; sign-in for guests. */}
+      {/* Primary CTA: the AI is the product — signed-in users go straight to
+          Taxi (its gate funnels not-yet-contributors into the survey);
+          guests get the sign-in modal. */}
       {user ? (
-        <Link to="/survey" className={primaryClass}>
-          Start the survey <ArrowRight className="h-4 w-4" />
+        <Link to="/taxi" className={primaryClass}>
+          <Sparkles className="h-4 w-4" /> Ask Taxi AI
         </Link>
       ) : (
         <button type="button" onClick={onOpenLogin} className={primaryClass}>
-          Sign in to participate <ArrowRight className="h-4 w-4" />
+          <Sparkles className="h-4 w-4" /> Sign in to ask the AI
         </button>
       )}
 

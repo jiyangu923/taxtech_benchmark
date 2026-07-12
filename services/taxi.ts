@@ -3,7 +3,7 @@ import * as C from '../constants';
 import SURVEY_TOOLTIPS from '../surveyTooltips';
 import {
   streamClaudeStructured, askClaudeStructured,
-  type SystemBlock, type ClaudeUsage,
+  type SystemBlock, type ClaudeUsage, type ClaudeMessage,
 } from './claude';
 
 /**
@@ -128,6 +128,39 @@ function buildUserMessage(question: string, userSubmission: Submission): string 
   return `Here is the user's own submission:\n${JSON.stringify(userSubmission)}\n\nUser Question: ${question}`;
 }
 
+/** One prior Q&A exchange from the active chat session. */
+export interface TaxiHistoryTurn {
+  question: string;
+  analysis: string;
+}
+
+// How many prior exchanges to replay to the model. Enough for natural
+// follow-ups ("what about just multinationals?") without ballooning input
+// tokens — the (cached) system prompt already carries the dataset.
+const MAX_HISTORY_TURNS = 4;
+
+/**
+ * Builds the messages array: recent conversation turns (as plain text) then
+ * the new question. Only the FINAL user message carries the submission JSON,
+ * so history stays cheap and the model always sees the freshest data.
+ * Empty/fallback turns are skipped (the API rejects empty content blocks).
+ */
+function buildMessages(
+  question: string,
+  userSubmission: Submission,
+  history: TaxiHistoryTurn[] = [],
+): ClaudeMessage[] {
+  const turns = history
+    .filter(t => t.question?.trim() && t.analysis?.trim())
+    .slice(-MAX_HISTORY_TURNS);
+  const msgs: ClaudeMessage[] = turns.flatMap(t => ([
+    { role: 'user' as const, content: t.question },
+    { role: 'assistant' as const, content: t.analysis },
+  ]));
+  msgs.push({ role: 'user', content: buildUserMessage(question, userSubmission) });
+  return msgs;
+}
+
 const FALLBACK: TaxiResponse = {
   analysis: 'I apologize, but I encountered an error analyzing the data. Please try again.',
   chart: null,
@@ -139,11 +172,12 @@ export async function askTaxi(
   question: string,
   userSubmission: Submission,
   allSubmissions: Submission[],
+  history: TaxiHistoryTurn[] = [],
 ): Promise<TaxiResponse> {
   try {
     const { json } = await askClaudeStructured<TaxiResponse>({
       system: buildSystem(allSubmissions),
-      messages: [{ role: 'user', content: buildUserMessage(question, userSubmission) }],
+      messages: buildMessages(question, userSubmission, history),
       outputFormat: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
     });
     return json;
@@ -172,12 +206,13 @@ export async function streamTaxi(
   question: string,
   userSubmission: Submission,
   allSubmissions: Submission[],
+  history: TaxiHistoryTurn[] = [],
   onDelta?: (chunk: string, accumulated: string) => void,
 ): Promise<{ result: TaxiResponse; usage: ClaudeUsage | null }> {
   try {
     const { json, usage } = await streamClaudeStructured<TaxiResponse>({
       system: buildSystem(allSubmissions),
-      messages: [{ role: 'user', content: buildUserMessage(question, userSubmission) }],
+      messages: buildMessages(question, userSubmission, history),
       outputFormat: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
     }, onDelta);
     return { result: json, usage };
@@ -193,4 +228,4 @@ export async function streamTaxi(
 }
 
 // Exported for tests.
-export { SYSTEM_INSTRUCTION, RESPONSE_SCHEMA, buildSystem, buildUserMessage, FALLBACK };
+export { SYSTEM_INSTRUCTION, RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, FALLBACK, MAX_HISTORY_TURNS };
