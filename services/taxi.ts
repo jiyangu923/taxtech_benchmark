@@ -142,13 +142,25 @@ function buildKbContext(articles: KbArticle[]): string {
   return `\n\n--- INDUSTRY CONTEXT (curated news & knowledge) ---\nUse these when relevant to the user's question; cite items by title. Do not invent news beyond this list.\n${lines.join('\n')}`;
 }
 
+// Privacy boundary: these fields must NEVER reach the model. companyName is
+// promised to stay out of all peer-facing surfaces, userName is a real
+// person's name, and the ids are useless to analysis but useful to attackers.
+const PRIVATE_SUBMISSION_FIELDS = ['companyName', 'userName', 'id', 'userId'] as const;
+
+function sanitizeSubmissionForModel(sub: Record<string, any> | null): Record<string, any> | null {
+  if (!sub) return sub;
+  const clean: Record<string, any> = { ...sub };
+  for (const f of PRIVATE_SUBMISSION_FIELDS) delete clean[f];
+  return clean;
+}
+
 // Static reference data goes in the system prompt — same for every request.
 // Per-user data (which submission is "yours") goes in the message body.
 // KB articles join the CACHED block: they change rarely, so the cache
 // re-warms on the first question after a curation change and hits after.
 function buildSystem(allSubmissions: Submission[], kbArticles: KbArticle[] = []): SystemBlock[] {
   const benchmarkContext = {
-    benchmarkData: allSubmissions,
+    benchmarkData: allSubmissions.map(s => sanitizeSubmissionForModel(s)),
     metadata: {
       totalRespondents: allSubmissions.length,
       constants: {
@@ -172,7 +184,7 @@ function buildSystem(allSubmissions: Submission[], kbArticles: KbArticle[] = [])
 }
 
 function buildUserMessage(question: string, userSubmission: Submission): string {
-  return `Here is the user's own submission:\n${JSON.stringify(userSubmission)}\n\nUser Question: ${question}`;
+  return `Here is the user's own submission:\n${JSON.stringify(sanitizeSubmissionForModel(userSubmission))}\n\nUser Question: ${question}`;
 }
 
 /** One prior Q&A exchange from the active chat session. */
@@ -278,4 +290,4 @@ export async function streamTaxi(
 }
 
 // Exported for tests.
-export { SYSTEM_INSTRUCTION, RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, sanitizeSources, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES };
+export { SYSTEM_INSTRUCTION, RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, sanitizeSources, sanitizeSubmissionForModel, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES };

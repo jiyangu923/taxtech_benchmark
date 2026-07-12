@@ -195,7 +195,13 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
       // Pass the conversation so far so follow-ups keep their context
       // ("what about just multinationals?"). streamTaxi caps how many
       // turns are actually sent.
-      const history = activeSession.messages.map(m => ({ question: m.question, analysis: m.analysis }));
+      // Error/limit turns carry no analytical context — replaying them would
+      // waste tokens and teach the model to apologize.
+      const history = activeSession.messages
+        .filter(m => m.analysis
+          && !m.analysis.startsWith('I apologize, but I encountered an error')
+          && !m.analysis.startsWith("You've reached your daily AI limit"))
+        .map(m => ({ question: m.question, analysis: m.analysis }));
       const { result: res } = await streamTaxi(query, mySubmission, allSubmissions, history, kbArticles);
       const newMsg: ChatMessage = { question: query, ...res };
       const isPendingActive = pendingSession?.id === activeSession.id;
@@ -233,6 +239,9 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const handleNewChat = () => {
     setMobileDrawerOpen(false);
     setAiInput('');
+    // Don't carry an in-flight question's bubble into a different view — the
+    // answer still lands in its original session when it resolves.
+    setPendingQuestion(null);
     if (pendingSession && activeId === pendingSession.id) return;
     const fresh = makeFreshSession();
     setPendingSession(fresh);
@@ -242,6 +251,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const handleSelectSession = (id: string) => {
     setMobileDrawerOpen(false);
     if (id === activeId) return;
+    setPendingQuestion(null);
     if (pendingSession && pendingSession.id !== id) {
       // Discard the empty in-memory session when navigating away from it.
       setPendingSession(null);

@@ -23,7 +23,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const EXTRACTION_MODEL = 'claude-haiku-4-5';
 const MAX_INPUT_CHARS = 60_000;       // ~15k tokens of source text
-const MAX_PDF_BASE64_CHARS = 5_000_000; // ~3.7MB binary — under Vercel body limits
+const MAX_PDF_BASE64_CHARS = 4_200_000; // ~3.1MB binary — keeps the JSON body under Vercel's 4.5MB limit
 const MAX_ARTICLES = 12;
 
 // taxinfra RegulatoryChangeType vocabulary (agents/regulatory.py).
@@ -163,7 +163,7 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
 
   if (body.pdfBase64) {
     if (body.pdfBase64.length > MAX_PDF_BASE64_CHARS) {
-      return res.status(413).json({ error: 'PDF too large — keep uploads under ~3.5MB (split larger documents).' });
+      return res.status(413).json({ error: 'PDF too large — keep uploads under ~3MB (split larger documents).' });
     }
     content.push({
       type: 'document',
