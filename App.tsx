@@ -45,7 +45,7 @@ const queryClient = new QueryClient({
 });
 
 const PAGE_TITLES: Record<string, string> = {
-  '/': 'Indirect Tax Benchmark | taxbenchmark.ai',
+  '/': 'AI Tax Technology Analyst | taxbenchmark.ai',
   '/direct-tax': 'Direct Tax Benchmark | taxbenchmark.ai',
   '/survey': 'Submit Data | taxbenchmark.ai',
   '/report': 'Analytics | taxbenchmark.ai',

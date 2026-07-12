@@ -164,7 +164,11 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     setAiInput('');
     scrollToBottom();
     try {
-      const { result: res } = await streamTaxi(query, mySubmission, allSubmissions);
+      // Pass the conversation so far so follow-ups keep their context
+      // ("what about just multinationals?"). streamTaxi caps how many
+      // turns are actually sent.
+      const history = activeSession.messages.map(m => ({ question: m.question, analysis: m.analysis }));
+      const { result: res } = await streamTaxi(query, mySubmission, allSubmissions, history);
       const newMsg: ChatMessage = { question: query, ...res };
       const isPendingActive = pendingSession?.id === activeSession.id;
       const isFirst = activeSession.messages.length === 0;
@@ -267,9 +271,9 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
       <div className="max-w-2xl mx-auto py-20 px-4">
         <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-3xl shadow-lg border border-gray-100">
           <Lock className="h-16 w-16 text-gray-200 mb-6" />
-          <h2 className="font-display text-2xl font-semibold text-gray-900">Taxi is Restricted</h2>
-          <p className="text-gray-500 mt-2 max-w-sm">Submit your survey and await admin approval to chat with Taxi.</p>
-          <Link to="/survey" className="mt-8 px-8 py-3 bg-primary text-white rounded-xl font-bold">Start Survey</Link>
+          <h2 className="font-display text-2xl font-semibold text-gray-900">Meet Taxi — after a quick survey</h2>
+          <p className="text-gray-500 mt-2 max-w-sm">Contribute your ~3-minute benchmark survey and Taxi unlocks instantly — your answers join the peer data it analyzes for you.</p>
+          <Link to="/survey" className="mt-8 px-8 py-3 bg-primary text-white rounded-xl font-bold">Take the 3-minute survey</Link>
         </div>
       </div>
     );

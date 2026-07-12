@@ -255,7 +255,10 @@ const Survey: React.FC = () => {
       await createSubmissionMutation.mutateAsync(payload as any);
       localStorage.removeItem(DRAFT_KEY);
       setSubmitted(true);
-      setTimeout(() => navigate('/report'), 2000);
+      // AI-first flow: the reward for contributing is meeting your analyst,
+      // not a charts page. Taxi's cache already has the fresh submission via
+      // the mutation's invalidation, so the gate is open by the time we land.
+      setTimeout(() => navigate('/taxi'), 2000);
     } catch (e: any) {
       setError(e?.message || 'Failed to submit survey.');
       setIsSubmitting(false);
@@ -420,8 +423,8 @@ const Survey: React.FC = () => {
           <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-6" />
           <h2 className="font-display text-2xl font-semibold text-gray-900">Survey Submitted</h2>
           <p className="text-gray-500 mt-2 max-w-sm">
-            Your responses are in — taking you to the benchmark analytics now.
-            You can come back and refine your answers anytime.
+            Your responses are in — taking you to Taxi, your AI benchmark
+            analyst. Ask it anything; you can refine your answers anytime.
           </p>
         </div>
       </div>

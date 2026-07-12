@@ -30,9 +30,9 @@ const Navbar: React.FC<NavbarProps> = ({ user, authReady, onLogout, onOpenLogin 
     { to: '/', label: 'Indirect Tax', show: true },
     { to: '/direct-tax', label: 'Direct Tax', show: false }, // hidden from nav; route still reachable at /direct-tax
     { to: '/community', label: 'Community', show: true },
+    { to: '/taxi', label: 'Taxi AI', show: authReady && !!user, ai: true },
     { to: '/survey', label: 'Submit Data', show: authReady && !!user },
     { to: '/report', label: 'Analytics', show: authReady && !!user },
-    { to: '/taxi', label: 'Taxi AI', show: authReady && !!user, ai: true },
     { to: '/admin', label: 'Control Panel', show: authReady && user?.role === 'admin', admin: true },
   ];
 

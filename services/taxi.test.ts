@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { RESPONSE_SCHEMA, buildSystem, buildUserMessage, FALLBACK } from './taxi';
+import { RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, FALLBACK, MAX_HISTORY_TURNS } from './taxi';
 
 const mockFetch = vi.fn();
 
@@ -111,6 +111,43 @@ describe('taxi helpers', () => {
     const msg = buildUserMessage('How am I doing?', fakeSubmission);
     expect(msg).toContain('How am I doing?');
     expect(msg).toContain('100m_1b');
+  });
+
+  it('buildMessages replays prior turns as alternating user/assistant messages', () => {
+    const history = [
+      { question: 'How do I compare on FTEs?', analysis: 'You are above the median.' },
+      { question: 'And on automation?', analysis: 'Slightly below your peers.' },
+    ];
+    const msgs = buildMessages('What about budgets?', fakeSubmission, history);
+    expect(msgs).toHaveLength(5);
+    expect(msgs[0]).toEqual({ role: 'user', content: 'How do I compare on FTEs?' });
+    expect(msgs[1]).toEqual({ role: 'assistant', content: 'You are above the median.' });
+    expect(msgs[2].role).toBe('user');
+    expect(msgs[3].role).toBe('assistant');
+    // Only the FINAL message carries the submission JSON + new question.
+    expect(msgs[4].role).toBe('user');
+    expect(msgs[4].content).toContain('What about budgets?');
+    expect(msgs[4].content).toContain('100m_1b');
+    expect(msgs[0].content).not.toContain('100m_1b');
+  });
+
+  it('buildMessages caps replayed history at MAX_HISTORY_TURNS most-recent turns', () => {
+    const history = Array.from({ length: 10 }, (_, i) => ({
+      question: `q${i}`, analysis: `a${i}`,
+    }));
+    const msgs = buildMessages('final', fakeSubmission, history);
+    expect(msgs).toHaveLength(MAX_HISTORY_TURNS * 2 + 1);
+    // The oldest surviving turn is the (10 - MAX)th.
+    expect(msgs[0].content).toBe(`q${10 - MAX_HISTORY_TURNS}`);
+  });
+
+  it('buildMessages skips empty/fallback turns and works with no history', () => {
+    const history = [
+      { question: 'ok question', analysis: '' },           // failed answer — skipped
+      { question: '  ', analysis: 'orphan analysis' },     // blank question — skipped
+    ];
+    expect(buildMessages('q', fakeSubmission, history)).toHaveLength(1);
+    expect(buildMessages('q', fakeSubmission)).toHaveLength(1);
   });
 
   it('RESPONSE_SCHEMA has additionalProperties:false on every object (required by structured outputs)', () => {
