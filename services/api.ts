@@ -445,7 +445,7 @@ export const api = {
     return (data as KbArticle[]) || [];
   },
 
-  async listPublishedKbArticles(limit = 20): Promise<KbArticle[]> {
+  async listPublishedKbArticles(limit = 40): Promise<KbArticle[]> {
     // Taxi context — newest published first, capped so the prompt stays lean.
     const { data, error } = await supabase
       .from('kb_articles')
