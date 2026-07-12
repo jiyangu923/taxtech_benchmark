@@ -99,7 +99,10 @@ export interface TaxiResponse {
 
 // How many curated KB articles to inject as industry context, and a
 // defensive per-summary cap so one long paste can't blow up the prompt.
-const MAX_KB_ARTICLES = 20;
+// 40 summaries ≈ 5-6k tokens — comfortably cheap inside the cached block.
+// If the KB grows past ~150 articles, switch to pgvector retrieval instead
+// of raising this again (see memory: KB storage decision).
+const MAX_KB_ARTICLES = 40;
 const MAX_KB_SUMMARY_CHARS = 900;
 
 /**
