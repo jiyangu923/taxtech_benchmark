@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, AlertCircle, CheckCircle2, Info, Loader2 } from 'lucide-react';
 import { api } from '../services/api';
 import { Submission, Option } from '../types';
 import { useMySubmission, useCreateSubmission } from '../services/queries';
+import { visibleSections, clampStepIndex, showsTechBudget } from './Survey.branching';
 import * as C from '../constants';
 import SURVEY_TOOLTIPS from '../surveyTooltips';
 import ParticipantCounter from './ParticipantCounter';
@@ -74,7 +75,9 @@ export function isEmptyDraft(raw: string | null): boolean {
 
 const Survey: React.FC = () => {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState(1);
+  // 0-based index into the role-filtered step list (NOT a section id — the
+  // visible sections depend on respondentRole, see Survey.branching.ts).
+  const [stepIndex, setStepIndex] = useState(0);
 
   // Capture the localStorage draft ONCE at mount time, before any effect
   // runs. The autosave effect below writes JSON.stringify(formData) on every
@@ -161,7 +164,19 @@ const Survey: React.FC = () => {
     });
   };
 
-  const progress = Math.round((activeSection / C.SECTIONS.length) * 100);
+  // Role-filtered step list. Tax Professionals get the 5-step short path;
+  // Tax Technology (or no role yet) gets all 9 sections. `activeSection`
+  // keeps its old meaning (the section ID being rendered) so the per-section
+  // render blocks below are unchanged.
+  const steps = useMemo(
+    () => visibleSections(C.SECTIONS, formData.respondentRole),
+    [formData.respondentRole],
+  );
+  const stepIdx = clampStepIndex(stepIndex, steps.length);
+  const activeSection = steps[stepIdx].id;
+  const isLastStep = stepIdx === steps.length - 1;
+
+  const progress = Math.round(((stepIdx + 1) / steps.length) * 100);
 
   const getGroupSum = (fields: (keyof Submission)[]): number =>
     fields.reduce((acc, f) => acc + ((formData[f] as number) || 0), 0);
@@ -169,21 +184,16 @@ const Survey: React.FC = () => {
   const validatePercentages = (section: number): string | null => {
     if (section !== 5) return null;
 
+    // Only the tech skill-mix grid is rendered (the business-specialization
+    // grid was removed from the survey) — validate just what the user can see.
     const techSum = getGroupSum([
       'taxTechSkillMixFrontendPercent', 'taxTechSkillMixBackendPercent',
       'taxTechSkillMixDataEngineeringPercent', 'taxTechSkillMixDevOpsPercent',
       'taxTechSkillMixOtherPercent',
     ]);
-    const bizSum = getGroupSum([
-      'planningSpecialistsPercent', 'complianceSpecialistsPercent',
-      'auditSpecialistsPercent', 'provisionSpecialistsPercent',
-      'otherSpecialistsPercent',
-    ]);
 
     if (techSum > 0 && Math.abs(techSum - 100) > 0.1)
       return `Tax Technology Skill Mix must sum to exactly 100%. Current: ${techSum}%`;
-    if (bizSum > 0 && Math.abs(bizSum - 100) > 0.1)
-      return `Tax Business Specialization must sum to exactly 100%. Current: ${bizSum}%`;
     return null;
   };
 
@@ -209,28 +219,26 @@ const Survey: React.FC = () => {
     const pctError = validatePercentages(activeSection);
     if (pctError) { setError(pctError); return; }
 
-    if (activeSection === C.SECTIONS.length) {
+    if (isLastStep) {
       // Confirm before overwriting an existing submission so the user
-      // doesn't accidentally clobber an approved record.
+      // doesn't accidentally clobber their previous record.
       if (existingSubmittedAt) {
         const dateStr = new Date(existingSubmittedAt).toLocaleDateString();
         const ok = window.confirm(
-          `This will replace your previous submission from ${dateStr} ` +
-          `and reset its status to "pending" pending admin re-approval. ` +
-          `Continue?`
+          `This will replace your previous submission from ${dateStr}. Continue?`
         );
         if (!ok) return;
       }
       handleSubmit();
     } else {
-      setActiveSection(s => s + 1);
+      setStepIndex(i => clampStepIndex(i + 1, steps.length));
       window.scrollTo(0, 0);
     }
   };
 
   const handleBack = () => {
-    if (activeSection > 1) {
-      setActiveSection(s => s - 1);
+    if (stepIdx > 0) {
+      setStepIndex(i => clampStepIndex(i - 1, steps.length));
       window.scrollTo(0, 0);
     }
   };
@@ -422,7 +430,7 @@ const Survey: React.FC = () => {
 
   // ── Main render ─────────────────────────────────────────────────────────────
 
-  const currentSection = C.SECTIONS[activeSection - 1];
+  const currentSection = steps[stepIdx];
 
   return (
     <div className="max-w-3xl mx-auto py-12 px-4 bg-gray-50 min-h-screen">
@@ -447,7 +455,7 @@ const Survey: React.FC = () => {
 
       <div className="mb-10 text-center">
         <h1 className="font-display text-xl sm:text-2xl lg:text-3xl font-semibold text-gray-900 tracking-tight">Benchmark Survey</h1>
-        <p className="text-gray-500 text-sm mt-1">Step {activeSection} of {C.SECTIONS.length}</p>
+        <p className="text-gray-500 text-sm mt-1">Step {stepIdx + 1} of {steps.length}</p>
         <div className="mt-6 w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
           <div className="bg-primary h-full transition-all duration-500" style={{ width: `${progress}%` }} />
         </div>
@@ -536,7 +544,8 @@ const Survey: React.FC = () => {
               {renderSelect("Internal Tech FTEs", "taxTechFTEsRange", C.OPTS_FTE_TECH)}
               {renderSelect("External Tech Support", "taxTechOutsourcedResourcesFTEsRange", C.OPTS_FTE_TECH)}
             </div>
-            {renderRadio("Total Annual Budget for Tax Technology (licenses + internal + external)", "annualTaxTechBudgetRange", C.OPTS_BUDGET_RANGE)}
+            {showsTechBudget(formData.respondentRole) &&
+              renderRadio("Total Annual Budget for Tax Technology (licenses + internal + external)", "annualTaxTechBudgetRange", C.OPTS_BUDGET_RANGE)}
             <div className="bg-gray-50/50 p-6 rounded-2xl border border-gray-100">
               <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Business Resources</h3>
               {renderSelect("Internal Business FTEs", "taxBusinessFTEsRange", C.OPTS_FTE_BUSINESS)}
@@ -547,6 +556,9 @@ const Survey: React.FC = () => {
 
         {activeSection === 5 && (
           <div className="space-y-8">
+            {/* The Business Specialization grid was removed (2026-06: fed no
+                analytics and was the survey's highest-friction question).
+                Section 5 is tech-only in the role-branched flow. */}
             <div>
               <SumIndicator
                 label="Tech Skill Mix"
@@ -558,19 +570,6 @@ const Survey: React.FC = () => {
                 {renderPercentInput("Data Engineering %", "taxTechSkillMixDataEngineeringPercent")}
                 {renderPercentInput("DevOps %", "taxTechSkillMixDevOpsPercent")}
                 {renderPercentInput("Other %", "taxTechSkillMixOtherPercent")}
-              </div>
-            </div>
-            <div>
-              <SumIndicator
-                label="Business Specialization"
-                fields={['planningSpecialistsPercent', 'complianceSpecialistsPercent', 'auditSpecialistsPercent', 'provisionSpecialistsPercent', 'otherSpecialistsPercent']}
-              />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {renderPercentInput("Strategy %", "planningSpecialistsPercent")}
-                {renderPercentInput("Compliance %", "complianceSpecialistsPercent")}
-                {renderPercentInput("Audit %", "auditSpecialistsPercent")}
-                {renderPercentInput("Reporting %", "provisionSpecialistsPercent")}
-                {renderPercentInput("Other %", "otherSpecialistsPercent")}
               </div>
             </div>
           </div>
@@ -609,7 +608,9 @@ const Survey: React.FC = () => {
 
         {activeSection === 9 && (
           <div className="space-y-6">
-            {renderRadio("How quickly can your team implement a regulatory change end-to-end?", "productRegulationEnablementCycle", C.OPTS_REGULATORY_RESPONSE)}
+            {/* productRegulationEnablementCycle radio removed (2026-06): it
+                duplicated Section 6's "Regulatory Response" question (same
+                option set) and fed no analytics. */}
             {renderInput("Financial Close Duration (Days)", "financialCloseTotalDays", "number")}
             {renderInput("Tax Close Completion (Day of Close Cycle)", "financialCloseCompletionDay", "number")}
             <div className="bg-green-50/50 p-6 rounded-2xl border border-green-100 flex items-center justify-between">
@@ -633,7 +634,7 @@ const Survey: React.FC = () => {
       <div className="mt-8 flex flex-col-reverse sm:flex-row justify-between gap-3">
         <button
           onClick={handleBack}
-          disabled={activeSection === 1}
+          disabled={stepIdx === 0}
           className="w-full sm:w-auto px-6 py-3 bg-white border rounded-xl font-bold flex items-center gap-2 hover:bg-gray-50 disabled:opacity-30"
         >
           <ChevronLeft className="h-4 w-4" /> Back
@@ -650,7 +651,7 @@ const Survey: React.FC = () => {
             </>
           ) : (
             <>
-              {activeSection === C.SECTIONS.length
+              {isLastStep
                 ? (existingSubmittedAt ? 'Update Submission' : 'Submit')
                 : 'Continue'}
               <ChevronRight className="h-4 w-4" />
