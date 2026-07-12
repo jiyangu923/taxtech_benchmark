@@ -48,12 +48,16 @@ const renderSurvey = () => {
 };
 
 /**
- * Navigate from section 1 to the given target section using fast fireEvent
- * (not userEvent) to keep test execution time short.
+ * Navigate from section 1 to the given target SECTION ID using fast
+ * fireEvent (not userEvent) to keep test execution time short. Selects the
+ * Tax Technology role, whose step order is TECH_PATH (role-branched survey).
  * Fills the minimum required fields along the way.
  */
+const TECH_PATH = [1, 2, 4, 5, 6, 8, 9];
 function goToSection(target: number) {
-  for (let current = 1; current < target; current++) {
+  const targetIdx = TECH_PATH.indexOf(target);
+  for (let i = 0; i < targetIdx; i++) {
+    const current = TECH_PATH[i];
     if (current === 1) {
       // Section 1: select at least one company profile (required)
       fireEvent.click(screen.getByText('Public company'));
@@ -181,9 +185,9 @@ describe('Navigation', () => {
 
   it('progress bar advances with each section', () => {
     renderSurvey();
-    expect(screen.getByText('Step 1 of 9')).toBeTruthy();
+    expect(screen.getByText('Step 1 of 7')).toBeTruthy();
     goToSection(2);
-    expect(screen.getByText('Step 2 of 9')).toBeTruthy();
+    expect(screen.getByText('Step 2 of 7')).toBeTruthy();
   });
 });
 
@@ -258,7 +262,7 @@ describe('Role-based branching', () => {
 
   it('tax professionals get the 5-step path', () => {
     renderSurvey();
-    expect(screen.getByText('Step 1 of 9')).toBeTruthy(); // before a role is chosen
+    expect(screen.getByText('Step 1 of 7')).toBeTruthy(); // before a role is chosen (tech fallback)
     fireEvent.click(screen.getByText('Tax Professionals'));
     expect(screen.getByText('Step 1 of 5')).toBeTruthy();
   });
@@ -294,12 +298,12 @@ describe('Role-based branching', () => {
     expect(screen.getByRole('button', { name: /Submit/i })).toBeTruthy();
   });
 
-  it('switching role back to tax technology restores the 9-step path', () => {
+  it('switching role back to tax technology restores the 7-step path', () => {
     renderSurvey();
     fireEvent.click(screen.getByText('Tax Professionals'));
     expect(screen.getByText('Step 1 of 5')).toBeTruthy();
     fireEvent.click(screen.getByText('Tax Technology'));
-    expect(screen.getByText('Step 1 of 9')).toBeTruthy();
+    expect(screen.getByText('Step 1 of 7')).toBeTruthy();
   });
 });
 
