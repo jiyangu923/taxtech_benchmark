@@ -225,6 +225,23 @@ export const api = {
     return ((data as Submission[])?.[0]) ?? null;
   },
 
+  /**
+   * The caller's own AI fair-use meter row (RLS: users read their own).
+   * Display-only — enforcement lives in /api/claude. Returns null on any
+   * error (missing table, no row yet) so the meter can never break the UI.
+   */
+  async getMyAiUsage(): Promise<{ cost_usd: number | string; window_started_at: string } | null> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return null;
+    const { data, error } = await supabase
+      .from('ai_usage')
+      .select('cost_usd, window_started_at')
+      .eq('user_id', authUser.id)
+      .maybeSingle();
+    if (error) return null;
+    return (data as { cost_usd: number | string; window_started_at: string }) ?? null;
+  },
+
   // ─── Survey versioning + reminder candidates ─────────────────────────────
 
   async getCurrentSurveyVersion(): Promise<number> {
