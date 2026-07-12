@@ -25,6 +25,7 @@ export const queryKeys = {
   allCommunityMembers: ['communityMembers', 'all'] as const,
   kbArticles: ['kbArticles', 'all'] as const,
   publishedKbArticles: ['kbArticles', 'published'] as const,
+  myAiUsage: ['myAiUsage'] as const,
 };
 
 // ─── Reads ───────────────────────────────────────────────────────────────────
@@ -275,6 +276,16 @@ export function useSendCommunityInvite() {
     // The server stamps invited_at + confirm_token_expires_at, so refresh
     // the admin list to show "Invite sent · expires …" badges.
     onSuccess: () => invalidateCommunityMembers(qc),
+  });
+}
+
+// ─── AI usage meter ──────────────────────────────────────────────────────────
+
+export function useMyAiUsage(opts?: Omit<UseQueryOptions<{ cost_usd: number | string; window_started_at: string } | null>, 'queryKey' | 'queryFn'>) {
+  return useQuery<{ cost_usd: number | string; window_started_at: string } | null>({
+    queryKey: queryKeys.myAiUsage,
+    queryFn: () => api.getMyAiUsage(),
+    ...opts,
   });
 }
 

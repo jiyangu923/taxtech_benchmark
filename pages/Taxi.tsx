@@ -12,8 +12,12 @@ import {
   useUpdateChatSession,
   useDeleteChatSession,
   usePublishedKbArticles,
+  useMyAiUsage,
+  queryKeys,
 } from '../services/queries';
+import { useQueryClient } from '@tanstack/react-query';
 import { streamTaxi } from '../services/taxi';
+import { usageState } from '../services/usageMeter';
 import { User } from '../types';
 import taxiAvatar from '../assets/taxi-avatar-cab.svg';
 import {
@@ -47,6 +51,10 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   // reference current events. Empty array (table empty / not yet migrated)
   // degrades to the pre-KB behavior.
   const { data: kbArticles = [] } = usePublishedKbArticles({ enabled: !!user });
+  // Fair-use meter (display only — /api/claude enforces the limit). Admins
+  // are exempt, so no meter for them.
+  const qc = useQueryClient();
+  const { data: aiUsageRow } = useMyAiUsage({ enabled: !!user && !isAdmin });
   const mySubmission = React.useMemo(
     () => allSubmissions.find(s => s.userId === user?.id) || null,
     [allSubmissions, user?.id]
@@ -215,6 +223,9 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     } finally {
       setIsAiLoading(false);
       setPendingQuestion(null);
+      // Refresh the fair-use meter after every question so the warning
+      // tracks reality without polling.
+      qc.invalidateQueries({ queryKey: queryKeys.myAiUsage });
       scrollToBottom();
     }
   };
@@ -288,6 +299,17 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   };
 
   const firstName = (user?.name || '').trim().split(/\s+/)[0] || '';
+
+  // Usage-warning thresholds: silent below 60%, gentle note 60-85%, amber
+  // above 85%, explicit reset time at 100%. Capped fraction comes from
+  // usageState (mirrors the server window logic).
+  const usage = usageState(aiUsageRow ?? null, Date.now());
+  const usagePct = Math.round(usage.fraction * 100);
+  const usageResetStr = usage.resetsAtMs
+    ? new Date(usage.resetsAtMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : null;
+  const showUsageWarning = !isAdmin && usage.fraction >= 0.6 && usage.fraction < 1;
+  const usageCapped = !isAdmin && usage.fraction >= 1;
 
   // One composer, two homes: centered mid-screen in the empty state,
   // docked at the bottom once a conversation exists.
@@ -519,8 +541,15 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
                 ))}
               </div>
               <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-gray-400">
-                Powered by Claude · cites your cohort + industry sources
+                Powered by Claude · cites your cohort + industry sources · free fair-use daily limit
               </p>
+              {(showUsageWarning || usageCapped) && (
+                <p className={`mt-2 text-center text-[11px] font-semibold ${usageCapped || usage.fraction >= 0.85 ? 'text-amber-700' : 'text-gray-500'}`}>
+                  {usageCapped
+                    ? `Daily free AI allowance reached — resets around ${usageResetStr}.`
+                    : `~${usagePct}% of today's free AI allowance used.`}
+                </p>
+              )}
             </div>
           </div>
         ) : (
@@ -601,9 +630,20 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
             <div className="px-4 sm:px-6 pb-4 pt-2">
               <div className="max-w-3xl mx-auto">
                 {composer}
-                <p className="mt-2 text-center text-[11px] text-gray-400">
-                  Taxi analyzes anonymized cohort data — verify important figures.
-                </p>
+                {usageCapped ? (
+                  <p className="mt-2 text-center text-[11px] font-semibold text-amber-700">
+                    Daily free AI allowance reached — resets around {usageResetStr}.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-center text-[11px] text-gray-400">
+                    Taxi analyzes anonymized cohort data — verify important figures.
+                    {showUsageWarning && (
+                      <span className={usage.fraction >= 0.85 ? ' text-amber-700 font-semibold' : ''}>
+                        {' '}· ~{usagePct}% of today&apos;s free allowance used
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
             </div>
           </>
