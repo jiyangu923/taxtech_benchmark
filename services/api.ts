@@ -181,15 +181,20 @@ export const api = {
   },
 
   async getSubmissions(): Promise<Submission[]> {
-    // Return only the latest version of each user's submission. Historical
-    // rows (is_current = false) are kept for trend analysis but excluded
-    // from peer comparisons and the admin dashboard's default view.
-    const { data, error } = await supabase
-      .from('submissions')
-      .select('*')
-      .eq('is_current', true);
-    if (error) throw new Error(error.message);
-    return (data as Submission[]) || [];
+    // Peer benchmark data (current versions only) is served through
+    // get_visible_submissions(), which blanks companyName/userName on rows the
+    // caller doesn't own — admins and the owner still see them (see
+    // supabase/close_submission_column_leak.sql). We fall back to a direct read
+    // ONLY when that function is missing (pre-migration), so a deploy can't get
+    // ahead of the SQL; any other RPC error surfaces normally.
+    const { data, error } = await supabase.rpc('get_visible_submissions');
+    if (!error) return (data as Submission[]) || [];
+    const missing = (error as any)?.code === 'PGRST202'
+      || /find the function|does not exist|schema cache/i.test(error.message || '');
+    if (!missing) throw new Error(error.message);
+    const fb = await supabase.from('submissions').select('*').eq('is_current', true);
+    if (fb.error) throw new Error(fb.error.message);
+    return (fb.data as Submission[]) || [];
   },
 
   /**
