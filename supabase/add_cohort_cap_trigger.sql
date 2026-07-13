@@ -21,6 +21,13 @@
 --
 -- Idempotent: safe to re-run.
 
+-- The status column's CHECK constraint predates the waitlist state and only
+-- allows pending/approved/rejected — widen it, or the trigger's 'waitlist'
+-- write is rejected at INSERT time.
+alter table public.submissions drop constraint if exists submissions_status_check;
+alter table public.submissions add constraint submissions_status_check
+  check (status in ('pending', 'approved', 'rejected', 'waitlist'));
+
 create or replace function public.enforce_founding_cohort_cap()
 returns trigger
 language plpgsql
