@@ -1,0 +1,35 @@
+## What exists today
+
+**Prompt assembly & caching** — `services/taxi.ts`. Single system block: `SYSTEM_INSTRUCTION` + full JSON-serialized benchmark dataset + metadata/constants/tooltips + KB context, marked `cache_control: {type:'ephemeral'}` (taxi.ts:161-184). Per-user submission + question go in the final user message only (taxi.ts:186-188). Cache economics documented at taxi.ts:14-24 and claude.ts:9-13 (Haiku 4.5, 4096-token min prefix; short prefixes silently don't cache; verify via `usage.cache_read_input_tokens`).
+
+**Structured output** — `RESPONSE_SCHEMA` (taxi.ts:48-92): `{analysis, chart|null (bar/pie, data[{name,value}]), followUps[], sources[]}`, `additionalProperties:false` everywhere. Server maps `outputFormat` → `output_config.format = {type:'json_schema', schema}` (api/claude.ts:61-63). Non-stream path parses JSON server-side, 502 on malformed (api/claude.ts:142-151).
+
+**SSE streaming + idle timeout** — server: `runStreaming` (api/claude.ts:155-185) emits `data: {type:'delta'|'done'|'error'}` frames with anti-buffering headers; `maxDuration: 60` (api/claude.ts:252). Client: `streamClaudeStructured` (services/claude.ts:97-187) with 60s idle AbortController (`STREAM_IDLE_MS`, claude.ts:87, 107-115); final JSON parsed only after `done` (no partial-JSON rendering). Pure SSE frame parser exported for tests (claude.ts:201-223).
+
+**KB injection** — `buildKbContext` (taxi.ts:131-143): max 40 articles (`MAX_KB_ARTICLES`, taxi.ts:123), 900 chars/summary (`MAX_KB_SUMMARY_CHARS`), formatted as `- (date) Title [tags]: summary` under an "INDUSTRY CONTEXT" header inside the cached block. Fetched client-side via `listPublishedKbArticles(limit=40)` (api.ts:470-479); RLS lets any authed user read published (add_kb_articles_table.sql). Comment at taxi.ts:121-122: switch to pgvector past ~150 articles.
+
+**Conversation history replay** — `buildMessages` (taxi.ts:207-221): last 4 Q&A turns (`MAX_HISTORY_TURNS`, taxi.ts:199) replayed as plain user/assistant text; only the final message carries submission JSON; empty turns skipped.
+
+**Evidence-chip sanitization** — `sanitizeSources` (taxi.ts:112-116): model-reported `sources` filtered against exact titles of KB actually sent; hallucinated titles never render.
+
+**Metering / rate limiting** — server-enforced in api/claude.ts:25-30, 79-134, 222-242: Supabase-auth bearer required (401 otherwise), admins exempt, $5/rolling-24h per user, pricing table `PRICE_PER_MTOK` (line 28), 429 with reset ETA, best-effort upsert to `ai_usage` (swallows DB failures). Client display mirror: `services/usageMeter.ts` (constants duplicated at lines 10-11). `ai_usage` table: service-role writes only, users SELECT own row (add_ai_usage_table.sql).
+
+**Admin ingestion** — `api/admin/kb-ingest.ts`: admin-role-gated (lines 144-152); exactly one of text/url/pdfBase64 (line 155-158). URL: server fetch with 10s timeout + regex `htmlToText` (lines 67-85, 183-199); PDF: native Claude `document` block, ~3.1MB cap (lines 26, 164-172); text capped at 60k chars (line 25). Extraction via structured output (`EXTRACTION_SCHEMA`, lines 35-60), taxinfra change-type tag vocabulary (lines 30-33), `sanitizeArticles` caps 12 items (lines 99-114). Never writes to DB — client reviews then inserts via `createKbArticle` (api.ts:482-491, `ingestKbSource` api.ts:516-526).
+
+**Feedback widget** — `components/FeedbackWidget.tsx`: **generic, not AI-linked**. Captures type (bug/feature/general), free-text message (4k cap), email/name (prefilled if authed), `page_path` (location.pathname+hash, line 62), user_agent (line 63). No submission id, no Taxi message id, no answer content — no eval-loop linkage. Anonymous inserts allowed, no anti-spam (lines 20-22).
+
+**Privacy sanitization** — `sanitizeSubmissionForModel` (taxi.ts:148-155): strips `companyName, userName, id, userId` from both the dataset and the user's own submission before anything reaches the model.
+
+## Extension points
+
+- **Tool use**: `buildParams` (api/claude.ts:54-65) is the single request-shaping point — add a `tools`/`tool_choice` passthrough to `ClaudeRequestBody` there; the streaming loop (lines 168-173) only forwards `text_delta`, so it would need `content_block_start`/`input_json_delta` handling plus a multi-turn tool loop (currently one-shot). `services/claude.ts` `BaseArgs` (lines 30-35) would need matching fields.
+- **Retrieval vs prompt-stuffing**: swap `buildKbContext`/`listPublishedKbArticles` for pgvector search keyed on the question — already the planned path per taxi.ts:121-122. Note: retrieval per-question would break the cached-prefix strategy unless retrieved context moves to the user message. Same applies to the full-dataset stuffing at taxi.ts:161-176 (dataset is client-fetched and shipped in every request body).
+- **Feedback → eval loop**: not wired. `submitFeedback` (api.ts:299-330) has no answer/message reference; would need a `message_id`/answer-snapshot column on `feedback` and a per-answer thumbs UI in the Taxi chat (FeedbackWidget is page-level). The pieces exist to log per-answer usage (streamTaxi returns `usage`, taxi.ts:273) but nothing persists Q&A pairs today.
+- **Hardcoded vs configurable**: model and max_tokens are client-overridable per request (`body.model`, `body.maxTokens`, api/claude.ts:56-57 — note: an authed user could request a pricier model; pricing table assumes Haiku). Hardcoded constants: `DEFAULT_MODEL`/`DEFAULT_MAX_TOKENS` (api/claude.ts:22-23), `DAILY_LIMIT_USD`/`WINDOW_MS` (28-30, duplicated in usageMeter.ts:10-11), `MAX_KB_ARTICLES`/`MAX_KB_SUMMARY_CHARS` (taxi.ts:123-124), `MAX_HISTORY_TURNS` (taxi.ts:199), `EXTRACTION_MODEL` + ingest caps (kb-ingest.ts:24-27), `STREAM_IDLE_MS` (claude.ts:87). No env/DB config for any of them.
+
+## Constraints to respect
+
+- **Vercel serverless**: `maxDuration: 60` on both AI functions (api/claude.ts:252, kb-ingest.ts:227); 4.5MB request-body limit drives the PDF cap (kb-ingest.ts:26); SSE anti-buffering headers required (api/claude.ts:157-161); cold start + cache warm can mean ~25s TTFB (claude.ts:82-87).
+- **No relative TS imports outside /api/** with type:module — both endpoints inline everything, including duplicated `bearerToken` and Supabase auth boilerplate (kb-ingest.ts:21-22 documents this). Any new /api AI code must self-contain or duplicate helpers.
+- **Prompt-cache economics**: 4096-token minimum prefix on Haiku 4.5; keep the big stable context (dataset + KB) in the single trailing `cache_control` system block; anything that varies per-question must stay in messages or the cache is invalidated. Cache write = 1.25x, read = 0.10x input price (api/claude.ts:28).
+- **$5/day meter**: enforced pre-call, recorded post-call (soft cap — one call can overshoot); admins unmetered; costs computed against Haiku pricing only, so any model change must update `PRICE_PER_MTOK` and both constants copies (api/claude.ts:28-29, usageMeter.ts:10-11). Repo lives at /Users/jgu/taxtech_benchmark.
