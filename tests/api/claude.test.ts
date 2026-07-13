@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeCostUsd, resolveWindow, DAILY_LIMIT_USD, WINDOW_MS } from '../../api/claude';
+import { computeCostUsd, resolveWindow, buildParams, resolveMaxTokens, DAILY_LIMIT_USD, WINDOW_MS, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING } from '../../api/claude';
 
 const usage = (o: Partial<{ input: number; output: number; cacheRead: number; cacheWrite: number }>) => ({
   input_tokens: o.input ?? 0,
@@ -65,5 +65,31 @@ describe('limit constants', () => {
   it('caps at $5 per rolling 24h', () => {
     expect(DAILY_LIMIT_USD).toBe(5);
     expect(WINDOW_MS).toBe(24 * 60 * 60 * 1000);
+  });
+});
+
+describe('buildParams hardening (cost-abuse holes)', () => {
+  const msgs = [{ role: 'user' as const, content: 'q' }];
+
+  it('SECURITY: ignores a client-supplied model — the meter prices Haiku only', () => {
+    const params = buildParams({ messages: msgs, model: 'claude-opus-4-8' });
+    expect(params.model).toBe(DEFAULT_MODEL);
+  });
+
+  it('clamps client maxTokens to the ceiling', () => {
+    expect(buildParams({ messages: msgs, maxTokens: 64000 }).max_tokens).toBe(MAX_TOKENS_CEILING);
+  });
+
+  it('honors reasonable maxTokens below the ceiling', () => {
+    expect(buildParams({ messages: msgs, maxTokens: 2000 }).max_tokens).toBe(2000);
+  });
+
+  it('resolveMaxTokens falls back to the default on missing/invalid input', () => {
+    expect(resolveMaxTokens(undefined)).toBe(DEFAULT_MAX_TOKENS);
+    expect(resolveMaxTokens(0)).toBe(DEFAULT_MAX_TOKENS);
+    expect(resolveMaxTokens(-100)).toBe(DEFAULT_MAX_TOKENS);
+    expect(resolveMaxTokens(NaN)).toBe(DEFAULT_MAX_TOKENS);
+    expect(resolveMaxTokens('9999' as any)).toBe(DEFAULT_MAX_TOKENS);
+    expect(resolveMaxTokens(4000.7)).toBe(4000);
   });
 });

@@ -30,8 +30,13 @@ function claudeDevProxy(apiKey: string): Plugin {
             const parsed = JSON.parse(body);
             const client = new Anthropic({ apiKey });
             const params: any = {
-              model: parsed.model || 'claude-haiku-4-5',
-              max_tokens: parsed.maxTokens || 4000,
+              // Mirrors api/claude.ts: model is server-chosen (client value
+              // ignored) and max_tokens is clamped — keep both in sync.
+              model: 'claude-haiku-4-5',
+              max_tokens: Math.min(
+                typeof parsed.maxTokens === 'number' && parsed.maxTokens > 0 ? Math.floor(parsed.maxTokens) : 4000,
+                8000
+              ),
               messages: parsed.messages,
             };
             if (parsed.system) params.system = parsed.system;
