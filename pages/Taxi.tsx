@@ -17,6 +17,7 @@ import {
 } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { streamTaxi } from '../services/taxi';
+import { gateReason } from '../services/cohort';
 import { usageState } from '../services/usageMeter';
 import { User } from '../types';
 import taxiAvatar from '../assets/taxi-avatar-cab.svg';
@@ -58,6 +59,13 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const mySubmission = React.useMemo(
     () => allSubmissions.find(s => s.userId === user?.id) || null,
     [allSubmissions, user?.id]
+  );
+  // The peer cohort the AI analyzes is APPROVED members only — never waitlisted
+  // or pending rows (they aren't in the founding cohort yet). mySubmission stays
+  // sourced from all rows so a waitlisted user still resolves their own status.
+  const cohortSubmissions = React.useMemo(
+    () => allSubmissions.filter(s => s.status === 'approved'),
+    [allSubmissions]
   );
 
   // Persisted sessions live in Supabase; React Query owns the cache.
@@ -202,7 +210,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
           && !m.analysis.startsWith('I apologize, but I encountered an error')
           && !m.analysis.startsWith("You've reached your daily AI limit"))
         .map(m => ({ question: m.question, analysis: m.analysis }));
-      const { result: res } = await streamTaxi(query, mySubmission, allSubmissions, history, kbArticles);
+      const { result: res } = await streamTaxi(query, mySubmission, cohortSubmissions, history, kbArticles);
       const newMsg: ChatMessage = { question: query, ...res };
       const isPendingActive = pendingSession?.id === activeSession.id;
       const isFirst = activeSession.messages.length === 0;
@@ -350,14 +358,24 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     </div>
   );
 
-  if (!isAdmin && (!mySubmission || mySubmission.status === 'pending')) {
+  const taxiGate = gateReason(mySubmission, isAdmin);
+  if (taxiGate !== 'granted') {
+    const waitlisted = taxiGate === 'waitlist';
     return (
       <div className="max-w-2xl mx-auto py-20 px-4">
         <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-3xl shadow-lg border border-gray-100">
           <Lock className="h-16 w-16 text-gray-200 mb-6" />
-          <h2 className="font-display text-2xl font-semibold text-gray-900">Meet Taxi — after a quick survey</h2>
-          <p className="text-gray-500 mt-2 max-w-sm">Contribute your ~3-minute benchmark survey and Taxi unlocks instantly — your answers join the peer data it analyzes for you.</p>
-          <Link to="/survey" className="mt-8 px-8 py-3 bg-primary text-white rounded-xl font-bold">Take the 3-minute survey</Link>
+          <h2 className="font-display text-2xl font-semibold text-gray-900">
+            {waitlisted ? "You're on the founding-cohort waitlist" : 'Meet Taxi — after a quick survey'}
+          </h2>
+          <p className="text-gray-500 mt-2 max-w-sm">
+            {waitlisted
+              ? "Thanks for submitting — the pilot cohort is full right now. Your answers are saved, and we'll email you the moment a spot opens and Taxi unlocks."
+              : 'Contribute your ~3-minute benchmark survey and Taxi unlocks instantly — your answers join the peer data it analyzes for you.'}
+          </p>
+          {!waitlisted && (
+            <Link to="/survey" className="mt-8 px-8 py-3 bg-primary text-white rounded-xl font-bold">Take the 3-minute survey</Link>
+          )}
         </div>
       </div>
     );
@@ -581,7 +599,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
                         that exist in the real KB (sanitized server-side). */}
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-full text-[11px] font-semibold text-gray-600">
-                        📊 Your cohort · n={allSubmissions.length}
+                        📊 Your cohort · n={cohortSubmissions.length}
                       </span>
                       {(item.sources ?? []).map(s => (
                         <span key={s} title={s} className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-full text-[11px] font-semibold text-gray-600">

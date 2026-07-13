@@ -260,6 +260,7 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                     <option value="all">All Statuses</option>
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
+                    <option value="waitlist">Waitlist</option>
                     <option value="rejected">Rejected</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
@@ -332,15 +333,15 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                                 <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-600 font-medium">{getLabel(C.OPTS_RESPONDENT_ROLE, sub.respondentRole)}</td>
                                 <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-600 font-medium">{getLabel(C.OPTS_REVENUE, sub.revenueRange)}</td>
                                 <td className="px-6 py-5 whitespace-nowrap">
-                                    <span className={`px-2.5 py-1 inline-flex text-[10px] font-black uppercase tracking-widest rounded-lg ${sub.status === 'approved' ? 'bg-green-50 text-green-700 border border-green-100' : sub.status === 'rejected' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-orange-50 text-orange-700 border border-orange-100'}`}>
+                                    <span className={`px-2.5 py-1 inline-flex text-[10px] font-black uppercase tracking-widest rounded-lg ${sub.status === 'approved' ? 'bg-green-50 text-green-700 border border-green-100' : sub.status === 'rejected' ? 'bg-red-50 text-red-700 border border-red-100' : sub.status === 'waitlist' ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-orange-50 text-orange-700 border border-orange-100'}`}>
                                         {sub.status}
                                     </span>
                                 </td>
                                 <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium" onClick={e => e.stopPropagation()}>
                                     <div className="flex justify-end gap-2">
-                                        {sub.status === 'pending' && (
+                                        {(sub.status === 'pending' || sub.status === 'waitlist') && (
                                             <>
-                                                <button onClick={(e) => handleUpdateStatus(sub.id, 'approved', e)} className="text-green-600 hover:bg-green-100 p-2 rounded-xl transition-all" title="Approve"><Check className="h-4 w-4" /></button>
+                                                <button onClick={(e) => handleUpdateStatus(sub.id, 'approved', e)} className="text-green-600 hover:bg-green-100 p-2 rounded-xl transition-all" title={sub.status === 'waitlist' ? 'Promote from waitlist' : 'Approve'}><Check className="h-4 w-4" /></button>
                                                 <button onClick={(e) => handleUpdateStatus(sub.id, 'rejected', e)} className="text-red-600 hover:bg-red-100 p-2 rounded-xl transition-all" title="Reject"><X className="h-4 w-4" /></button>
                                             </>
                                         )}
@@ -551,9 +552,9 @@ const Admin: React.FC<{ user: User | null }> = ({ user }) => {
                     </div>
                 </div>
                 <div className="bg-gray-50/80 px-8 py-6 border-t border-gray-100 flex justify-end gap-4">
-                    {selectedSub.status === 'pending' && (
+                    {(selectedSub.status === 'pending' || selectedSub.status === 'waitlist') && (
                         <>
-                            <button onClick={(e) => handleUpdateStatus(selectedSub.id, 'approved', e)} className="px-8 py-3 bg-green-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-green-600/20 active:scale-95">Approve Record</button>
+                            <button onClick={(e) => handleUpdateStatus(selectedSub.id, 'approved', e)} className="px-8 py-3 bg-green-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-green-600/20 active:scale-95">{selectedSub.status === 'waitlist' ? 'Promote to cohort' : 'Approve Record'}</button>
                             <button onClick={(e) => handleUpdateStatus(selectedSub.id, 'rejected', e)} className="px-8 py-3 bg-red-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-red-600/20 active:scale-95">Flag Inaccurate</button>
                         </>
                     )}
