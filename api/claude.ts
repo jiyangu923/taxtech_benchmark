@@ -21,6 +21,10 @@ import { createClient } from '@supabase/supabase-js';
 
 const DEFAULT_MODEL = 'claude-haiku-4-5';
 const DEFAULT_MAX_TOKENS = 4000;
+// Ceiling on client-requested max_tokens. The meter records cost AFTER a call
+// completes (soft cap), so a single oversized request could otherwise overshoot
+// the daily limit by a wide margin in one shot.
+const MAX_TOKENS_CEILING = 8000;
 
 // ─── Per-user AI rate limiting ──────────────────────────────────────────────
 // Claude Haiku 4.5 pricing, USD per 1M tokens. Cached input is ~90% cheaper;
@@ -39,8 +43,8 @@ interface ClaudeRequestBody {
   system?: string | SystemBlock[];
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
   outputFormat?: Record<string, unknown>;
-  maxTokens?: number;
-  model?: string;
+  maxTokens?: number;          // clamped server-side to MAX_TOKENS_CEILING
+  model?: string;              // accepted in the body but IGNORED — see buildParams
   stream?: boolean;
 }
 
@@ -51,10 +55,25 @@ interface UsageOut {
   cache_read_input_tokens: number;
 }
 
+/**
+ * Clamp client-supplied max_tokens to (0, MAX_TOKENS_CEILING]; anything
+ * missing/invalid falls back to the default.
+ */
+function resolveMaxTokens(requested: unknown): number {
+  const n = typeof requested === 'number' && Number.isFinite(requested) ? Math.floor(requested) : 0;
+  if (n <= 0) return DEFAULT_MAX_TOKENS;
+  return Math.min(n, MAX_TOKENS_CEILING);
+}
+
 function buildParams(body: ClaudeRequestBody): Record<string, any> {
   const params: Record<string, any> = {
-    model: body.model || DEFAULT_MODEL,
-    max_tokens: body.maxTokens || DEFAULT_MAX_TOKENS,
+    // The model is SERVER-CHOSEN, always. body.model is deliberately ignored:
+    // the meter prices Haiku only, so honoring a client-requested model would
+    // let any authed user burn Sonnet/Opus tokens against Haiku-priced quota.
+    // When multi-model routing lands (harness plan L3), the routing decision
+    // stays server-side — never a client passthrough.
+    model: DEFAULT_MODEL,
+    max_tokens: resolveMaxTokens(body.maxTokens),
     messages: body.messages,
   };
   if (body.system) params.system = body.system;
@@ -263,5 +282,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 // Exported for tests — pure helpers, no env/network dependencies.
-export { buildParams, pickUsage, computeCostUsd, resolveWindow, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, DAILY_LIMIT_USD, WINDOW_MS, PRICE_PER_MTOK };
+export { buildParams, pickUsage, computeCostUsd, resolveWindow, resolveMaxTokens, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING, DAILY_LIMIT_USD, WINDOW_MS, PRICE_PER_MTOK };
 export type { ClaudeRequestBody, UsageOut, SystemBlock };
