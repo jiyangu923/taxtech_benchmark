@@ -297,21 +297,29 @@ describe('createSubmission', () => {
 // ─── getSubmissions ───────────────────────────────────────────────────────────
 
 describe('getSubmissions', () => {
-  it('filters to is_current = true and returns the array', async () => {
+  it('returns the sanitized peer rows from the get_visible_submissions RPC', async () => {
     const rows = [{ id: 's1' }, { id: 's2' }];
-    submissions.mockResolveWith({ data: rows, error: null });
+    mockRpc.mockResolvedValueOnce({ data: rows, error: null });
     expect(await api.getSubmissions()).toEqual(rows);
-    expect(submissions.eq).toHaveBeenCalledWith('is_current', true);
+    expect(mockRpc).toHaveBeenCalledWith('get_visible_submissions');
   });
 
-  it('returns an empty array when there are no rows', async () => {
-    submissions.mockResolveWith({ data: null, error: null });
+  it('returns an empty array when the RPC yields no rows', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: null });
     expect(await api.getSubmissions()).toEqual([]);
   });
 
-  it('throws on a database error', async () => {
-    submissions.mockResolveWith({ data: null, error: { message: 'DB error' } });
+  it('throws on a non-missing RPC error (real failure, not masked)', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'DB error', code: '42501' } });
     await expect(api.getSubmissions()).rejects.toThrow('DB error');
+  });
+
+  it('falls back to a direct is_current read when the RPC is missing (pre-migration)', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'Could not find the function', code: 'PGRST202' } });
+    const rows = [{ id: 's1' }];
+    submissions.mockResolveWith({ data: rows, error: null });
+    expect(await api.getSubmissions()).toEqual(rows);
+    expect(submissions.eq).toHaveBeenCalledWith('is_current', true);
   });
 });
 
