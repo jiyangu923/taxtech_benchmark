@@ -14,7 +14,10 @@ export interface UserRecord extends User {
   password?: string;
 }
 
-export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
+// 'waitlist' = submitted but the founding cohort was already full (pilot cap).
+// Held with no analytics/AI access until an admin promotes it to 'approved'.
+// Applied server-side by the enforce_founding_cohort_cap DB trigger.
+export type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'waitlist';
 
 export interface Submission {
   id: string;

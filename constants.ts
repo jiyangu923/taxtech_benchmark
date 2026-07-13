@@ -1,12 +1,15 @@
 import { Option, SectionDef } from './types';
 
 /**
- * Founding-cohort cap. Used by ParticipantCounter on Home + Survey to convey
- * scarcity ("4 of 100 spots filled"). Soft cap — admin still controls when
- * the cohort actually closes; this just drives the on-page messaging.
- * Bump or remove when you launch a second cohort.
+ * Founding-cohort cap (pilot launch). Drives the ParticipantCounter scarcity
+ * copy ("6 of 25 spots filled") on Home + Survey. This is now a HARD cap that
+ * is ENFORCED server-side: once 25 distinct approved members exist, the DB
+ * trigger `enforce_founding_cohort_cap` (supabase/add_cohort_cap_trigger.sql)
+ * routes new submissions to `waitlist` instead of `approved`. Keep this value
+ * in sync with the trigger's cap (the trigger reads settings.foundingCohortMax,
+ * defaulting to this same number). Bump both when you open the next cohort.
  */
-export const MAX_PARTICIPANTS = 100;
+export const MAX_PARTICIPANTS = 25;
 
 export const SECTIONS: SectionDef[] = [
   { id: 1, title: 'Benchmarking Context', description: 'Survey goals and company profile' },

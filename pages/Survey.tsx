@@ -8,6 +8,7 @@ import { visibleSections, clampStepIndex, showsTechBudget } from './Survey.branc
 import * as C from '../constants';
 import SURVEY_TOOLTIPS from '../surveyTooltips';
 import ParticipantCounter from './ParticipantCounter';
+import { isWaitlisted } from '../services/cohort';
 
 const DRAFT_KEY = 'taxtech_survey_draft';
 
@@ -105,6 +106,7 @@ const Survey: React.FC = () => {
 
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [waitlisted, setWaitlisted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Prefill from cache if present. The cache is shared with /report and
@@ -252,13 +254,18 @@ const Survey: React.FC = () => {
         companyProfile: normalizeArrayField(formData.companyProfile as any),
         participationGoal: normalizeArrayField(formData.participationGoal as any),
       };
-      await createSubmissionMutation.mutateAsync(payload as any);
+      const created = await createSubmissionMutation.mutateAsync(payload as any);
       localStorage.removeItem(DRAFT_KEY);
+      // The DB trigger routes to 'waitlist' if the founding cohort is already
+      // full — surface that instead of sending them to a locked Taxi.
+      const wasWaitlisted = isWaitlisted(created as any);
+      setWaitlisted(wasWaitlisted);
       setSubmitted(true);
       // AI-first flow: the reward for contributing is meeting your analyst,
       // not a charts page. Taxi's cache already has the fresh submission via
       // the mutation's invalidation, so the gate is open by the time we land.
-      setTimeout(() => navigate('/taxi'), 2000);
+      // Waitlisted users stay on the confirmation (nothing to unlock yet).
+      if (!wasWaitlisted) setTimeout(() => navigate('/taxi'), 2000);
     } catch (e: any) {
       setError(e?.message || 'Failed to submit survey.');
       setIsSubmitting(false);
@@ -415,6 +422,23 @@ const Survey: React.FC = () => {
   };
 
   // ── Success screen ──────────────────────────────────────────────────────────
+
+  if (submitted && waitlisted) {
+    return (
+      <div className="max-w-3xl mx-auto py-24 px-4 flex flex-col items-center text-center">
+        <div className="bg-amber-acc/10 border border-amber-acc/30 rounded-3xl p-12 shadow-xl">
+          <CheckCircle2 className="h-16 w-16 text-amber-acc-2 mx-auto mb-6" />
+          <h2 className="font-display text-2xl font-semibold text-gray-900">You're on the waitlist</h2>
+          <p className="text-gray-500 mt-2 max-w-md">
+            Thanks for contributing — the founding pilot cohort is full right
+            now, so your submission is saved on the waitlist. We'll email you the
+            moment a spot opens and your benchmarks + Taxi unlock. You can update
+            your answers anytime in the meantime.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
