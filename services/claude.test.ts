@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { parseSseFrames, streamClaudeStructured, STREAM_IDLE_MS } from './claude';
+import { parseSseFrames, streamClaudeStructured, STREAM_IDLE_MS, askClaude, POST_TIMEOUT_MS } from './claude';
 
 describe('parseSseFrames', () => {
   it('extracts a single delta event from a complete frame', () => {
@@ -122,6 +122,29 @@ describe('streamClaudeStructured idle timeout', () => {
     // listener (no unhandled rejection).
     const assertion = expect(promise).rejects.toThrow(/stalled/i);
     await vi.advanceTimersByTimeAsync(STREAM_IDLE_MS + 100);
+    await assertion;
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+  });
+});
+
+describe('postClaude timeout (non-streaming backstop)', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+  it('aborts a hung non-streaming request after POST_TIMEOUT_MS', async () => {
+    const fetchMock = vi.fn((_url: string, opts: any) => new Promise((_resolve, reject) => {
+      const signal: AbortSignal = opts.signal;
+      const bail = () => reject(signal.reason ?? new Error('aborted'));
+      if (signal.aborted) bail();
+      else signal.addEventListener('abort', bail, { once: true });
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const promise = askClaude({ messages: [{ role: 'user', content: 'hi' }] });
+    // Attach the rejection handler before advancing timers (no unhandled rejection).
+    const assertion = expect(promise).rejects.toThrow(/timed out/i);
+    await vi.advanceTimersByTimeAsync(POST_TIMEOUT_MS + 100);
     await assertion;
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);

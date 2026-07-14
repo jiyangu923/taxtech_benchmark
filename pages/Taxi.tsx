@@ -216,9 +216,9 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
       const isPendingActive = pendingSession?.id === activeSession.id;
       const isFirst = activeSession.messages.length === 0;
       // Rebuild from the LATEST cached copy of this session, not the closure
-      // snapshot taken before the 10-30s stream: a 👍/👎 landed mid-flight
-      // would otherwise be clobbered by this write. (Pending sessions aren't
-      // in the cache yet — their closure copy is by definition current.)
+      // snapshot taken before the (multi-second) request: a 👍/👎 landed
+      // mid-flight would otherwise be clobbered by this write. (Pending sessions
+      // aren't in the cache yet — their closure copy is by definition current.)
       const cachedMessages = isPendingActive
         ? null
         : (qc.getQueryData<Session[]>(queryKeys.chatSessions) ?? []).find(s => s.id === activeSession.id)?.messages;

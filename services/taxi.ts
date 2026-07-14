@@ -8,8 +8,9 @@ import {
 
 /**
  * Taxi-specific prompt + schema. Builds the Claude request for the
- * benchmark-analysis chat and exposes both a one-shot (`askTaxi`) and a
- * streaming (`streamTaxi`) variant.
+ * benchmark-analysis chat and exposes a plain one-shot (`askTaxi`) and the
+ * tool-enabled launch path (`askTaxiWithTools`, which runs the server's
+ * deterministic lookup_rate loop). Both are non-streaming.
  *
  * Caching strategy: the system prompt carries the immutable instructions
  * plus the (large) benchmark dataset + metadata. We mark this block with

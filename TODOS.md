@@ -16,6 +16,11 @@ didn't happen. Effort scale: human-team → (CC = with Claude Code). Priority P1
 - **Why:** All P3 — no correctness/security impact today; captured so they're not rediscovered.
 - **Effort:** S each → (CC: S).
 
+### P3 — Retire the now-dead streaming path (client + server + tests)
+- **What:** Wiring Taxi to the non-streaming tool loop (PR #134) left the SSE path with no production caller. Dead-but-tested: client `streamClaudeStructured` + `STREAM_IDLE_MS` + `parseSseFrames` (services/claude.ts), server `runStreaming` + the `body.stream` dispatch branch (api/claude.ts). A future PR that commits to non-streaming should drop both sides **and** their tests together.
+- **Why:** Not orphaned (still exercised by services/claude.test.ts + a valid server capability), so harmless today — but it's ~150 lines of unused transport. Keep until the streaming-tool-loop question (P1 above) is settled: if we later add a streaming tool loop, some of this is reused.
+- **Effort:** S → (CC: S). **Note:** don't remove before deciding the streaming-tool-loop direction.
+
 ### P2 — Deterministic honesty guard (prose rate ∉ rulesApplied)
 - **What:** The tool loop instructs the model not to state a rate on a miss, but nothing *forces* it. Since `rulesApplied` records exactly which verified rates backed an answer, a post-hoc check could scan the final text for percentage figures absent from any `rulesApplied` rate and flag/annotate them.
 - **Why:** Closes the soft half of the honesty guarantee (the deterministic half — no fabricated ⚖️ chip — already holds).

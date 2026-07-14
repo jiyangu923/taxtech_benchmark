@@ -79,15 +79,33 @@ async function authHeader(): Promise<Record<string, string>> {
   }
 }
 
+// Total-request ceiling for the non-streaming path. Sits just past the server's
+// `maxDuration: 60` so a healthy request always finishes first; it exists only as
+// a backstop against a stalled network path (proxy/socket death after headers)
+// that the server cap can't catch — otherwise a tool-loop request could leave the
+// Taxi composer spinning forever. The streaming path has its own idle-abort
+// (STREAM_IDLE_MS); this is the non-streaming equivalent. Exported for tests.
+export const POST_TIMEOUT_MS = 75_000;
+
 async function postClaude<T>(body: Record<string, unknown>): Promise<T> {
-  const resp = await fetch('/api/claude', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-    body: JSON.stringify(body),
-  });
-  const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) throw Object.assign(new Error(data?.error || `HTTP ${resp.status}`), { status: resp.status });
-  return data as T;
+  const ctrl = new AbortController();
+  const timer = setTimeout(
+    () => ctrl.abort(new DOMException('Request timed out', 'TimeoutError')),
+    POST_TIMEOUT_MS,
+  );
+  try {
+    const resp = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw Object.assign(new Error(data?.error || `HTTP ${resp.status}`), { status: resp.status });
+    return data as T;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function askClaude(args: BaseArgs): Promise<TextResponse> {
