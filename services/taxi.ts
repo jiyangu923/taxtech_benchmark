@@ -279,9 +279,11 @@ export async function streamTaxi(
     }, onDelta);
     return { result: { ...json, sources: sanitizeSources(json.sources, kbArticles) }, usage, answerId: answerId ?? null };
   } catch (error: any) {
-    // Surface the daily-limit message as the answer so the user sees why,
-    // instead of the generic "encountered an error" fallback.
-    if (error?.status === 429) {
+    // Surface the server's own message (daily-limit 429, cohort-gate 403) as
+    // the answer so the user sees why, instead of the generic error fallback.
+    // The UI already gates non-approved users, so 403 only reaches here on a
+    // stale client or revoked approval.
+    if (error?.status === 429 || error?.status === 403) {
       return { result: { analysis: error.message, chart: null, followUps: [], sources: [] }, usage: null, answerId: null };
     }
     console.error('AI Request Failed', error);

@@ -128,6 +128,13 @@ function resolveWindow(row: UsageRow | null, nowMs: number): WindowState {
   };
 }
 
+// Cohort gate decision, server side. Mirrors services/cohort.ts hasCohortAccess:
+// admins always; everyone else needs an approved, current submission. Pure so
+// it's unit-testable without a live Supabase.
+function canUseAi(isAdmin: boolean, hasApprovedCurrentSubmission: boolean): boolean {
+  return isAdmin || hasApprovedCurrentSubmission;
+}
+
 function bearerToken(req: VercelRequest): string | null {
   const auth = (req.headers['authorization'] as string | undefined) || '';
   const m = /^Bearer\s+(.+)$/.exec(auth);
@@ -287,13 +294,36 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
   const userId = userData.user.id;
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-  const [profileRes, usageRes] = await Promise.all([
+  const [profileRes, usageRes, subRes] = await Promise.all([
     admin.from('profiles').select('role').eq('id', userId).maybeSingle(),
     admin.from('ai_usage')
       .select('window_started_at, cost_usd, input_tokens, output_tokens')
       .eq('user_id', userId).maybeSingle(),
+    // Cohort gate (mirrors services/cohort.ts): Taxi is for approved members
+    // only. The client already hides the composer, but this endpoint must
+    // enforce it too — otherwise any signed-in user who skipped the survey can
+    // call the AI directly. Uses the admin client so RLS never hides the row.
+    admin.from('submissions').select('id')
+      .eq('userId', userId).eq('is_current', true).eq('status', 'approved').limit(1),
   ]);
   const isAdmin = (profileRes.data as any)?.role === 'admin';
+
+  // Admins bypass the gate (same as the client). Non-admins need an approved,
+  // current submission — pending/waitlist/rejected/no-submission are all denied.
+  if (!isAdmin) {
+    if (subRes.error) {
+      // Fail closed, but don't mislead an approved user into "go do the survey"
+      // on a transient DB hiccup — that's a backend problem, not a gate denial.
+      console.warn('[gate] submission lookup failed:', subRes.error.message);
+      return res.status(503).json({ error: 'Could not verify your access right now — try again in a moment.' });
+    }
+    const hasApproved = Array.isArray(subRes.data) && subRes.data.length > 0;
+    if (!canUseAi(isAdmin, hasApproved)) {
+      return res.status(403).json({
+        error: 'Complete the benchmark survey to unlock Taxi. Once your submission is approved, the AI analyst is yours.',
+      });
+    }
+  }
 
   let meter: Meter | undefined;
   if (!isAdmin) {
@@ -334,5 +364,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 // Exported for tests — pure helpers, no env/network dependencies.
-export { buildParams, pickUsage, computeCostUsd, resolveWindow, resolveMaxTokens, extractQuestion, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING, DAILY_LIMIT_USD, WINDOW_MS, PRICE_PER_MTOK };
+export { buildParams, pickUsage, computeCostUsd, resolveWindow, resolveMaxTokens, extractQuestion, canUseAi, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING, DAILY_LIMIT_USD, WINDOW_MS, PRICE_PER_MTOK };
 export type { ClaudeRequestBody, UsageOut, SystemBlock };
