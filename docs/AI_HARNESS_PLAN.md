@@ -69,6 +69,12 @@ Research rule: **deterministic tools for anything numeric/boolean; RAG with verb
 Add `tools` passthrough in `api/claude.ts` `buildParams` + multi-turn tool loop (streaming needs `content_block_start`/`input_json_delta` handling). Server-side executors (inline, per the /api import constraint) reading the `tax_rules` tables:
 - `lookup_rate(jurisdiction, tax_type, date)` · `check_threshold(jurisdiction, revenue)` · `estimate_penalty(jurisdiction, type, days_late, amount)` · `filing_calendar(jurisdictions[], from, to)` · `saas_taxability(state)`
 - Each returns `rules_applied[]` citations (taxinfra's pattern — keep it). Tool answers render as a new evidence-chip class: ⚖️ *rule citation* alongside 📊 cohort and 📰 KB.
+- **Correctness rules (CEO review 2026-07-13, approved):**
+  - **No-data honesty:** an empty tool result ("no verified rate for X") must surface IN the answer — the model never silently falls back to memory. This is the anti-hallucination rule; silent fill-in is the documented failure mode.
+  - `MAX_TOOL_ITERATIONS = 5`, then force a final answer (runaway-loop cap).
+  - **Tool definitions are static** — they join the cached prompt prefix; dynamic defs would invalidate the cache on every request.
+  - `tax_rules` gets a composite index `(jurisdiction, tax_type, effective_from)`.
+  - **Transport (F1):** tool-using answers run on the non-streaming path first (simple `messages.create` loop); streaming+tools lands with progressive rendering in Phase 1. The current UI renders answers only at completion, so nothing is lost today.
 
 ### L3 — Orchestration
 Model routing by task class: Haiku for chat (today), Sonnet for multi-step audit/planning workflows (Phase 2+). Config table (`harness_config`) replaces the hardcoded constants (model, caps, KB limits, history turns) — tunable without redeploy, same pattern as `foundingCohortMax`.
@@ -76,12 +82,12 @@ Model routing by task class: Haiku for chat (today), Sonnet for multi-step audit
 ### L4 — Evals (build FIRST — this is what "efficient" means)
 - **Golden set v1: 100 cases** growing to ~300-500 max, bucketed: rate lookups, thresholds/nexus, deadlines, exemptions/taxability, benchmark interpretation, audit-response quality, **false-premise traps** (documented failure mode: tax AI reinforcing users' wrong assumptions), privacy probes, refusal cases.
 - **Deterministic grading wherever there's a right answer** (rate, date, threshold — gradable straight from `tax_rules`). Rubric-based LLM-judge *only* for memo/tone quality, criterion-by-criterion (holistic judge scores hide regressions and favor verbosity).
-- **CI gate per-bucket, not aggregate** — a nexus regression must not hide behind improved rate lookups. `npm run evals` in GitHub Actions; deploy blocks on bucket-threshold failure.
+- **CI gate per-bucket, not aggregate** — a nexus regression must not hide behind improved rate lookups. `npm run evals` in GitHub Actions; the gate is a **required GitHub check** (Vercel auto-deploys on push, so blocking must happen at merge, not deploy). **Cadence (Q-S6, approved): path-filtered PR gate** (`services/taxi*`, `services/claude*`, `api/**`, `evals/**`, KB seeds) **+ nightly full run**; any LLM-judge buckets run nightly only.
 - Every production failure (user flags a wrong answer) becomes a golden case. The set is versioned and diffable.
 
 ### L5 — Guardrails & trust (the market wedge itself)
 - Citations-required as a hard rule: every factual claim traces to a KB title, a rule id, or the cohort (evidence chips already enforce the surface; extend to tool citations).
-- Persist Q&A pairs server-side (`ai_answers` table: question, answer, sources, rules_applied, model, usage, timestamps) → this is simultaneously the **audit trail**, the eval-mining source, and the "defend your AI in an audit" feature. EU AI Act (Aug 2026) makes traceability table-stakes; we get it as a byproduct.
+- Persist Q&A pairs server-side (`ai_answers` table: question, answer, sources, rules_applied, model, usage, timestamps) → this is simultaneously the **audit trail**, the eval-mining source, and the "defend your AI in an audit" feature. EU AI Act (Aug 2026) makes traceability table-stakes; we get it as a byproduct. **Retention (Q-S3, approved): 12-month rolling purge of raw Q&A; answers linked to corrections/evals/flags are kept permanently.** RLS: members read own rows; admins read all; inserts server-side only.
 - HITL gates: nothing files, remits, or sends externally without explicit human approval — ever. Autonomy is earned per-step with eval evidence (highest-flagged-risk category in finance agentic AI).
 - Existing: privacy sanitizer, RLS column protection, rate limiting. Phase 0 fix: lock `body.model` server-side.
 
@@ -100,7 +106,7 @@ Contribution ladder, each rung feeding a harness layer:
 
 ### Phase 0 — Harness foundations (2-4 weeks, pre/during pilot)
 *Goal: measurement + the correctness backbone, while pilot feedback is fresh.*
-1. `ai_answers` persistence + per-answer 👍/👎 in Taxi (closes the eval loop).
+1. `ai_answers` persistence + per-answer 👍/👎 in Taxi (closes the eval loop). **+ CP1 (CEO review, accepted): structured "report a wrong fact" flow** — 👎 can open an optional form (expected answer + source URL) feeding an admin review queue; accepted reports become golden-set candidates. Community rung 3 ships with rung 0.
 2. Golden set v1 (100 cases) + `npm run evals` + CI gate. Seed correctness buckets from taxinfra data.
 3. Port `tax_rules` schema + seed: EU VAT table, CA provinces, US SaaS taxability matrix, UK/DE/IN/APAC modules. Effective-dated, provenanced, staleness-flagged.
 4. First two tools wired end-to-end: `lookup_rate` + `filing_calendar` (+ tool-loop plumbing in api/claude.ts).
@@ -133,6 +139,7 @@ Contribution ladder, each rung feeding a harness layer:
 2. **Segment focus for Phases 2-3.** In-house teams (current cohort DNA, the research gap) vs advisors/accountants (TaxGPT's crowd). *Leaning: in-house.*
 3. **When to charge.** Free pilot → paid tiers at Phase 2 (audit workspace is the first clearly-worth-paying-for artifact)? Contributor discounts tie monetization to the flywheel.
 4. **taxinfra's fate.** Archive after extraction (plan assumes this — port data + prompts + schemas into taxbenchmark, no second codebase) vs keep as the future rules-engine service. *Leaning: archive; revisit only if a filing engine needs Python.*
+5. **The two-visions fork — RESOLVED (CEO review Q-S10, 2026-07-13).** taxbrains.ai (services-led lifecycle vision, May 2026) vs this plan (product-led): **SEQUENCED — taxbenchmark gets undivided focus now; taxbrains is parked until Phase 2 (audit workspace) ships and proves lifecycle demand.** Revisit trigger: Phase 2 exit criteria met.
 
 ## 6. Metrics that matter
 Eval pass rate per bucket (public!) · citation coverage (% claims with a source) · measured hallucination rate · weekly contributors & contribution mix · KB/rules freshness (median `last_verified`) · questions/member/week · cost/answer (cache hit rate) · Phase 2+: notices processed, hours saved self-reported.
@@ -145,4 +152,30 @@ Eval pass rate per bucket (public!) · citation coverage (% claims with a source
 5. Model-override lock + `harness_config` (half day)
 
 ---
-*Companion grounding reports: `ground_taxinfra.md`, `ground_surface.md`, `ground_research.md` (session scratchpad — ask Claude to re-copy them here if wanted).*
+*Companion grounding reports: `docs/grounding/ground_taxinfra.md`, `ground_surface.md`, `ground_research.md`.*
+
+## Reviewer Concerns (spec review round 1 — persisted, not yet adopted)
+
+An independent adversarial reviewer scored the plan 6/10 and raised 14 issues. The user
+adopted the correctness-rules packet + the decisions above; the following remain open for
+implementation-time discretion (they do not block Phase 0 start):
+
+1. **CP1 spec shape unpinned** — suggested: `answer_reports` table (`answer_id` FK, `expected_answer`, `source_url`, `status`, reviewer, timestamps); queue = status-filtered list in the existing admin UI; members-only reporting.
+2. **Report→golden-case promotion path unspecified** — suggested: manual `evals:promote` script emitting a sanitized golden JSON case (bucket + provenance fields); **sanitize member context at promotion or eval cases can leak identifying details forever.**
+3. **CP1 effort honesty** — full flow (queue + promotion) is ~1-2 CC days, not 2-3h; the 2-3h figure covers table + form + list only.
+4. **Phase 0 seed set** — grounding vouches for CA, EU-30, UK MTD, DE UStVA, US SaaS matrix; IN/APAC module quality is undescribed — consider trimming them to Phase 1.
+5. **CP2 trigger wording** — "≥100 cases" is met by golden set v1 by definition; intent is ≥100 *production-derived* cases.
+6. **Approach-B estimate label** — "CC ~1-1.5wk" applies to Phase 0's original list; the two-week task list itself sums to ~10.5-12.5 CC-days before CP1.
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 1 | issues_open | 6 proposals (1 approach + 4 cherry-picks + mode), 2 accepted into scope, 3 deferred; spec review 14 issues → 6 concerns persisted |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 0 | — | — |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | — |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+
+- **UNRESOLVED:** 6 reviewer concerns (above) — deliberate deferrals, not gaps.
+- **VERDICT:** CEO review complete with decisions recorded — eng review required before implementation is formally "cleared" (or start Phase 0 at owner's discretion; solo-repo mode).
