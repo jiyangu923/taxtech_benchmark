@@ -54,6 +54,44 @@ describe('parseSseFrames', () => {
   });
 });
 
+describe('streamClaudeStructured answerId plumbing', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('returns the answerId carried on the done event', async () => {
+    const frames = [
+      'data: {"type":"delta","text":"{\\"a\\":"}\n\n',
+      'data: {"type":"done","text":"{\\"a\\":1}","answerId":"ans-123","usage":{"input_tokens":1,"output_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}\n\n',
+    ];
+    let i = 0;
+    const reader = {
+      read: async () => (i < frames.length
+        ? { done: false, value: new TextEncoder().encode(frames[i++]) }
+        : { done: true, value: undefined }),
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, body: { getReader: () => reader } })));
+
+    const res = await streamClaudeStructured<{ a: number }>({ messages: [{ role: 'user', content: 'q' }], outputFormat: {} });
+    expect(res.answerId).toBe('ans-123');
+    expect(res.json).toEqual({ a: 1 });
+  });
+
+  it('yields answerId null when the server omits it (pre-migration / persist failure)', async () => {
+    const frames = [
+      'data: {"type":"done","text":"{}","usage":{"input_tokens":1,"output_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}\n\n',
+    ];
+    let i = 0;
+    const reader = {
+      read: async () => (i < frames.length
+        ? { done: false, value: new TextEncoder().encode(frames[i++]) }
+        : { done: true, value: undefined }),
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, body: { getReader: () => reader } })));
+
+    const res = await streamClaudeStructured({ messages: [{ role: 'user', content: 'q' }], outputFormat: {} });
+    expect(res.answerId).toBeNull();
+  });
+});
+
 describe('streamClaudeStructured idle timeout', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });

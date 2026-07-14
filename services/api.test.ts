@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 //
 // All chain method mocks are reset and re-wired to return `this` in beforeEach.
 
-const { profiles, submissions, settings, mockFrom, mockAuth, mockRpc } = vi.hoisted(() => {
+const { profiles, submissions, settings, answerReports, mockFrom, mockAuth, mockRpc } = vi.hoisted(() => {
   function makeTableMock() {
     const resolveQueue: any[] = [];
 
@@ -51,11 +51,13 @@ const { profiles, submissions, settings, mockFrom, mockAuth, mockRpc } = vi.hois
   const profiles   = makeTableMock();
   const submissions = makeTableMock();
   const settings   = makeTableMock();
+  const answerReports = makeTableMock();
 
   const mockFrom = vi.fn((table: string) => {
     if (table === 'profiles')    return profiles;
     if (table === 'submissions') return submissions;
     if (table === 'settings')    return settings;
+    if (table === 'answer_reports') return answerReports;
     return makeTableMock();
   });
 
@@ -71,7 +73,7 @@ const { profiles, submissions, settings, mockFrom, mockAuth, mockRpc } = vi.hois
   // Default: succeeds with no error. Tests can override per-call with mockResolvedValueOnce.
   const mockRpc = vi.fn().mockResolvedValue({ error: null });
 
-  return { profiles, submissions, settings, mockFrom, mockAuth, mockRpc };
+  return { profiles, submissions, settings, answerReports, mockFrom, mockAuth, mockRpc };
 });
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -82,12 +84,14 @@ beforeEach(() => {
   profiles._reset();
   submissions._reset();
   settings._reset();
+  answerReports._reset();
 
   mockFrom.mockReset();
   mockFrom.mockImplementation((table: string) => {
     if (table === 'profiles')    return profiles;
     if (table === 'submissions') return submissions;
     if (table === 'settings')    return settings;
+    if (table === 'answer_reports') return answerReports;
     return profiles;
   });
 
@@ -291,6 +295,64 @@ describe('createSubmission', () => {
     await expect(api.createSubmission({} as any)).rejects.toThrow('Insert failed');
     // No data loss: the archive RPC never runs when the insert fails.
     expect(mockRpc).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Per-answer feedback (harness Phase 0) ────────────────────────────────────
+
+describe('rateAnswer', () => {
+  it('calls the rate_my_answer security-definer RPC with the id and rating', async () => {
+    mockRpc.mockResolvedValueOnce({ error: null });
+    await api.rateAnswer('ans-1', 1);
+    expect(mockRpc).toHaveBeenCalledWith('rate_my_answer', { answer_id: 'ans-1', new_rating: 1 });
+  });
+
+  it('never throws on failure — rating is best-effort telemetry', async () => {
+    mockRpc.mockResolvedValueOnce({ error: { message: 'RLS denied' } });
+    await expect(api.rateAnswer('ans-1', -1)).resolves.toBeUndefined();
+  });
+});
+
+describe('reportAnswer', () => {
+  it('rejects when not signed in', async () => {
+    mockAuth.getUser.mockResolvedValueOnce({ data: { user: null } });
+    await expect(api.reportAnswer('ans-1', 'expected')).rejects.toThrow('Sign in');
+  });
+
+  it('inserts the trimmed report for the authed user', async () => {
+    mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
+    answerReports.mockResolveWith({ data: null, error: null });
+    await api.reportAnswer('ans-1', '  the rate is 19%  ', ' https://src ');
+    expect(answerReports.insert).toHaveBeenCalledWith({
+      answer_id: 'ans-1',
+      userId: 'u1',
+      expected_answer: 'the rate is 19%',
+      source_url: 'https://src',
+    });
+  });
+
+  it('surfaces insert errors (RLS: not your answer)', async () => {
+    mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'u1' } } });
+    answerReports.mockResolveWith({ data: null, error: { message: 'row violates policy' } });
+    await expect(api.reportAnswer('ans-x', 'expected')).rejects.toThrow('policy');
+  });
+});
+
+describe('updateAnswerReportStatus', () => {
+  it('throws when RLS silently affects 0 rows (repo-wide gotcha)', async () => {
+    mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'admin1' } } });
+    answerReports.mockResolveWith({ data: [], error: null });
+    await expect(api.updateAnswerReportStatus('r1', 'accepted')).rejects.toThrow('not applied');
+  });
+
+  it('records the reviewer and succeeds on an affected row', async () => {
+    mockAuth.getUser.mockResolvedValueOnce({ data: { user: { id: 'admin1' } } });
+    answerReports.mockResolveWith({ data: [{ id: 'r1' }], error: null });
+    await api.updateAnswerReportStatus('r1', 'rejected');
+    const patch = (answerReports.update as any).mock.calls[0][0];
+    expect(patch.status).toBe('rejected');
+    expect(patch.reviewed_by).toBe('admin1');
+    expect(patch.reviewed_at).toBeTruthy();
   });
 });
 

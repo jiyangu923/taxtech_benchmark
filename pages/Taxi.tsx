@@ -18,6 +18,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { streamTaxi } from '../services/taxi';
 import { gateReason } from '../services/cohort';
+import { api } from '../services/api';
 import { usageState } from '../services/usageMeter';
 import { User } from '../types';
 import taxiAvatar from '../assets/taxi-avatar-cab.svg';
@@ -210,8 +211,8 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
           && !m.analysis.startsWith('I apologize, but I encountered an error')
           && !m.analysis.startsWith("You've reached your daily AI limit"))
         .map(m => ({ question: m.question, analysis: m.analysis }));
-      const { result: res } = await streamTaxi(query, mySubmission, cohortSubmissions, history, kbArticles);
-      const newMsg: ChatMessage = { question: query, ...res };
+      const { result: res, answerId } = await streamTaxi(query, mySubmission, cohortSubmissions, history, kbArticles);
+      const newMsg: ChatMessage = { question: query, ...res, answerId };
       const isPendingActive = pendingSession?.id === activeSession.id;
       const isFirst = activeSession.messages.length === 0;
       const nextMessages = [...activeSession.messages, newMsg].slice(-MAX_MESSAGES_PER_SESSION);
@@ -242,6 +243,18 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
       qc.invalidateQueries({ queryKey: queryKeys.myAiUsage });
       scrollToBottom();
     }
+  };
+
+  // 👍/👎 on a specific answer: optimistic write into the session (survives
+  // reloads) + fire-and-forget server rating. Only answers with an answerId
+  // (post-harness) show controls — legacy messages have nothing to anchor to.
+  const handleRateMessage = (index: number, rating: 1 | -1) => {
+    if (!activeSession) return;
+    const msg = activeSession.messages[index];
+    if (!msg?.answerId) return;
+    api.rateAnswer(msg.answerId, rating); // best-effort; warns on failure
+    const nextMessages = activeSession.messages.map((m, j) => (j === index ? { ...m, rating } : m));
+    updateSession.mutate({ id: activeSession.id, patch: { messages: nextMessages, updatedAt: Date.now() } });
   };
 
   const handleNewChat = () => {
@@ -625,6 +638,14 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
                         </div>
                       </div>
                     )}
+                    {item.answerId && (
+                      <AnswerFeedback
+                        key={item.answerId}
+                        answerId={item.answerId}
+                        rating={item.rating ?? null}
+                        onRate={(r) => handleRateMessage(i, r)}
+                      />
+                    )}
                     {item.followUps && item.followUps.length > 0 && i === aiHistory.length - 1 && (
                       <div className="mt-4 flex flex-wrap gap-2">
                         {item.followUps.map((q: string) => (
@@ -677,6 +698,88 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
           </>
         )}
       </div>
+    </div>
+  );
+};
+
+/**
+ * Per-answer feedback row (harness Phase 0): 👍/👎 plus CP1's structured
+ * "report a wrong fact" form. 👎 reveals the optional form — the report is what
+ * turns a complaint into a golden-set eval candidate. Self-contained state; the
+ * parent persists the rating into the session so it survives reloads.
+ */
+const AnswerFeedback: React.FC<{
+  answerId: string;
+  rating: 1 | -1 | null;
+  onRate: (r: 1 | -1) => void;
+}> = ({ answerId, rating, onRate }) => {
+  const [formOpen, setFormOpen] = useState(false);
+  const [expected, setExpected] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const submitReport = async () => {
+    if (expected.trim().length < 3 || state === 'sending') return;
+    setState('sending');
+    try {
+      await api.reportAnswer(answerId, expected, sourceUrl || undefined);
+      setState('sent');
+      setFormOpen(false);
+    } catch (e: any) {
+      setState('error');
+      setErrorMsg(e?.message || 'Could not submit the report.');
+    }
+  };
+
+  return (
+    <div className="mt-3">
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => onRate(1)}
+          aria-label="Good answer"
+          aria-pressed={rating === 1}
+          className={`p-1.5 rounded-lg text-[13px] transition-colors ${rating === 1 ? 'bg-indigo-50 text-primary' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'}`}
+        >👍</button>
+        <button
+          onClick={() => { onRate(-1); setFormOpen(true); setState('idle'); }}
+          aria-label="Wrong or unhelpful answer"
+          aria-pressed={rating === -1}
+          className={`p-1.5 rounded-lg text-[13px] transition-colors ${rating === -1 ? 'bg-amber-50 text-amber-700' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'}`}
+        >👎</button>
+        {state === 'sent' && (
+          <span className="text-[12px] text-gray-400 ml-1">Thanks — we'll review and fold it into our accuracy tests.</span>
+        )}
+      </div>
+      {formOpen && state !== 'sent' && (
+        <div className="mt-2 p-3 bg-white border border-gray-200 rounded-xl max-w-lg">
+          <p className="text-[12px] font-semibold text-gray-600 mb-1.5">What should the answer have said? (optional but gold for us)</p>
+          <textarea
+            value={expected}
+            onChange={e => setExpected(e.target.value)}
+            maxLength={4000}
+            rows={2}
+            placeholder="e.g. Poland's KSeF deadline for large taxpayers is 1 Feb 2026, not April"
+            className="w-full text-[13px] border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-primary/10 resize-y"
+          />
+          <input
+            value={sourceUrl}
+            onChange={e => setSourceUrl(e.target.value)}
+            maxLength={2000}
+            placeholder="Source link (optional)"
+            className="mt-1.5 w-full text-[13px] border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-primary/10"
+          />
+          {state === 'error' && <p className="mt-1.5 text-[12px] text-red-600">{errorMsg}</p>}
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={submitReport}
+              disabled={expected.trim().length < 3 || state === 'sending'}
+              className="px-3 py-1.5 bg-primary text-white rounded-lg text-[12px] font-bold disabled:opacity-40"
+            >{state === 'sending' ? 'Sending…' : 'Send report'}</button>
+            <button onClick={() => setFormOpen(false)} className="px-3 py-1.5 text-[12px] font-semibold text-gray-500 hover:bg-gray-100 rounded-lg">Dismiss</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

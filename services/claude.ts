@@ -43,6 +43,9 @@ export interface StructuredResponse<T> {
   text: string;
   json: T;
   usage: ClaudeUsage;
+  /** Server-assigned ai_answers row id — anchors per-answer feedback. Null when
+   *  persistence failed server-side (best-effort) or pre-migration. */
+  answerId?: string | null;
 }
 
 // Attach the user's Supabase access token so the /api/claude proxy can
@@ -133,6 +136,7 @@ export async function streamClaudeStructured<T>(
     let accumulated = '';
     let finalText = '';
     let finalUsage: ClaudeUsage | null = null;
+    let finalAnswerId: string | null = null;
     let streamError: string | null = null;
 
     // SSE frame parser: events are separated by `\n\n`; each event is
@@ -157,6 +161,7 @@ export async function streamClaudeStructured<T>(
         } else if (payload.type === 'done') {
           finalText = payload.text || accumulated;
           finalUsage = payload.usage || null;
+          finalAnswerId = typeof payload.answerId === 'string' ? payload.answerId : null;
         } else if (payload.type === 'error') {
           streamError = payload.message || 'stream error';
         }
@@ -180,7 +185,7 @@ export async function streamClaudeStructured<T>(
     } catch (e: any) {
       throw new Error(`Model returned invalid JSON: ${e?.message || 'parse error'}`);
     }
-    return { text: finalText, json: parsed, usage: finalUsage };
+    return { text: finalText, json: parsed, usage: finalUsage, answerId: finalAnswerId };
   } finally {
     if (idleTimer) clearTimeout(idleTimer);
   }

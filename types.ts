@@ -148,6 +148,25 @@ export interface FeedbackSubmission {
   user_agent?: string;
 }
 
+// ─── Per-answer feedback (AI harness Phase 0) ────────────────────────────────
+
+export type AnswerReportStatus = 'open' | 'accepted' | 'rejected';
+
+/** CP1: a member's structured "this fact is wrong" report on a specific AI answer. */
+export interface AnswerReport {
+  id: string;
+  answer_id: string;
+  userId: string;
+  expected_answer: string;
+  source_url: string | null;
+  status: AnswerReportStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  /** Joined context for the admin queue (question + the answer JSON). */
+  ai_answers?: { question: string; answer: Record<string, unknown> } | null;
+}
+
 export type ReleaseLetterStatus = 'draft' | 'sent';
 
 export interface ReleaseLetter {

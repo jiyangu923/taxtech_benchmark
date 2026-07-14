@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { api } from './api';
-import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus, KbArticle, KbArticleDraft } from '../types';
+import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus, KbArticle, KbArticleDraft, AnswerReport } from '../types';
 import { Session, ChatMessage } from '../pages/Taxi.helpers';
 
 /**
@@ -20,6 +20,7 @@ export const queryKeys = {
   currentSurveyVersion: ['settings', 'currentSurveyVersion'] as const,
   allProfiles: ['profiles', 'all'] as const,
   feedback: ['feedback'] as const,
+  answerReports: ['answerReports'] as const,
   releaseLetters: ['releaseLetters'] as const,
   publicCommunityMembers: ['communityMembers', 'public'] as const,
   allCommunityMembers: ['communityMembers', 'all'] as const,
@@ -213,6 +214,25 @@ export function useDeleteFeedback() {
   return useMutation({
     mutationFn: (id: string) => api.deleteFeedback(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.feedback }),
+  });
+}
+
+// ─── AI answer reports (harness Phase 0 / CP1) ──────────────────────────────
+
+export function useAnswerReports(opts?: Omit<UseQueryOptions<AnswerReport[]>, 'queryKey' | 'queryFn'>) {
+  return useQuery<AnswerReport[]>({
+    queryKey: queryKeys.answerReports,
+    queryFn: () => api.getAnswerReports(),
+    ...opts,
+  });
+}
+
+export function useUpdateAnswerReportStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'accepted' | 'rejected' }) =>
+      api.updateAnswerReportStatus(id, status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.answerReports }),
   });
 }
 
