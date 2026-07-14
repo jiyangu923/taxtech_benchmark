@@ -3,6 +3,25 @@
 Deferred work with context. Convention: every deferral from a review lands here or it
 didn't happen. Effort scale: human-team → (CC = with Claude Code). Priority P1-P3.
 
+## From lookup_rate tool loop (PR #132, 2026-07-14)
+
+### P1 — Wire Taxi to the lookup_rate tool (make the tool reachable)
+- **What:** The non-streaming tool loop is live but opt-in via `body.tools` — no client sends it yet, so the ⚖️ evidence chip and deterministic rates aren't reachable by users. Decide the transport and wire `streamTaxi`/`askTaxi` to pass `tools:['lookup_rate']`, then render `rulesApplied` as ⚖️ chips (alongside the existing KB `sources` chips).
+- **Fork (needs product call):** (a) **streaming tool loop** — stream turn 1, on `stop_reason:tool_use` run the tool, then stream the final turn (preserves live token indicator, most work); (b) **route rate-shaped questions** to the non-streaming loop, keep streaming for the rest (heuristic/classifier risk); (c) **whole Taxi path → non-streaming** with tools always available (simplest; loses the live indicator — but today streaming is only a thinking indicator, no live text render, so perceptual loss is small). Review + plan leaned "non-streaming loop first," so (c) is the cheapest correct next step; (a) is the eventual target.
+- **Why P1:** without this the Phase-0 tool delivers no user value (inert capability).
+- **Effort:** (c) S → (CC: S); (a) M → (CC: M). **Depends on:** `add_tax_rules_table.sql` being run (else every lookup returns the honest "not covered").
+
+### P3 — lookup_rate hardening (adversarial review nits, PR #132)
+- **What:** (1) `output_config.format` is applied on tool-calling turns too (baked into `base`); fine on Haiku today, but if the schema ever blocks a tool call, omit it until the final composing turn. (2) `lookup_rate` doesn't filter by `tax_type` — harmless while each jurisdiction has one current row; add the filter when a jurisdiction gets concurrent rows of different type. (3) Soft-cap worst case is now ~6 Haiku calls/request (5 loop + 1 fallback) before metering — accepted, revisit if MAX_TOKENS_CEILING or the model tier rises. (4) The invalid-JSON 502 path omits `answerId` (cosmetic; mirrors runNonStreaming).
+- **Why:** All P3 — no correctness/security impact today; captured so they're not rediscovered.
+- **Effort:** S each → (CC: S).
+
+### P2 — Deterministic honesty guard (prose rate ∉ rulesApplied)
+- **What:** The tool loop instructs the model not to state a rate on a miss, but nothing *forces* it. Since `rulesApplied` records exactly which verified rates backed an answer, a post-hoc check could scan the final text for percentage figures absent from any `rulesApplied` rate and flag/annotate them.
+- **Why:** Closes the soft half of the honesty guarantee (the deterministic half — no fabricated ⚖️ chip — already holds).
+- **Trigger:** Phase 1, once the tool is wired and producing real answers to eval against.
+- **Effort:** M → (CC: M).
+
 ## From /plan-ceo-review of docs/AI_HARNESS_PLAN.md (2026-07-13)
 
 ### P2 — Public trust page (`/trust`) with live eval scores
