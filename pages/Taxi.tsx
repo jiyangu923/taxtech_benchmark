@@ -215,7 +215,14 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
       const newMsg: ChatMessage = { question: query, ...res, answerId };
       const isPendingActive = pendingSession?.id === activeSession.id;
       const isFirst = activeSession.messages.length === 0;
-      const nextMessages = [...activeSession.messages, newMsg].slice(-MAX_MESSAGES_PER_SESSION);
+      // Rebuild from the LATEST cached copy of this session, not the closure
+      // snapshot taken before the 10-30s stream: a 👍/👎 landed mid-flight
+      // would otherwise be clobbered by this write. (Pending sessions aren't
+      // in the cache yet — their closure copy is by definition current.)
+      const cachedMessages = isPendingActive
+        ? null
+        : (qc.getQueryData<Session[]>(queryKeys.chatSessions) ?? []).find(s => s.id === activeSession.id)?.messages;
+      const nextMessages = [...(cachedMessages ?? activeSession.messages), newMsg].slice(-MAX_MESSAGES_PER_SESSION);
       const nextTitle = isFirst ? titleFromQuestion(query) : activeSession.title;
 
       if (isPendingActive) {
@@ -643,6 +650,7 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
                         key={item.answerId}
                         answerId={item.answerId}
                         rating={item.rating ?? null}
+                        disabled={isAiLoading}
                         onRate={(r) => handleRateMessage(i, r)}
                       />
                     )}
@@ -711,8 +719,12 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
 const AnswerFeedback: React.FC<{
   answerId: string;
   rating: 1 | -1 | null;
+  /** True while a query is streaming in this session — rating then would race
+   *  the session write that lands with the new answer (belt to the cache-
+   *  rebuild suspenders in handleAiQuery). */
+  disabled?: boolean;
   onRate: (r: 1 | -1) => void;
-}> = ({ answerId, rating, onRate }) => {
+}> = ({ answerId, rating, disabled, onRate }) => {
   const [formOpen, setFormOpen] = useState(false);
   const [expected, setExpected] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
@@ -737,15 +749,25 @@ const AnswerFeedback: React.FC<{
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => onRate(1)}
+          disabled={disabled}
           aria-label="Good answer"
           aria-pressed={rating === 1}
-          className={`p-1.5 rounded-lg text-[13px] transition-colors ${rating === 1 ? 'bg-indigo-50 text-primary' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'}`}
+          className={`p-1.5 rounded-lg text-[13px] transition-colors disabled:opacity-40 ${rating === 1 ? 'bg-indigo-50 text-primary' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'}`}
         >👍</button>
         <button
-          onClick={() => { onRate(-1); setFormOpen(true); setState('idle'); }}
+          onClick={() => {
+            onRate(-1);
+            // 'sent' is sticky: reopening a pre-filled form would let every
+            // extra click insert a duplicate report row.
+            if (state !== 'sent') {
+              setFormOpen(true);
+              if (state === 'error') setState('idle');
+            }
+          }}
+          disabled={disabled}
           aria-label="Wrong or unhelpful answer"
           aria-pressed={rating === -1}
-          className={`p-1.5 rounded-lg text-[13px] transition-colors ${rating === -1 ? 'bg-amber-50 text-amber-700' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'}`}
+          className={`p-1.5 rounded-lg text-[13px] transition-colors disabled:opacity-40 ${rating === -1 ? 'bg-amber-50 text-amber-700' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'}`}
         >👎</button>
         {state === 'sent' && (
           <span className="text-[12px] text-gray-400 ml-1">Thanks — we'll review and fold it into our accuracy tests.</span>

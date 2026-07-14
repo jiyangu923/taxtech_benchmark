@@ -214,7 +214,13 @@ const AnswerReportsSection: React.FC = () => {
                   )}
                   <p className="mt-1 text-sm text-gray-900"><span className="font-semibold">Expected:</span> {r.expected_answer}</p>
                   {r.source_url && (
-                    <a href={r.source_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary hover:underline truncate max-w-full">{r.source_url}</a>
+                    // Member-controlled string: only linkify real http(s) URLs —
+                    // a javascript: URI aimed at the reviewing admin renders as text.
+                    /^https?:\/\//i.test(r.source_url) ? (
+                      <a href={r.source_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary hover:underline truncate max-w-full">{r.source_url}</a>
+                    ) : (
+                      <span className="mt-1 inline-block text-xs text-gray-500 truncate max-w-full">{r.source_url}</span>
+                    )
                   )}
                 </div>
                 {r.status === 'open' && (
