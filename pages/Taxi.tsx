@@ -16,7 +16,7 @@ import {
   queryKeys,
 } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
-import { streamTaxi } from '../services/taxi';
+import { askTaxiWithTools } from '../services/taxi';
 import { gateReason } from '../services/cohort';
 import { api } from '../services/api';
 import { usageState } from '../services/usageMeter';
@@ -202,8 +202,8 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     scrollToBottom();
     try {
       // Pass the conversation so far so follow-ups keep their context
-      // ("what about just multinationals?"). streamTaxi caps how many
-      // turns are actually sent.
+      // ("what about just multinationals?"). The request caps how many
+      // turns are actually sent (MAX_HISTORY_TURNS in taxi.ts).
       // Error/limit turns carry no analytical context — replaying them would
       // waste tokens and teach the model to apologize.
       const history = activeSession.messages
@@ -211,14 +211,14 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
           && !m.analysis.startsWith('I apologize, but I encountered an error')
           && !m.analysis.startsWith("You've reached your daily AI limit"))
         .map(m => ({ question: m.question, analysis: m.analysis }));
-      const { result: res, answerId } = await streamTaxi(query, mySubmission, cohortSubmissions, history, kbArticles);
-      const newMsg: ChatMessage = { question: query, ...res, answerId };
+      const { result: res, answerId, rulesApplied } = await askTaxiWithTools(query, mySubmission, cohortSubmissions, history, kbArticles);
+      const newMsg: ChatMessage = { question: query, ...res, answerId, rulesApplied };
       const isPendingActive = pendingSession?.id === activeSession.id;
       const isFirst = activeSession.messages.length === 0;
       // Rebuild from the LATEST cached copy of this session, not the closure
-      // snapshot taken before the 10-30s stream: a 👍/👎 landed mid-flight
-      // would otherwise be clobbered by this write. (Pending sessions aren't
-      // in the cache yet — their closure copy is by definition current.)
+      // snapshot taken before the (multi-second) request: a 👍/👎 landed
+      // mid-flight would otherwise be clobbered by this write. (Pending sessions
+      // aren't in the cache yet — their closure copy is by definition current.)
       const cachedMessages = isPendingActive
         ? null
         : (qc.getQueryData<Session[]>(queryKeys.chatSessions) ?? []).find(s => s.id === activeSession.id)?.messages;
@@ -614,13 +614,24 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
                       <img src={taxiAvatar} alt="" className="w-6 h-6 rounded-md" />
                       <span className="text-xs font-bold text-gray-500">Taxi</span>
                     </div>
-                    {/* Evidence chips: the cohort is always in context; KB
-                        chips render only for titles the model reported AND
-                        that exist in the real KB (sanitized server-side). */}
+                    {/* Evidence chips: the cohort is always in context; ⚖️ rate
+                        chips are the verified tax_rules the lookup_rate tool
+                        applied (never model memory); 📰 KB chips render only for
+                        titles the model reported AND that exist in the real KB
+                        (both sanitized server-side). */}
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-full text-[11px] font-semibold text-gray-600">
                         📊 Your cohort · n={cohortSubmissions.length}
                       </span>
+                      {(item.rulesApplied ?? []).map(r => (
+                        <span
+                          key={`${r.jurisdiction}-${r.tax_type}`}
+                          title={`${r.jurisdiction_name} · ${r.tax_type.replace('_', '/')} ${r.standard_rate}%${r.last_verified ? ` · verified ${r.last_verified}` : ''}${r.source_url ? ` · ${r.source_url}` : ''}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-full text-[11px] font-semibold text-gray-600"
+                        >
+                          ⚖️ {r.jurisdiction_name} {r.tax_type.replace('_', '/')} {r.standard_rate}%
+                        </span>
+                      ))}
                       {(item.sources ?? []).map(s => (
                         <span key={s} title={s} className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-full text-[11px] font-semibold text-gray-600">
                           📰 {s.length > 48 ? s.slice(0, 47) + '…' : s}

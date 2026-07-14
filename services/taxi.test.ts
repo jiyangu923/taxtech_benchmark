@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, sanitizeSources, sanitizeSubmissionForModel, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES } from './taxi';
+import { SYSTEM_INSTRUCTION, RESPONSE_SCHEMA, buildSystem, buildUserMessage, buildMessages, buildKbContext, sanitizeSources, sanitizeSubmissionForModel, FALLBACK, MAX_HISTORY_TURNS, MAX_KB_ARTICLES } from './taxi';
 
 const mockFetch = vi.fn();
 
@@ -16,6 +16,28 @@ async function freshAskTaxi() {
   vi.resetModules();
   const { askTaxi } = await import('./taxi.ts');
   return askTaxi;
+}
+
+async function freshAskTaxiWithTools() {
+  vi.resetModules();
+  const { askTaxiWithTools } = await import('./taxi.ts');
+  return askTaxiWithTools;
+}
+
+// Server tool-loop response: like structuredResponse but carries answerId +
+// rulesApplied (the ⚖️ evidence the lookup_rate tool produced).
+function toolResponse(payload: object, rulesApplied: any[] = []) {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({
+      text: JSON.stringify(payload),
+      json: payload,
+      usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+      answerId: 'ans-1',
+      rulesApplied,
+    }),
+  };
 }
 
 const fakeSubmission = { id: '1', revenue: '100m_1b' } as any;
@@ -93,7 +115,72 @@ describe('askTaxi (non-streaming)', () => {
   });
 });
 
+describe('askTaxiWithTools (tool-enabled, non-streaming)', () => {
+  it('enables the lookup_rate tool and does NOT request streaming', async () => {
+    mockFetch.mockResolvedValueOnce(toolResponse({ analysis: 'ok', chart: null, followUps: [], sources: [] }));
+    const ask = await freshAskTaxiWithTools();
+    await ask('What is the VAT rate in Germany?', fakeSubmission, fakeAll);
+    const sentBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(sentBody.tools).toEqual(['lookup_rate']);
+    expect(sentBody.stream).toBeUndefined(); // tools force non-streaming server-side
+    expect(sentBody.outputFormat).toBeDefined();
+  });
+
+  it('threads rulesApplied (⚖️ evidence) + answerId through to the caller', async () => {
+    const rules = [{ jurisdiction: 'DE', jurisdiction_name: 'Germany', tax_type: 'VAT', standard_rate: 19, source_url: 'https://x', last_verified: '2026-05-30' }];
+    mockFetch.mockResolvedValueOnce(toolResponse({ analysis: 'Germany VAT is 19%.', chart: null, followUps: [], sources: [] }, rules));
+    const ask = await freshAskTaxiWithTools();
+    const { result, rulesApplied, answerId } = await ask('VAT in Germany?', fakeSubmission, fakeAll);
+    expect(result.analysis).toBe('Germany VAT is 19%.');
+    expect(rulesApplied).toEqual(rules);
+    expect(answerId).toBe('ans-1');
+  });
+
+  it('defaults rulesApplied to [] when the server omits it (no tool was used)', async () => {
+    mockFetch.mockResolvedValueOnce(structuredResponse({ analysis: 'FTE analysis, no rate', chart: null, followUps: [], sources: [] }));
+    const ask = await freshAskTaxiWithTools();
+    const { rulesApplied } = await ask('How am I doing on FTEs?', fakeSubmission, fakeAll);
+    expect(rulesApplied).toEqual([]);
+  });
+
+  it('sanitizes sources against the real KB (a hallucinated title never chips)', async () => {
+    mockFetch.mockResolvedValueOnce(toolResponse({ analysis: 'ok', chart: null, followUps: [], sources: ['Real Article', 'Invented'] }));
+    const kb = [{ id: '1', title: 'Real Article', summary: 's', source_url: null, tags: [], status: 'published', published_at: '2026-01-01T00:00:00Z', created_by: null, created_at: '', updated_at: '' }] as any[];
+    const ask = await freshAskTaxiWithTools();
+    const { result } = await ask('q', fakeSubmission, fakeAll, [], kb);
+    expect(result.sources).toEqual(['Real Article']);
+  });
+
+  it('surfaces the daily-limit (429) message as the analysis, with no rules', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({ error: "You've reached your daily AI limit." }) });
+    const ask = await freshAskTaxiWithTools();
+    const { result, rulesApplied } = await ask('q', fakeSubmission, fakeAll);
+    expect(result.analysis).toBe("You've reached your daily AI limit.");
+    expect(rulesApplied).toEqual([]);
+  });
+
+  it('surfaces the cohort-gate (403) message as the analysis', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: 'Complete the survey to unlock Taxi.' }) });
+    const ask = await freshAskTaxiWithTools();
+    const { result } = await ask('q', fakeSubmission, fakeAll);
+    expect(result.analysis).toBe('Complete the survey to unlock Taxi.');
+  });
+
+  it('returns the fallback (no rules) on a network error', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    const ask = await freshAskTaxiWithTools();
+    const { result, rulesApplied } = await ask('q', fakeSubmission, fakeAll);
+    expect(result).toEqual(FALLBACK);
+    expect(rulesApplied).toEqual([]);
+  });
+});
+
 describe('taxi helpers', () => {
+  it('SYSTEM_INSTRUCTION tells the model to use lookup_rate for rates, never memory', () => {
+    expect(SYSTEM_INSTRUCTION).toContain('lookup_rate');
+    expect(SYSTEM_INSTRUCTION).toMatch(/never state a tax rate from memory/i);
+  });
+
   it('buildSystem returns a single text block with cache_control', () => {
     const blocks = buildSystem(fakeAll);
     expect(blocks).toHaveLength(1);

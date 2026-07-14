@@ -27,11 +27,26 @@ export interface SystemBlock {
 
 export type ClaudeMessage = { role: 'user' | 'assistant'; content: string };
 
+/** One verified tax rule the deterministic lookup_rate tool applied to an
+ *  answer — the ⚖️ evidence chip's data. Server returns these in `rulesApplied`
+ *  when a request opts into tools; empty/absent otherwise. */
+export interface RuleCitation {
+  jurisdiction: string;
+  jurisdiction_name: string;
+  tax_type: string;
+  standard_rate: number;
+  source_url: string | null;
+  last_verified: string | null;
+}
+
 interface BaseArgs {
   system?: string | SystemBlock[];
   messages: ClaudeMessage[];
   maxTokens?: number;
   model?: string;
+  /** Deterministic-tool NAMES to enable (e.g. ['lookup_rate']). Opting in makes
+   *  the server run a non-streaming tool loop (SSE is not used). */
+  tools?: string[];
 }
 
 export interface TextResponse {
@@ -46,6 +61,9 @@ export interface StructuredResponse<T> {
   /** Server-assigned ai_answers row id — anchors per-answer feedback. Null when
    *  persistence failed server-side (best-effort) or pre-migration. */
   answerId?: string | null;
+  /** Verified tax rules the lookup_rate tool applied (⚖️ evidence chips). Only
+   *  present when the request enabled tools; empty when none were used. */
+  rulesApplied?: RuleCitation[];
 }
 
 // Attach the user's Supabase access token so the /api/claude proxy can
@@ -61,15 +79,33 @@ async function authHeader(): Promise<Record<string, string>> {
   }
 }
 
+// Total-request ceiling for the non-streaming path. Sits just past the server's
+// `maxDuration: 60` so a healthy request always finishes first; it exists only as
+// a backstop against a stalled network path (proxy/socket death after headers)
+// that the server cap can't catch — otherwise a tool-loop request could leave the
+// Taxi composer spinning forever. The streaming path has its own idle-abort
+// (STREAM_IDLE_MS); this is the non-streaming equivalent. Exported for tests.
+export const POST_TIMEOUT_MS = 75_000;
+
 async function postClaude<T>(body: Record<string, unknown>): Promise<T> {
-  const resp = await fetch('/api/claude', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-    body: JSON.stringify(body),
-  });
-  const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) throw Object.assign(new Error(data?.error || `HTTP ${resp.status}`), { status: resp.status });
-  return data as T;
+  const ctrl = new AbortController();
+  const timer = setTimeout(
+    () => ctrl.abort(new DOMException('Request timed out', 'TimeoutError')),
+    POST_TIMEOUT_MS,
+  );
+  try {
+    const resp = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw Object.assign(new Error(data?.error || `HTTP ${resp.status}`), { status: resp.status });
+    return data as T;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function askClaude(args: BaseArgs): Promise<TextResponse> {

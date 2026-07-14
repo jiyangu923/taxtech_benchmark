@@ -1,3 +1,5 @@
+import type { RuleCitation } from '../services/claude';
+
 export interface ChatMessage {
   question: string;
   analysis: string;
@@ -5,6 +7,9 @@ export interface ChatMessage {
   followUps?: string[];
   /** KB article titles the model reported using (evidence chips). Absent on legacy messages. */
   sources?: string[];
+  /** Verified tax rules the lookup_rate tool applied (⚖️ evidence chips). Absent
+   *  on legacy messages and answers that used no rate tool. */
+  rulesApplied?: RuleCitation[];
   /** ai_answers row id — anchors 👍/👎 + wrong-fact reports. Absent on legacy
    *  messages and when server-side persistence was unavailable (controls hide). */
   answerId?: string | null;
