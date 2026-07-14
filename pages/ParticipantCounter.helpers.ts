@@ -34,14 +34,17 @@ export function progressPercent(count: number, max: number): number {
 }
 
 /**
- * Single-line eyebrow copy. Examples:
- *   building: "Founding cohort · 4 of 100 spots filled"
- *   closing:  "Founding cohort · 87 of 100 spots filled · closing soon"
- *   full:     "Founding cohort · closed · join the waitlist"
+ * Single-line eyebrow copy. The `max` "founding spots" is a marketing marker,
+ * NOT an access gate — membership stays open past it and everyone who submits
+ * gets instant AI (the cohort cap no longer gates; see drop_cohort_cap_gate.sql).
+ * Examples:
+ *   building: "Founding cohort · 4 of 25 spots filled"
+ *   closing:  "Founding cohort · 22 of 25 spots filled · closing soon"
+ *   full:     "Founding cohort · all 25 spots claimed · still open to join"
  */
 export function eyebrowCopy(count: number, max: number): string {
   const phase = derivePhase(count, max);
-  if (phase === 'full') return 'Founding cohort · closed · join the waitlist';
+  if (phase === 'full') return `Founding cohort · all ${max} spots claimed · still open to join`;
   const base = `Founding cohort · ${count} of ${max} spots filled`;
   return phase === 'closing' ? `${base} · closing soon` : base;
 }
@@ -56,19 +59,21 @@ export function bannerCopy(count: number, max: number): BannerCopy {
   const phase = derivePhase(count, max);
   if (phase === 'full') {
     return {
-      title: 'Founding cohort is closed.',
-      subtitle: `We've capped this cohort at ${max} participants. Join the waitlist for the next round.`,
+      title: `All ${max} founding spots are claimed.`,
+      // Membership stays open — submitting still unlocks Taxi instantly; only
+      // the "founding member" label is capped at max.
+      subtitle: `Submit your data and Taxi unlocks instantly — you'll join as a full member (founding badge reserved for the first ${max}).`,
     };
   }
   const remaining = participantsRemaining(count, max);
   if (phase === 'closing') {
     return {
-      title: `Only ${remaining} spots left in the founding cohort.`,
-      subtitle: `Closing soon — submit your data while ${remaining} of ${max} spots remain.`,
+      title: `Only ${remaining} founding spots left.`,
+      subtitle: `Claim founding-member status while ${remaining} of ${max} spots remain — Taxi unlocks the moment you submit.`,
     };
   }
   return {
     title: `Founding cohort — ${count} of ${max} spots filled.`,
-    subtitle: `Limited to ${max} participants.`,
+    subtitle: `First ${max} members get founding status; Taxi unlocks instantly on submit.`,
   };
 }

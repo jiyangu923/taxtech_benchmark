@@ -38,3 +38,8 @@ didn't happen. Effort scale: human-team → (CC = with Claude Code). Priority P1
 - **What:** Streaming+tools transport (F1 deferred the SSE tool-chunk plumbing); contributor attribution UI (profile badges, "contributed by" on KB articles); notice-upload teaser (extraction-only preview to validate Phase-2 demand); dev-proxy tool parity decision (currently: accepted divergence, vite dev has no tools).
 - **Why:** Each was consciously deferred with a named trigger rather than skipped.
 - **Effort:** varies (S-M each) → (CC: S-M).
+
+### P3 — Remove now-dead waitlist UI (cohort cap decoupled 2026-07-14)
+- **What:** The founding cap no longer gates AI (drop_cohort_cap_gate.sql). These paths never fire now: Survey waitlist confirmation screen (`submitted && waitlisted`), Taxi/Report `gateReason` 'waitlist' branch, Admin submissions Waitlist filter + "Promote to cohort" button, `isWaitlisted` helper.
+- **Why:** Dead/defensive code. Harmless (no waitlist rows produced), but confusing to future readers.
+- **Effort:** S → (CC: S). **Note:** keep the DB `waitlist` status value + add_cohort_cap_trigger.sql so a hard cap can be re-enabled; this is purely UI cleanup.
