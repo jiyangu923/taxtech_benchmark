@@ -26,6 +26,11 @@ const DEFAULT_MAX_TOKENS = 4000;
 // the daily limit by a wide margin in one shot.
 const MAX_TOKENS_CEILING = 8000;
 
+// Deterministic-tool loop (harness L2). Hard cap on model→tool→model round trips
+// so a misbehaving loop can't run away against the 60s function budget / the
+// user's spend cap. One lookup is the norm; 5 is generous headroom.
+const MAX_TOOL_ITERATIONS = 5;
+
 // ─── Per-user AI rate limiting ──────────────────────────────────────────────
 // Claude Haiku 4.5 pricing, USD per 1M tokens. Cached input is ~90% cheaper;
 // cache writes are 1.25x base input. https://platform.claude.com (pricing)
@@ -46,6 +51,8 @@ interface ClaudeRequestBody {
   maxTokens?: number;          // clamped server-side to MAX_TOKENS_CEILING
   model?: string;              // accepted in the body but IGNORED — see buildParams
   stream?: boolean;
+  tools?: string[];            // NAMES only (e.g. ['lookup_rate']) — server owns
+                               // the specs; unknown names dropped. See resolveTools.
 }
 
 interface UsageOut {
@@ -206,6 +213,257 @@ async function persistAnswer(
   }
 }
 
+// ── Deterministic tools (harness L2: law-as-code, never model memory) ────────
+//
+// Taxi must NEVER state a tax rate from the model's memory. When a request opts
+// in (body.tools includes 'lookup_rate') we run a non-streaming tool loop: the
+// model calls lookup_rate, we answer it from the verified public.tax_rules
+// table, and the model composes its final answer from that data. Every rule the
+// tool returned comes back as `rulesApplied` — the ⚖️ evidence chip.
+//
+// Server owns the tool specs. The client sends only NAMES, never a tool
+// definition — the same lockdown posture as the server-chosen model (buildParams
+// ignores body.model). Unknown names are dropped, not passed through.
+
+const LOOKUP_RATE_TOOL = {
+  name: 'lookup_rate',
+  description:
+    'Look up the official indirect-tax rate for a jurisdiction from the verified ' +
+    'law-as-code table. ALWAYS call this for any specific VAT / GST / HST / PST rate — ' +
+    'never state a rate from memory. Coverage: the 27 EU member states plus the UK, ' +
+    'Switzerland, and Norway (VAT); and all 13 Canadian provinces/territories ' +
+    '(GST/PST/HST). Pass an ISO code ("DE", "GB") or country name ("Germany"); for ' +
+    'Canadian provinces pass the province name ("Quebec") or the "CA-XX" code ("CA-QC"). ' +
+    'If the tool reports a jurisdiction is not covered, tell the user it is not covered ' +
+    'yet — do NOT fall back to a remembered rate.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      jurisdiction: {
+        type: 'string',
+        description: 'ISO code, "CA-XX" code, or country/province name.',
+      },
+    },
+    required: ['jurisdiction'],
+    additionalProperties: false,
+  },
+} as const;
+
+// The only tool for now. Adding more (check_threshold, estimate_penalty, …) =
+// a spec here + a branch in runToolLoop; the client whitelist grows by name.
+const TOOL_SPECS: Record<string, typeof LOOKUP_RATE_TOOL> = { lookup_rate: LOOKUP_RATE_TOOL };
+
+// Turn client-sent tool NAMES into server-owned specs; drop unknown/duplicate.
+function resolveTools(names: unknown): Array<typeof LOOKUP_RATE_TOOL> {
+  if (!Array.isArray(names)) return [];
+  const out: Array<typeof LOOKUP_RATE_TOOL> = [];
+  const seen = new Set<string>();
+  for (const n of names) {
+    if (typeof n === 'string' && TOOL_SPECS[n] && !seen.has(n)) {
+      seen.add(n);
+      out.push(TOOL_SPECS[n]);
+    }
+  }
+  return out;
+}
+
+// A few common aliases → canonical jurisdiction code. Kept tiny on purpose: the
+// tax_rules seed stays the source of truth for rates AND names, so this map must
+// not grow into a parallel jurisdiction list that can drift from the DB.
+const JURISDICTION_ALIASES: Record<string, string> = {
+  UK: 'GB', 'U.K.': 'GB', 'GREAT BRITAIN': 'GB', BRITAIN: 'GB', ENGLAND: 'GB',
+  HOLLAND: 'NL', CZECHIA: 'CZ',
+};
+
+// Pure: clean a model/user-supplied jurisdiction string. null = unusable.
+function normalizeJurisdiction(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const s = raw.trim().replace(/\s+/g, ' ');
+  if (!s || s.length > 60) return null;
+  return s;
+}
+
+// Pure: the two lookup keys — an (aliased) uppercase code, and the raw string for
+// a case-insensitive exact name match.
+function resolveLookupKeys(cleaned: string): { code: string; name: string } {
+  const upper = cleaned.toUpperCase();
+  return { code: JURISDICTION_ALIASES[upper] ?? upper, name: cleaned };
+}
+
+interface TaxRuleRow {
+  jurisdiction: string;
+  jurisdiction_name: string;
+  tax_type: string;
+  standard_rate: number | string;
+  reduced_rates: unknown;
+  components: { gst?: number; pst?: number; hst?: number } | null;
+  source_url: string | null;
+  last_verified: string | null;
+  effective_from: string;
+  effective_to: string | null;
+}
+
+// Pure: from candidate rows, pick the currently-effective one — prefer rows with
+// no effective_to (still in effect), then the newest effective_from. null if none.
+function pickCurrentRule(rows: TaxRuleRow[]): TaxRuleRow | null {
+  if (!rows?.length) return null;
+  const current = rows.filter(r => r.effective_to == null);
+  const pool = current.length ? current : rows;
+  return [...pool].sort((a, b) => (b.effective_from || '').localeCompare(a.effective_from || ''))[0];
+}
+
+interface RuleCitation {
+  jurisdiction: string;
+  jurisdiction_name: string;
+  tax_type: string;
+  standard_rate: number;
+  source_url: string | null;
+  last_verified: string | null;
+}
+
+interface RateResult {
+  found: boolean;
+  jurisdiction?: string;
+  jurisdiction_name?: string;
+  tax_type?: string;
+  standard_rate?: number;
+  reduced_rates?: number[];
+  components?: { gst?: number; pst?: number; hst?: number } | null;
+  source_url?: string | null;
+  last_verified?: string | null;
+  message?: string;
+}
+
+// Pure: shape a DB row (or a miss) into the tool_result payload the model reads.
+// A miss carries an explicit no-data instruction (harness honesty rule: never let
+// the model paper over a coverage gap with a remembered number).
+function formatRateResult(row: TaxRuleRow | null, requested: string): RateResult {
+  if (!row) {
+    return {
+      found: false,
+      message: `No verified rate on file for "${requested}". This jurisdiction is not yet in the law-as-code table — tell the user it is not covered yet. Do NOT estimate or recall a rate.`,
+    };
+  }
+  let reducedRaw: unknown = row.reduced_rates;
+  if (typeof reducedRaw === 'string') { try { reducedRaw = JSON.parse(reducedRaw); } catch { reducedRaw = []; } }
+  const reduced_rates = Array.isArray(reducedRaw)
+    ? reducedRaw.filter((n): n is number => typeof n === 'number')
+    : [];
+  return {
+    found: true,
+    jurisdiction: row.jurisdiction,
+    jurisdiction_name: row.jurisdiction_name,
+    tax_type: row.tax_type,
+    standard_rate: Number(row.standard_rate),
+    reduced_rates,
+    components: row.components ?? null,
+    source_url: row.source_url ?? null,
+    last_verified: row.last_verified ?? null,
+  };
+}
+
+// Impure: run one lookup_rate call against tax_rules. Try exact code, then a
+// case-insensitive exact name match. A DB error returns a no-data result — the
+// answer degrades to "unavailable", never to a fabricated rate.
+async function executeLookupRate(admin: any, input: any): Promise<RateResult> {
+  const j = normalizeJurisdiction(input?.jurisdiction);
+  if (!j) return { found: false, message: 'No jurisdiction was provided. Ask the user which country or province they mean.' };
+  const { code, name } = resolveLookupKeys(j);
+  try {
+    const byCode = await admin.from('tax_rules').select('*').eq('jurisdiction', code);
+    if (byCode.error) throw new Error(byCode.error.message);
+    let rows = (byCode.data as TaxRuleRow[]) || [];
+    if (!rows.length) {
+      const byName = await admin.from('tax_rules').select('*').ilike('jurisdiction_name', name);
+      if (byName.error) throw new Error(byName.error.message);
+      rows = (byName.data as TaxRuleRow[]) || [];
+    }
+    return formatRateResult(pickCurrentRule(rows), j);
+  } catch (e: any) {
+    console.warn('[harness] lookup_rate failed:', e?.message);
+    return { found: false, message: `The rate service is temporarily unavailable for "${j}". Tell the user to try again shortly; do NOT estimate a rate.` };
+  }
+}
+
+const ZERO_USAGE: UsageOut = { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 };
+function addUsage(a: UsageOut, b: any): UsageOut {
+  return {
+    input_tokens: a.input_tokens + (b?.input_tokens ?? 0),
+    output_tokens: a.output_tokens + (b?.output_tokens ?? 0),
+    cache_creation_input_tokens: a.cache_creation_input_tokens + (b?.cache_creation_input_tokens ?? 0),
+    cache_read_input_tokens: a.cache_read_input_tokens + (b?.cache_read_input_tokens ?? 0),
+  };
+}
+
+// Non-streaming tool loop. The model may call lookup_rate up to
+// MAX_TOOL_ITERATIONS times; we answer each call from tax_rules, then it composes
+// the final (optionally schema-constrained) answer. Usage is summed across every
+// turn and metered once; the answer is persisted once. Returns rulesApplied — the
+// verified rows behind the answer — for the ⚖️ evidence chip.
+async function runToolLoop(
+  client: Anthropic, admin: any, body: ClaudeRequestBody, res: VercelResponse,
+  meter?: Meter, persist?: Persist,
+) {
+  const base = buildParams(body);
+  base.tools = resolveTools(body.tools);
+  const loopMessages: any[] = [...body.messages];
+  const rulesApplied: RuleCitation[] = [];
+  let usage: UsageOut = { ...ZERO_USAGE };
+  let finalText = '';
+
+  for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+    const resp: any = await client.messages.create({ ...base, messages: loopMessages } as any);
+    usage = addUsage(usage, resp.usage);
+    if (resp.stop_reason !== 'tool_use') {
+      finalText = (resp.content.find((b: any) => b.type === 'text') as { text?: string } | undefined)?.text ?? '';
+      break;
+    }
+    // Echo the assistant turn (with its tool_use blocks) back verbatim, then
+    // answer each tool_use with a matching tool_result keyed by tool_use_id.
+    loopMessages.push({ role: 'assistant', content: resp.content });
+    const toolResults: any[] = [];
+    for (const block of resp.content) {
+      if (block.type !== 'tool_use') continue;
+      if (block.name === 'lookup_rate') {
+        const result = await executeLookupRate(admin, block.input);
+        if (result.found) {
+          rulesApplied.push({
+            jurisdiction: result.jurisdiction!, jurisdiction_name: result.jurisdiction_name!,
+            tax_type: result.tax_type!, standard_rate: result.standard_rate!,
+            source_url: result.source_url ?? null, last_verified: result.last_verified ?? null,
+          });
+        }
+        toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(result) });
+      } else {
+        toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify({ error: 'unknown tool' }), is_error: true });
+      }
+    }
+    loopMessages.push({ role: 'user', content: toolResults });
+  }
+
+  // Iteration cap hit while still calling tools: force one final answer with no
+  // tools so the user always gets a response (the schema constraint, if any, stays).
+  if (!finalText) {
+    const noTools: Record<string, any> = { ...base };
+    delete noTools.tools;
+    const resp: any = await client.messages.create({ ...noTools, messages: loopMessages } as any);
+    usage = addUsage(usage, resp.usage);
+    finalText = (resp.content.find((b: any) => b.type === 'text') as { text?: string } | undefined)?.text ?? '';
+  }
+
+  if (meter) await meter(usage);
+  const answerId = persist ? await persist(finalText, usage) : null;
+
+  if (body.outputFormat) {
+    try {
+      return res.status(200).json({ text: finalText, json: JSON.parse(finalText), usage, answerId, rulesApplied });
+    } catch {
+      return res.status(502).json({ error: 'Model returned invalid JSON', text: finalText, usage, rulesApplied });
+    }
+  }
+  return res.status(200).json({ text: finalText, usage, answerId, rulesApplied });
+}
+
 async function runNonStreaming(client: Anthropic, body: ClaudeRequestBody, res: VercelResponse, meter?: Meter, persist?: Persist) {
   const response = await client.messages.create(buildParams(body) as any);
   const textBlock = response.content.find((b: any) => b.type === 'text') as { text: string } | undefined;
@@ -343,6 +601,12 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
   // Persist every answer (admins included — the audit trail is universal).
   // Best-effort: a failed insert logs [harness] and never blocks the answer.
   const persist: Persist = (text, usage) => persistAnswer(admin, userId, body, text, usage);
+  // Tools force the non-streaming loop (it needs the full messages array between
+  // turns); a caller that opts into tools accepts JSON, not SSE. body.stream is
+  // ignored in that case.
+  if (resolveTools(body.tools).length) {
+    return runToolLoop(client, admin, body, res, meter, persist);
+  }
   if (body.stream) {
     return runStreaming(client, body, res, meter, persist);
   }
@@ -365,4 +629,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 // Exported for tests — pure helpers, no env/network dependencies.
 export { buildParams, pickUsage, computeCostUsd, resolveWindow, resolveMaxTokens, extractQuestion, canUseAi, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING, DAILY_LIMIT_USD, WINDOW_MS, PRICE_PER_MTOK };
-export type { ClaudeRequestBody, UsageOut, SystemBlock };
+// Deterministic-tool helpers (harness L2). executeLookupRate takes an injected
+// admin client, so it's testable with a fake; the rest are pure.
+export { resolveTools, normalizeJurisdiction, resolveLookupKeys, pickCurrentRule, formatRateResult, executeLookupRate, addUsage, LOOKUP_RATE_TOOL, MAX_TOOL_ITERATIONS };
+export type { ClaudeRequestBody, UsageOut, SystemBlock, TaxRuleRow, RateResult };
