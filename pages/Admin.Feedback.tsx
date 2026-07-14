@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   MessageSquare, Bug, Lightbulb, MessageCircle, CheckCircle2, Clock, Archive, Trash2, Copy, Sparkles, Loader2, AlertCircle, RotateCcw,
 } from 'lucide-react';
-import { useAllFeedback, useUpdateFeedbackStatus, useDeleteFeedback } from '../services/queries';
+import { useAllFeedback, useUpdateFeedbackStatus, useDeleteFeedback, useAnswerReports, useUpdateAnswerReportStatus } from '../services/queries';
 import { Feedback, FeedbackStatus, FeedbackType } from '../types';
 import {
   STATUS_LABELS, TYPE_LABELS, feedbackToClaudePrompt, nextStatusOnAction,
@@ -167,6 +167,78 @@ const AdminFeedback: React.FC = () => {
               statusPending={updateStatus.isPending}
               deletePending={deleteFeedback.isPending}
             />
+          ))}
+        </ul>
+      )}
+
+      <AnswerReportsSection />
+    </div>
+  );
+};
+
+/**
+ * CP1 review queue (harness Phase 0): members' "report a wrong fact"
+ * submissions. Deliberately minimal — a list with accept/reject; accepted
+ * reports are golden-set eval candidates (promotion to evals/ is a manual
+ * step for now, per the plan's Reviewer Concerns).
+ */
+const AnswerReportsSection: React.FC = () => {
+  const { data: reports = [], isLoading, error } = useAnswerReports();
+  const updateReport = useUpdateAnswerReportStatus();
+  const [msg, setMsg] = useState<string | null>(null);
+  const open = reports.filter(r => r.status === 'open');
+  const decided = reports.filter(r => r.status !== 'open');
+
+  if (error) return null; // pre-migration or RLS: hide quietly, feedback above still works
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 sm:p-6">
+      <h3 className="font-display text-lg font-semibold text-gray-900">AI Answer Reports</h3>
+      <p className="text-sm text-gray-500 mt-1">
+        Members flagging wrong facts in Taxi answers. Accepted reports become accuracy-test candidates.
+      </p>
+      {msg && <p className="mt-2 text-sm font-medium text-green-700">{msg}</p>}
+      {isLoading ? (
+        <p className="mt-4 text-sm text-gray-400">Loading…</p>
+      ) : reports.length === 0 ? (
+        <p className="mt-4 text-sm text-gray-400">No reports yet — that's either great accuracy or low usage.</p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {[...open, ...decided].map(r => (
+            <li key={r.id} className={`border rounded-xl p-4 ${r.status === 'open' ? 'border-amber-200 bg-amber-50/40' : 'border-gray-200 bg-gray-50/60'}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-400 font-medium">{new Date(r.created_at).toLocaleString()} · <span className="uppercase font-bold">{r.status}</span></p>
+                  {r.ai_answers?.question && (
+                    <p className="mt-1 text-sm text-gray-700"><span className="font-semibold">Q:</span> {r.ai_answers.question.slice(0, 200)}</p>
+                  )}
+                  <p className="mt-1 text-sm text-gray-900"><span className="font-semibold">Expected:</span> {r.expected_answer}</p>
+                  {r.source_url && (
+                    // Member-controlled string: only linkify real http(s) URLs —
+                    // a javascript: URI aimed at the reviewing admin renders as text.
+                    /^https?:\/\//i.test(r.source_url) ? (
+                      <a href={r.source_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary hover:underline truncate max-w-full">{r.source_url}</a>
+                    ) : (
+                      <span className="mt-1 inline-block text-xs text-gray-500 truncate max-w-full">{r.source_url}</span>
+                    )
+                  )}
+                </div>
+                {r.status === 'open' && (
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => updateReport.mutate({ id: r.id, status: 'accepted' }, { onSuccess: () => setMsg('Accepted — remember to promote it into the golden set.'), onError: (e: any) => setMsg(e?.message || 'Update failed.') })}
+                      disabled={updateReport.isPending}
+                      className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold disabled:opacity-40"
+                    >Accept</button>
+                    <button
+                      onClick={() => updateReport.mutate({ id: r.id, status: 'rejected' }, { onError: (e: any) => setMsg(e?.message || 'Update failed.') })}
+                      disabled={updateReport.isPending}
+                      className="px-3 py-1.5 bg-white border border-gray-300 text-gray-600 rounded-lg text-xs font-bold disabled:opacity-40"
+                    >Reject</button>
+                  </div>
+                )}
+              </div>
+            </li>
           ))}
         </ul>
       )}

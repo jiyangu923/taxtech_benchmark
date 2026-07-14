@@ -5,6 +5,11 @@ export interface ChatMessage {
   followUps?: string[];
   /** KB article titles the model reported using (evidence chips). Absent on legacy messages. */
   sources?: string[];
+  /** ai_answers row id — anchors 👍/👎 + wrong-fact reports. Absent on legacy
+   *  messages and when server-side persistence was unavailable (controls hide). */
+  answerId?: string | null;
+  /** Local echo of the user's rating so the UI persists across renders/sessions. */
+  rating?: 1 | -1 | null;
 }
 
 export interface Session {

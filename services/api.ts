@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { processLock } from '@supabase/auth-js';
-import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus, KbArticle, KbArticleDraft } from '../types';
+import { Submission, User, Feedback, FeedbackStatus, FeedbackSubmission, ReleaseLetter, ReleaseLetterDraft, CommunityMember, CommunityMemberDraft, CommunityMemberStatus, KbArticle, KbArticleDraft, AnswerReport } from '../types';
 import { submissionsToCsv, downloadCsv, downloadBlob } from './csv';
 import { withTimeout, STALE_SESSION_MESSAGE, AUTH_TIMEOUT_MS } from './authTimeout';
 
@@ -336,6 +336,59 @@ export const api = {
       .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     return (data as Feedback[]) || [];
+  },
+
+  // ─── Per-answer feedback (harness Phase 0) ─────────────────────────────────
+
+  /**
+   * 👍/👎 on a specific AI answer. Goes through a SECURITY DEFINER RPC because
+   * users have no UPDATE policy on ai_answers (same pattern as archiving
+   * submissions) — the RPC can only flip the rating on the caller's own row.
+   * Best-effort: rating is telemetry, never worth breaking the chat over.
+   */
+  async rateAnswer(answerId: string, rating: 1 | -1): Promise<void> {
+    const { error } = await supabase.rpc('rate_my_answer', { answer_id: answerId, new_rating: rating });
+    if (error) console.warn('[harness] rateAnswer failed:', error.message);
+  },
+
+  /**
+   * CP1: structured "report a wrong fact". RLS restricts reports to the
+   * caller's own answers; an insert trigger marks the answer eval-linked so
+   * retention keeps the pair. Throws so the UI can show a real error.
+   */
+  async reportAnswer(answerId: string, expectedAnswer: string, sourceUrl?: string): Promise<void> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error('Sign in to report an answer.');
+    const { error } = await supabase.from('answer_reports').insert({
+      answer_id: answerId,
+      userId: authUser.id,
+      expected_answer: expectedAnswer.trim(),
+      source_url: sourceUrl?.trim() || null,
+    });
+    if (error) throw new Error(error.message);
+  },
+
+  /** Admin: open/decided wrong-fact reports, newest first (RLS admin-only beyond own). */
+  async getAnswerReports(): Promise<AnswerReport[]> {
+    const { data, error } = await supabase
+      .from('answer_reports')
+      .select('*, ai_answers(question, answer)')
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data as AnswerReport[]) || [];
+  },
+
+  /** Admin: accept/reject a report. Accepted reports are golden-set candidates. */
+  async updateAnswerReportStatus(id: string, status: 'accepted' | 'rejected'): Promise<void> {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from('answer_reports')
+      .update({ status, reviewed_by: authUser?.id ?? null, reviewed_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('id');
+    if (error) throw new Error(error.message);
+    // RLS denials surface as 0 affected rows, not errors (repo-wide gotcha).
+    if (!data || data.length === 0) throw new Error('Update was not applied (permissions?).');
   },
 
   async updateFeedbackStatus(id: string, status: FeedbackStatus): Promise<void> {

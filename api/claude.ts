@@ -152,15 +152,63 @@ async function recordUsage(admin: any, userId: string, state: WindowState, usage
   }
 }
 
-async function runNonStreaming(client: Anthropic, body: ClaudeRequestBody, res: VercelResponse, meter?: Meter) {
+// ── Answer persistence (harness L5: audit trail + eval mine) ────────────────
+
+/**
+ * The final user message is `buildUserMessage` output: submission JSON followed
+ * by a "User Question: ..." marker. Store just the human question — the
+ * submission is already the user's own data elsewhere, and raw storage would
+ * bloat every row by ~2KB. Falls back to the full content when the marker is
+ * absent (non-Taxi callers). Pure; exported for tests.
+ */
+function extractQuestion(lastUserContent: string): string {
+  const marker = 'User Question: ';
+  const idx = lastUserContent.lastIndexOf(marker);
+  const q = idx >= 0 ? lastUserContent.slice(idx + marker.length) : lastUserContent;
+  return q.trim().slice(0, 4000);
+}
+
+type Persist = (text: string, usage: UsageOut) => Promise<string | null>;
+
+// Best-effort like recordUsage: the user already has their answer — a logging
+// failure must never break the response. The [harness] tag keeps these
+// greppable in Vercel logs so silent-failure streaks are visible.
+async function persistAnswer(
+  admin: any, userId: string, body: ClaudeRequestBody, text: string, usage: UsageOut
+): Promise<string | null> {
+  try {
+    const lastUser = [...body.messages].reverse().find(m => m.role === 'user');
+    let answer: Record<string, unknown>;
+    try {
+      answer = body.outputFormat ? JSON.parse(text) : { text };
+    } catch {
+      answer = { text };
+    }
+    const { data, error } = await admin.from('ai_answers').insert({
+      userId,
+      question: extractQuestion(lastUser?.content ?? ''),
+      answer,
+      model: DEFAULT_MODEL,
+      usage,
+    }).select('id').single();
+    if (error) throw new Error(error.message);
+    return (data as { id: string }).id;
+  } catch (e: any) {
+    console.warn('[harness] ai_answers persist failed:', e?.message);
+    return null;
+  }
+}
+
+async function runNonStreaming(client: Anthropic, body: ClaudeRequestBody, res: VercelResponse, meter?: Meter, persist?: Persist) {
   const response = await client.messages.create(buildParams(body) as any);
   const textBlock = response.content.find((b: any) => b.type === 'text') as { text: string } | undefined;
   const text = textBlock?.text ?? '';
   const usage = pickUsage(response.usage);
   if (meter) await meter(usage);
+  const answerId = persist ? await persist(text, usage) : null;
   if (body.outputFormat) {
     try {
-      return res.status(200).json({ text, json: JSON.parse(text), usage });
+      return res.status(200).json({ text, json: JSON.parse(text), usage, answerId });
     } catch (e: any) {
       // Structured-output schema should guarantee valid JSON, but if the
       // model returned malformed JSON anyway, surface the raw text so the
@@ -168,10 +216,10 @@ async function runNonStreaming(client: Anthropic, body: ClaudeRequestBody, res: 
       return res.status(502).json({ error: 'Model returned invalid JSON', text, usage });
     }
   }
-  return res.status(200).json({ text, usage });
+  return res.status(200).json({ text, usage, answerId });
 }
 
-async function runStreaming(client: Anthropic, body: ClaudeRequestBody, res: VercelResponse, meter?: Meter) {
+async function runStreaming(client: Anthropic, body: ClaudeRequestBody, res: VercelResponse, meter?: Meter, persist?: Persist) {
   // Server-Sent Events. Keep-alive headers so middleboxes don't buffer/close.
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -195,7 +243,8 @@ async function runStreaming(client: Anthropic, body: ClaudeRequestBody, res: Ver
     const text = textBlock?.text ?? '';
     const usage = pickUsage(final.usage);
     if (meter) await meter(usage);
-    write({ type: 'done', text, usage });
+    const answerId = persist ? await persist(text, usage) : null;
+    write({ type: 'done', text, usage, answerId });
     res.end();
   } catch (e: any) {
     write({ type: 'error', message: e?.message || 'stream failed' });
@@ -261,10 +310,13 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
   }
 
   const client = new Anthropic({ apiKey });
+  // Persist every answer (admins included — the audit trail is universal).
+  // Best-effort: a failed insert logs [harness] and never blocks the answer.
+  const persist: Persist = (text, usage) => persistAnswer(admin, userId, body, text, usage);
   if (body.stream) {
-    return runStreaming(client, body, res, meter);
+    return runStreaming(client, body, res, meter, persist);
   }
-  return runNonStreaming(client, body, res, meter);
+  return runNonStreaming(client, body, res, meter, persist);
 }
 
 // 60s — generous for Haiku, leaves room for long structured-output traces.
@@ -282,5 +334,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 // Exported for tests — pure helpers, no env/network dependencies.
-export { buildParams, pickUsage, computeCostUsd, resolveWindow, resolveMaxTokens, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING, DAILY_LIMIT_USD, WINDOW_MS, PRICE_PER_MTOK };
+export { buildParams, pickUsage, computeCostUsd, resolveWindow, resolveMaxTokens, extractQuestion, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING, DAILY_LIMIT_USD, WINDOW_MS, PRICE_PER_MTOK };
 export type { ClaudeRequestBody, UsageOut, SystemBlock };

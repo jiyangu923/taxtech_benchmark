@@ -270,22 +270,22 @@ export async function streamTaxi(
   history: TaxiHistoryTurn[] = [],
   kbArticles: KbArticle[] = [],
   onDelta?: (chunk: string, accumulated: string) => void,
-): Promise<{ result: TaxiResponse; usage: ClaudeUsage | null }> {
+): Promise<{ result: TaxiResponse; usage: ClaudeUsage | null; answerId: string | null }> {
   try {
-    const { json, usage } = await streamClaudeStructured<TaxiResponse>({
+    const { json, usage, answerId } = await streamClaudeStructured<TaxiResponse>({
       system: buildSystem(allSubmissions, kbArticles),
       messages: buildMessages(question, userSubmission, history),
       outputFormat: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
     }, onDelta);
-    return { result: { ...json, sources: sanitizeSources(json.sources, kbArticles) }, usage };
+    return { result: { ...json, sources: sanitizeSources(json.sources, kbArticles) }, usage, answerId: answerId ?? null };
   } catch (error: any) {
     // Surface the daily-limit message as the answer so the user sees why,
     // instead of the generic "encountered an error" fallback.
     if (error?.status === 429) {
-      return { result: { analysis: error.message, chart: null, followUps: [], sources: [] }, usage: null };
+      return { result: { analysis: error.message, chart: null, followUps: [], sources: [] }, usage: null, answerId: null };
     }
     console.error('AI Request Failed', error);
-    return { result: FALLBACK, usage: null };
+    return { result: FALLBACK, usage: null, answerId: null };
   }
 }
 

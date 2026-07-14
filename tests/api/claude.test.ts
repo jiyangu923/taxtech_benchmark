@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeCostUsd, resolveWindow, buildParams, resolveMaxTokens, DAILY_LIMIT_USD, WINDOW_MS, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING } from '../../api/claude';
+import { computeCostUsd, resolveWindow, buildParams, resolveMaxTokens, extractQuestion, DAILY_LIMIT_USD, WINDOW_MS, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING } from '../../api/claude';
 
 const usage = (o: Partial<{ input: number; output: number; cacheRead: number; cacheWrite: number }>) => ({
   input_tokens: o.input ?? 0,
@@ -91,5 +91,27 @@ describe('buildParams hardening (cost-abuse holes)', () => {
     expect(resolveMaxTokens(NaN)).toBe(DEFAULT_MAX_TOKENS);
     expect(resolveMaxTokens('9999' as any)).toBe(DEFAULT_MAX_TOKENS);
     expect(resolveMaxTokens(4000.7)).toBe(4000);
+  });
+});
+
+describe('extractQuestion (ai_answers persistence)', () => {
+  it('pulls just the human question from a buildUserMessage-shaped payload', () => {
+    const content = 'Here is the user\'s own submission:\n{"revenue":"over_5b"}\n\nUser Question: How do I compare on FTEs?';
+    expect(extractQuestion(content)).toBe('How do I compare on FTEs?');
+  });
+
+  it('uses the LAST marker if the question itself contains the phrase', () => {
+    const content = 'submission json\n\nUser Question: What does "User Question: " mean?';
+    // lastIndexOf: everything after the final occurrence.
+    expect(extractQuestion(content)).toBe('" mean?');
+  });
+
+  it('falls back to the full content when no marker exists', () => {
+    expect(extractQuestion('plain prompt with no marker')).toBe('plain prompt with no marker');
+  });
+
+  it('trims and caps at 4000 chars', () => {
+    expect(extractQuestion('User Question:   padded   ')).toBe('padded');
+    expect(extractQuestion('User Question: ' + 'x'.repeat(5000)).length).toBe(4000);
   });
 });
