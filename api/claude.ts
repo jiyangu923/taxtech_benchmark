@@ -410,12 +410,14 @@ async function runToolLoop(
   const rulesApplied: RuleCitation[] = [];
   let usage: UsageOut = { ...ZERO_USAGE };
   let finalText = '';
+  let answered = false; // model reached a terminal (non-tool_use) turn
 
   for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
     const resp: any = await client.messages.create({ ...base, messages: loopMessages } as any);
     usage = addUsage(usage, resp.usage);
     if (resp.stop_reason !== 'tool_use') {
       finalText = (resp.content.find((b: any) => b.type === 'text') as { text?: string } | undefined)?.text ?? '';
+      answered = true; // a terminal turn (even empty) is the model's final say — don't retry
       break;
     }
     // Echo the assistant turn (with its tool_use blocks) back verbatim, then
@@ -443,7 +445,9 @@ async function runToolLoop(
 
   // Iteration cap hit while still calling tools: force one final answer with no
   // tools so the user always gets a response (the schema constraint, if any, stays).
-  if (!finalText) {
+  // Gated on `answered`, not `!finalText`: a terminal turn that returned empty text
+  // is the model's final say — retrying it would just burn another call.
+  if (!answered) {
     const noTools: Record<string, any> = { ...base };
     delete noTools.tools;
     const resp: any = await client.messages.create({ ...noTools, messages: loopMessages } as any);
