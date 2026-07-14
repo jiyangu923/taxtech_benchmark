@@ -167,6 +167,25 @@ export interface AnswerReport {
   ai_answers?: { question: string; answer: Record<string, unknown> } | null;
 }
 
+// ─── Law-as-code (AI harness Phase 0) ────────────────────────────────────────
+
+/** A tax-rate row from public.tax_rules — the deterministic source the
+ *  lookup_rate tool reads (rates are never computed from model memory). */
+export interface TaxRule {
+  id: string;
+  jurisdiction: string;        // 'DE', 'GB', 'CA-QC'
+  jurisdiction_name: string;
+  tax_type: string;            // 'VAT' | 'GST_HST'
+  standard_rate: number;       // percent; Canada = combined total
+  reduced_rates: number[];
+  components: { gst?: number; pst?: number; hst?: number } | null;
+  notes: string | null;
+  source_url: string | null;
+  last_verified: string | null;
+  effective_from: string;
+  effective_to: string | null;
+}
+
 export type ReleaseLetterStatus = 'draft' | 'sent';
 
 export interface ReleaseLetter {
