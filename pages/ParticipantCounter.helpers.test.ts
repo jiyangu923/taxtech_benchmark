@@ -68,9 +68,11 @@ describe('eyebrowCopy', () => {
     expect(eyebrowCopy(87, 100)).toBe('Founding cohort · 87 of 100 spots filled · closing soon');
   });
 
-  it('switches to the closed / waitlist message at the cap', () => {
-    expect(eyebrowCopy(100, 100)).toBe('Founding cohort · closed · join the waitlist');
-    expect(eyebrowCopy(150, 100)).toBe('Founding cohort · closed · join the waitlist');
+  it('at/over the cap: spots claimed but membership still open (no waitlist gate)', () => {
+    expect(eyebrowCopy(100, 100)).toBe('Founding cohort · all 100 spots claimed · still open to join');
+    expect(eyebrowCopy(150, 100)).toBe('Founding cohort · all 100 spots claimed · still open to join');
+    // Never says "closed" or "waitlist" — the cap is a marketing label, not a gate.
+    expect(eyebrowCopy(150, 100)).not.toMatch(/closed|waitlist/i);
   });
 });
 
@@ -78,18 +80,20 @@ describe('bannerCopy', () => {
   it('returns a building-phase title with the count', () => {
     const c = bannerCopy(4, 100);
     expect(c.title).toContain('4 of 100');
-    expect(c.subtitle).toContain('100 participants');
+    expect(c.subtitle).toMatch(/founding status/i);
+    expect(c.subtitle).toMatch(/instantly/i);
   });
 
   it('returns a closing-phase title with the remaining count', () => {
     const c = bannerCopy(87, 100);
-    expect(c.title).toContain('13 spots');
-    expect(c.subtitle).toMatch(/closing soon/i);
+    expect(c.title).toContain('13 founding spots');
+    expect(c.subtitle).toMatch(/13 of 100/);
   });
 
-  it('returns a full-phase waitlist message at the cap', () => {
+  it('at the cap: spots claimed, membership still open (no closed/waitlist wall)', () => {
     const c = bannerCopy(100, 100);
-    expect(c.title).toMatch(/closed/i);
-    expect(c.subtitle).toMatch(/waitlist/i);
+    expect(c.title).toMatch(/claimed/i);
+    expect(c.subtitle).toMatch(/unlocks instantly/i);
+    expect(`${c.title} ${c.subtitle}`).not.toMatch(/closed|waitlist/i);
   });
 });

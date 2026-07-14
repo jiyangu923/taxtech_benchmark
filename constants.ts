@@ -1,13 +1,13 @@
 import { Option, SectionDef } from './types';
 
 /**
- * Founding-cohort cap (pilot launch). Drives the ParticipantCounter scarcity
- * copy ("6 of 25 spots filled") on Home + Survey. This is now a HARD cap that
- * is ENFORCED server-side: once 25 distinct approved members exist, the DB
- * trigger `enforce_founding_cohort_cap` (supabase/add_cohort_cap_trigger.sql)
- * routes new submissions to `waitlist` instead of `approved`. Keep this value
- * in sync with the trigger's cap (the trigger reads settings.foundingCohortMax,
- * defaulting to this same number). Bump both when you open the next cohort.
+ * Founding-cohort marketing marker. Drives the ParticipantCounter scarcity copy
+ * ("6 of 25 spots filled") on Home + Survey. As of 2026-07-14 this is a SOFT,
+ * front-end-only label — NOT an access gate. Everyone who submits is
+ * auto-approved and gets Taxi instantly (drop_cohort_cap_gate.sql removed the
+ * enforcing trigger). Membership stays open past this number; only the
+ * "founding member" badge is capped at it. Bump for a bigger founding class, or
+ * re-run add_cohort_cap_trigger.sql to make it a hard gate again.
  */
 export const MAX_PARTICIPANTS = 25;
 
