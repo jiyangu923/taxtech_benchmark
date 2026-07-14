@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeCostUsd, resolveWindow, buildParams, resolveMaxTokens, extractQuestion, DAILY_LIMIT_USD, WINDOW_MS, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING } from '../../api/claude';
+import { computeCostUsd, resolveWindow, buildParams, resolveMaxTokens, extractQuestion, canUseAi, DAILY_LIMIT_USD, WINDOW_MS, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING } from '../../api/claude';
 
 const usage = (o: Partial<{ input: number; output: number; cacheRead: number; cacheWrite: number }>) => ({
   input_tokens: o.input ?? 0,
@@ -91,6 +91,17 @@ describe('buildParams hardening (cost-abuse holes)', () => {
     expect(resolveMaxTokens(NaN)).toBe(DEFAULT_MAX_TOKENS);
     expect(resolveMaxTokens('9999' as any)).toBe(DEFAULT_MAX_TOKENS);
     expect(resolveMaxTokens(4000.7)).toBe(4000);
+  });
+});
+
+describe('canUseAi (server-side cohort gate)', () => {
+  it('always allows admins, submission or not', () => {
+    expect(canUseAi(true, false)).toBe(true);
+    expect(canUseAi(true, true)).toBe(true);
+  });
+  it('allows a non-admin only with an approved current submission', () => {
+    expect(canUseAi(false, true)).toBe(true);
+    expect(canUseAi(false, false)).toBe(false); // no survey / pending / waitlist / rejected
   });
 });
 
