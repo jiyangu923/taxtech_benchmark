@@ -2,8 +2,8 @@ import { Submission, KbArticle } from '../types';
 import * as C from '../constants';
 import SURVEY_TOOLTIPS from '../surveyTooltips';
 import {
-  streamClaudeStructured, askClaudeStructured,
-  type SystemBlock, type ClaudeUsage, type ClaudeMessage,
+  askClaudeStructured,
+  type SystemBlock, type ClaudeUsage, type ClaudeMessage, type RuleCitation,
 } from './claude';
 
 /**
@@ -40,7 +40,8 @@ GUIDELINES:
 5. If the dataset is small, acknowledge that the benchmark is growing but still provide the best analysis you can.
 6. End with a brief actionable takeaway.
 7. Always provide 2-3 relevant follow-up questions in the followUps array. These should naturally build on the current analysis and help the user dig deeper.
-8. In the sources array, list the EXACT titles of any INDUSTRY CONTEXT items you actually drew on for this answer (empty array if none). Never list an item you did not use — the UI shows these as evidence chips.`;
+8. In the sources array, list the EXACT titles of any INDUSTRY CONTEXT items you actually drew on for this answer (empty array if none). Never list an item you did not use — the UI shows these as evidence chips.
+9. TAX RATES: for any specific VAT / GST / HST / PST rate, call the lookup_rate tool and use ONLY the rate it returns — never state a tax rate from memory. If the tool reports a jurisdiction is not covered, tell the user it is not covered yet; do not estimate or recall a rate. (Coverage today: the 27 EU member states plus the UK, Switzerland, and Norway; and all Canadian provinces/territories.)`;
 
 // JSON Schema matching the old Gemini RESPONSE_SCHEMA. Anthropic's structured
 // outputs require `additionalProperties: false` on every object — silently
@@ -254,40 +255,48 @@ export async function askTaxi(
 }
 
 /**
- * Streaming variant — same return shape, but the wire is SSE so the server
- * starts emitting tokens before the full response is rendered. Optionally
- * accepts an onDelta callback for the UI to show a typing indicator with a
- * live token count or other lightweight progress.
+ * The launch Taxi path — tool-enabled, non-streaming. Enabling the lookup_rate
+ * tool makes the server run its deterministic tool loop (which forces
+ * non-streaming), so this does NOT stream: the model may call lookup_rate, we
+ * answer it from the verified tax_rules table, and the model composes its final
+ * answer. Same TaxiResponse shape as askTaxi, plus `rulesApplied` — the verified
+ * rates behind the answer, rendered as ⚖️ evidence chips. Rates are NEVER taken
+ * from model memory (see SYSTEM_INSTRUCTION guideline 9 + the tool description).
  *
- * The final JSON is parsed once the stream completes — we don't attempt
- * partial-JSON parsing of the streaming content (the JSON-shaped output
- * isn't useful to render incrementally anyway).
+ * Non-streaming was chosen for the first slice (the prior streaming path only
+ * drove a thinking indicator — no live text render — so nothing user-visible is
+ * lost). A streaming tool loop can come later (TODOS: wire Taxi to the tool).
  */
-export async function streamTaxi(
+export async function askTaxiWithTools(
   question: string,
   userSubmission: Submission,
   allSubmissions: Submission[],
   history: TaxiHistoryTurn[] = [],
   kbArticles: KbArticle[] = [],
-  onDelta?: (chunk: string, accumulated: string) => void,
-): Promise<{ result: TaxiResponse; usage: ClaudeUsage | null; answerId: string | null }> {
+): Promise<{ result: TaxiResponse; usage: ClaudeUsage | null; answerId: string | null; rulesApplied: RuleCitation[] }> {
   try {
-    const { json, usage, answerId } = await streamClaudeStructured<TaxiResponse>({
+    const { json, usage, answerId, rulesApplied } = await askClaudeStructured<TaxiResponse>({
       system: buildSystem(allSubmissions, kbArticles),
       messages: buildMessages(question, userSubmission, history),
       outputFormat: RESPONSE_SCHEMA as unknown as Record<string, unknown>,
-    }, onDelta);
-    return { result: { ...json, sources: sanitizeSources(json.sources, kbArticles) }, usage, answerId: answerId ?? null };
+      tools: ['lookup_rate'],
+    });
+    return {
+      result: { ...json, sources: sanitizeSources(json.sources, kbArticles) },
+      usage,
+      answerId: answerId ?? null,
+      rulesApplied: rulesApplied ?? [],
+    };
   } catch (error: any) {
     // Surface the server's own message (daily-limit 429, cohort-gate 403) as
     // the answer so the user sees why, instead of the generic error fallback.
     // The UI already gates non-approved users, so 403 only reaches here on a
     // stale client or revoked approval.
     if (error?.status === 429 || error?.status === 403) {
-      return { result: { analysis: error.message, chart: null, followUps: [], sources: [] }, usage: null, answerId: null };
+      return { result: { analysis: error.message, chart: null, followUps: [], sources: [] }, usage: null, answerId: null, rulesApplied: [] };
     }
     console.error('AI Request Failed', error);
-    return { result: FALLBACK, usage: null, answerId: null };
+    return { result: FALLBACK, usage: null, answerId: null, rulesApplied: [] };
   }
 }
 

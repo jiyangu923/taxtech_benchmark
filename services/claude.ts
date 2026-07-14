@@ -27,11 +27,26 @@ export interface SystemBlock {
 
 export type ClaudeMessage = { role: 'user' | 'assistant'; content: string };
 
+/** One verified tax rule the deterministic lookup_rate tool applied to an
+ *  answer — the ⚖️ evidence chip's data. Server returns these in `rulesApplied`
+ *  when a request opts into tools; empty/absent otherwise. */
+export interface RuleCitation {
+  jurisdiction: string;
+  jurisdiction_name: string;
+  tax_type: string;
+  standard_rate: number;
+  source_url: string | null;
+  last_verified: string | null;
+}
+
 interface BaseArgs {
   system?: string | SystemBlock[];
   messages: ClaudeMessage[];
   maxTokens?: number;
   model?: string;
+  /** Deterministic-tool NAMES to enable (e.g. ['lookup_rate']). Opting in makes
+   *  the server run a non-streaming tool loop (SSE is not used). */
+  tools?: string[];
 }
 
 export interface TextResponse {
@@ -46,6 +61,9 @@ export interface StructuredResponse<T> {
   /** Server-assigned ai_answers row id — anchors per-answer feedback. Null when
    *  persistence failed server-side (best-effort) or pre-migration. */
   answerId?: string | null;
+  /** Verified tax rules the lookup_rate tool applied (⚖️ evidence chips). Only
+   *  present when the request enabled tools; empty when none were used. */
+  rulesApplied?: RuleCitation[];
 }
 
 // Attach the user's Supabase access token so the /api/claude proxy can
