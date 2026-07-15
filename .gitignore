@@ -29,3 +29,6 @@ dist-ssr
 .env.local
 .vercel
 # NOTE: no blanket .env* — .env.test is committed (CI needs it); .env/.env.local above stay ignored
+
+# Live eval runner output (workflow uploads it as an artifact; never commit)
+evals-results.json

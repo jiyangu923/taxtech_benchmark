@@ -32,6 +32,14 @@ describe('buildEvalParams (production fidelity)', () => {
     expect(p.messages[0].content).not.toMatch(/companyName|userName/);
   });
 
+  it('PUBLIC-ARTIFACT invariant: the eval system prompt embeds an EMPTY dataset', () => {
+    // The repo is public and evals-results.json is uploaded as a downloadable
+    // artifact. It stays member-data-free ONLY while the eval request carries no
+    // real submissions — this pins that invariant against a future "improve
+    // fidelity by using real data" change.
+    expect(p.system[0].text).toContain('"benchmarkData":[]');
+  });
+
   it('importing the runner module fired no live calls (isMain guard held)', () => {
     // If the guard were broken, main() would already have run at import time and
     // called process.exit / printed NOT CONFIGURED. Reaching this assertion at

@@ -86,15 +86,22 @@ async function runCase(client: Anthropic, admin: any, c: GoldenCase): Promise<Ca
       const toolResults: any[] = [];
       for (const block of resp.content) {
         if (block.type !== 'tool_use') continue;
-        const result = await executeLookupRate(admin, block.input);
-        if (result.found) {
-          rulesApplied.push({
-            jurisdiction: result.jurisdiction!, jurisdiction_name: result.jurisdiction_name!,
-            tax_type: result.tax_type!, standard_rate: result.standard_rate!,
-            source_url: result.source_url ?? null, last_verified: result.last_verified ?? null,
-          });
+        if (block.name === 'lookup_rate') {
+          const result = await executeLookupRate(admin, block.input);
+          if (result.found) {
+            rulesApplied.push({
+              jurisdiction: result.jurisdiction!, jurisdiction_name: result.jurisdiction_name!,
+              tax_type: result.tax_type!, standard_rate: result.standard_rate!,
+              source_url: result.source_url ?? null, last_verified: result.last_verified ?? null,
+            });
+          }
+          toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(result) });
+        } else {
+          // Mirrors the server's unknown-tool branch. Unreachable while
+          // lookup_rate is the only tool passed — guards silent drift the day a
+          // second tool joins the evals.
+          toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify({ error: 'unknown tool' }), is_error: true });
         }
-        toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(result) });
       }
       messages.push({ role: 'user', content: toolResults });
     }
@@ -131,6 +138,16 @@ async function main(): Promise<number> {
       !serviceKey && 'SUPABASE_SERVICE_ROLE_KEY',
     ].filter(Boolean).join(', ');
     console.error(`NOT CONFIGURED — missing env: ${missing}. Set them (GitHub secrets in CI, shell env locally) and re-run.`);
+    return 2;
+  }
+
+  // Validate the gate threshold BEFORE spending a cent: garbage EVAL_MIN_OVERALL
+  // ('0,85', '85%') would Number() to NaN, and `rate < NaN` is false — the gate
+  // would silently pass forever. Config errors must be loud, and up front.
+  const minRaw = process.env.EVAL_MIN_OVERALL || '0.8';
+  const minOverall = Number(minRaw);
+  if (!Number.isFinite(minOverall) || minOverall < 0 || minOverall > 1) {
+    console.error(`NOT CONFIGURED — EVAL_MIN_OVERALL must be a number in [0,1], got "${minRaw}"`);
     return 2;
   }
 
@@ -173,9 +190,9 @@ async function main(): Promise<number> {
   writeFileSync('evals-results.json', JSON.stringify(report, null, 2));
   console.log('\nWrote evals-results.json');
 
-  // Gate: overall pass rate. Default 0.8 until a baseline exists; tighten (and
-  // add per-bucket floors) once a few nightly runs establish variance — TODOS.
-  const minOverall = Number(process.env.EVAL_MIN_OVERALL || '0.8');
+  // Gate: overall pass rate against the (already-validated) threshold. Default
+  // 0.8 until a baseline exists; tighten (and add per-bucket floors) once a few
+  // nightly runs establish variance — TODOS.
   const rate = s.overall.total ? s.overall.pass / s.overall.total : 0;
   if (rate < minOverall) {
     console.error(`\nGATE FAILED: overall ${rate.toFixed(2)} < ${minOverall}`);

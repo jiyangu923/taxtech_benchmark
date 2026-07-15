@@ -15,6 +15,10 @@ on:
   schedule:
     - cron: '30 5 * * *'   # nightly 05:30 UTC
 
+# Least privilege: the job only reads the repo (secrets arrive via env, not token).
+permissions:
+  contents: read
+
 jobs:
   live-evals:
     runs-on: ubuntu-latest
@@ -53,7 +57,9 @@ jobs:
         run: npm run evals:live
 
       - name: Upload results artifact
-        if: steps.config.outputs.configured == 'true' && always()
+        # !cancelled(): upload even when the eval step failed (a red run's
+        # results are the interesting ones), but not on user cancellation.
+        if: steps.config.outputs.configured == 'true' && !cancelled()
         uses: actions/upload-artifact@v4
         with:
           name: evals-results
