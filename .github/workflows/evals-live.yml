@@ -1,0 +1,61 @@
+name: Live evals
+
+# Model-in-loop eval run (step 3 of the eval pillar): feeds the golden set
+# through the real model + real tax_rules, grades deterministically, and
+# publishes per-bucket pass rates. Deliberately NOT the PR gate (that's ci.yml)
+# — model cost is paid nightly/on-demand, not per PR.
+#
+# Needs three repo secrets: ANTHROPIC_API_KEY, SUPABASE_URL,
+# SUPABASE_SERVICE_ROLE_KEY. Until all three exist the job no-ops with a
+# warning instead of failing — a red nightly should mean "the AI regressed",
+# never "secrets aren't set up yet".
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '30 5 * * *'   # nightly 05:30 UTC
+
+jobs:
+  live-evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check secrets configured
+        id: config
+        env:
+          HAS_ANTHROPIC: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          HAS_SB_URL: ${{ secrets.SUPABASE_URL != '' }}
+          HAS_SB_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY != '' }}
+        run: |
+          if [ "$HAS_ANTHROPIC" = "true" ] && [ "$HAS_SB_URL" = "true" ] && [ "$HAS_SB_KEY" = "true" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Live evals skipped — missing secret(s): ANTHROPIC_API_KEY=$HAS_ANTHROPIC SUPABASE_URL=$HAS_SB_URL SUPABASE_SERVICE_ROLE_KEY=$HAS_SB_KEY"
+          fi
+
+      - name: Install
+        if: steps.config.outputs.configured == 'true'
+        run: npm ci
+
+      - name: Run live evals
+        if: steps.config.outputs.configured == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # EVAL_MIN_OVERALL: '0.8'   # default in the runner; tune after baseline
+        run: npm run evals:live
+
+      - name: Upload results artifact
+        if: steps.config.outputs.configured == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evals-results
+          path: evals-results.json
+          retention-days: 90

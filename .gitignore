@@ -27,3 +27,5 @@ dist-ssr
 # Environment variables
 .env
 .env.local
+.vercel
+# NOTE: no blanket .env* — .env.test is committed (CI needs it); .env/.env.local above stay ignored
