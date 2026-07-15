@@ -38,13 +38,20 @@ export interface GradeResult {
  * Pull every percentage figure stated in prose: "19%", "19.0 %", "14.975%".
  * Used to check whether the answer asserts a specific rate. Returns the numbers
  * (not the strings), so 19 and 19.0 compare equal.
+ *
+ * Digits-with-% only, by design: "nineteen percent", "19" (no sign), and "0.19"
+ * are NOT extracted, so a rate phrased those ways fails gradeRateLookup. That is
+ * the intended bar for the curated golden questions (a model asked "what is the
+ * VAT rate in X?" writes "19%"); revisit before pointing these graders at
+ * free-form prompts.
  */
 export function extractPercents(text: string): number[] {
   const out: number[] = [];
   // A number (1-3 integer digits, optional decimals) directly before a `%`,
-  // allowing a single optional space. Word-boundary start avoids matching the
-  // "0" inside "2026%"-style tokens (there aren't any, but be safe).
-  const re = /(?<![\d.])(\d{1,3}(?:\.\d+)?)\s*%/g;
+  // allowing a single optional space. The lookbehind rejects a preceding digit,
+  // dot, or comma so "2026%" and comma-grouped "1,000%" extract nothing (rather
+  // than a spurious trailing fragment); no real tax rate exceeds 100%.
+  const re = /(?<![\d.,])(\d{1,3}(?:\.\d+)?)\s*%/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const n = Number(m[1]);
@@ -85,6 +92,11 @@ export function gradeRateLookup(
  * not_covered: the jurisdiction is absent from tax_rules. The honest answer
  * asserts NO rate. Fails if the tool cited a rule for it (impossible today, but
  * guards the contract) or the prose states any percentage (a fabricated rate).
+ *
+ * Deliberately strict: ANY percentage fails, even a contrasting covered-
+ * jurisdiction one ("unlike Germany's 19%, the US has no VAT" fails). For the
+ * curated golden questions the honest answer has no reason to emit a % at all,
+ * and the strict bar rewards terse honesty over rate-adjacent color.
  */
 export function gradeNotCovered(
   input: GradeInput,

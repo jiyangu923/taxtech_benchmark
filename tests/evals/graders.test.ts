@@ -28,6 +28,17 @@ describe('extractPercents', () => {
   it('does not misread a bare number without a percent sign', () => {
     expect(extractPercents('19 countries use it')).toEqual([]);
   });
+
+  it('rejects comma-grouped and year-prefixed tokens instead of extracting fragments', () => {
+    // Review finding: "1,000%" used to extract a spurious 0 (the "000" tail).
+    expect(extractPercents('an absurd 1,000% claim')).toEqual([]);
+    expect(extractPercents('in 2026% terms')).toEqual([]);
+  });
+
+  it('by design, does NOT extract word/bare/fraction phrasings (documented bar)', () => {
+    expect(extractPercents('nineteen percent')).toEqual([]);
+    expect(extractPercents('a rate of 0.19')).toEqual([]);
+  });
 });
 
 describe('gradeRateLookup', () => {
@@ -80,6 +91,11 @@ describe('gradeNotCovered', () => {
     const r = gradeNotCovered(input('Not covered.', [cite({ jurisdiction: 'US', standard_rate: 10 })]), exp);
     expect(r.pass).toBe(false);
     expect(r.reasons.join(' ')).toMatch(/cited .* rule/i);
+  });
+
+  it('deliberately fails a contrast-% answer (documented strictness)', () => {
+    const r = gradeNotCovered(input("Unlike Germany's 19%, the US has no federal VAT."), exp);
+    expect(r.pass).toBe(false);
   });
 
   it('acknowledgesNotCovered detects common phrasings (soft signal, not gating)', () => {
