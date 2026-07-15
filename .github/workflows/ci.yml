@@ -1,0 +1,42 @@
+name: CI
+
+# The repo's first automated gate. Runs the frontend build + the full vitest
+# suite (640+ tests) on every PR to main and every push to main. Until now
+# nothing gated a PR — Vercel only runs `npm run build` on deploy, no tests.
+#
+# No secrets are used and this is `pull_request` (not `pull_request_target`), so
+# fork PRs run in their own context with no access to repo secrets — safe.
+#
+# The eval graders (harness L4) run as ordinary vitest tests, so they ride this
+# job automatically once they land. The model-in-loop live eval is a separate,
+# secret-gated workflow (needs ANTHROPIC_API_KEY) — see TODOS.
+#
+# To make this a REQUIRED check: GitHub → Settings → Branches → branch
+# protection on `main` → "Require status checks to pass" → select `build-and-test`.
+# (Do this after the check has run once so it's selectable.)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref (e.g. a force-push to a PR branch).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build (frontend)
+        run: npm run build
+      - name: Test (vitest)
+        run: npm test

@@ -5,11 +5,13 @@ didn't happen. Effort scale: human-team → (CC = with Claude Code). Priority P1
 
 ## From lookup_rate tool loop (PR #132, 2026-07-14)
 
-### P1 — Wire Taxi to the lookup_rate tool (make the tool reachable)
-- **What:** The non-streaming tool loop is live but opt-in via `body.tools` — no client sends it yet, so the ⚖️ evidence chip and deterministic rates aren't reachable by users. Decide the transport and wire `streamTaxi`/`askTaxi` to pass `tools:['lookup_rate']`, then render `rulesApplied` as ⚖️ chips (alongside the existing KB `sources` chips).
-- **Fork (needs product call):** (a) **streaming tool loop** — stream turn 1, on `stop_reason:tool_use` run the tool, then stream the final turn (preserves live token indicator, most work); (b) **route rate-shaped questions** to the non-streaming loop, keep streaming for the rest (heuristic/classifier risk); (c) **whole Taxi path → non-streaming** with tools always available (simplest; loses the live indicator — but today streaming is only a thinking indicator, no live text render, so perceptual loss is small). Review + plan leaned "non-streaming loop first," so (c) is the cheapest correct next step; (a) is the eventual target.
-- **Why P1:** without this the Phase-0 tool delivers no user value (inert capability).
-- **Effort:** (c) S → (CC: S); (a) M → (CC: M). **Depends on:** `add_tax_rules_table.sql` being run (else every lookup returns the honest "not covered").
+### ✅ DONE — Wire Taxi to the lookup_rate tool (PR #134)
+- Shipped the non-streaming transport (option c): `streamTaxi`→`askTaxiWithTools` sends `tools:['lookup_rate']`, ⚖️ chips render from `rulesApplied`. `add_tax_rules_table.sql` run 2026-07-14. The streaming-tool-loop upgrade (option a — preserve a live token indicator) remains a future option, tracked in the "retire the dead streaming path" P3 below.
+
+### P2 — Enable typecheck gating in CI (deferred from CI setup)
+- **What:** The new CI (`.github/workflows/ci.yml`) gates on `npm run build` + `npm test`, NOT `tsc --noEmit`. tsc has pre-existing baseline errors (`@vercel/node` types, `*.svg` module decls, `import.meta.env` needs `vite/client` types) that would red the gate. Fix the tsconfig/ambient decls, then add a `tsc --noEmit` step so type regressions are caught.
+- **Why:** vitest transpiles via esbuild and ignores type errors, so CI currently won't catch a type break. Build+test is a solid first gate but not complete.
+- **Effort:** S → (CC: S).
 
 ### P3 — lookup_rate hardening (adversarial review nits, PR #132)
 - **What:** (1) `output_config.format` is applied on tool-calling turns too (baked into `base`); fine on Haiku today, but if the schema ever blocks a tool call, omit it until the final composing turn. (2) `lookup_rate` doesn't filter by `tax_type` — harmless while each jurisdiction has one current row; add the filter when a jurisdiction gets concurrent rows of different type. (3) Soft-cap worst case is now ~6 Haiku calls/request (5 loop + 1 fallback) before metering — accepted, revisit if MAX_TOKENS_CEILING or the model tier rises. (4) The invalid-JSON 502 path omits `answerId` (cosmetic; mirrors runNonStreaming).
