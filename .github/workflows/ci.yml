@@ -21,6 +21,10 @@ on:
   push:
     branches: [main]
 
+# Least privilege: build+test only reads the repo.
+permissions:
+  contents: read
+
 # Cancel superseded runs on the same ref (e.g. a force-push to a PR branch).
 concurrency:
   group: ci-${{ github.ref }}
