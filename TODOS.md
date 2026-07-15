@@ -8,6 +8,12 @@ didn't happen. Effort scale: human-team → (CC = with Claude Code). Priority P1
 ### ✅ DONE — Wire Taxi to the lookup_rate tool (PR #134)
 - Shipped the non-streaming transport (option c): `streamTaxi`→`askTaxiWithTools` sends `tools:['lookup_rate']`, ⚖️ chips render from `rulesApplied`. `add_tax_rules_table.sql` run 2026-07-14. The streaming-tool-loop upgrade (option a — preserve a live token indicator) remains a future option, tracked in the "retire the dead streaming path" P3 below.
 
+### P1 — Live eval runner (model-in-loop) — step 3 of the eval pillar
+- **What:** `evals/graders.ts` + `evals/golden.ts` (pure grading + seed cases) landed and ride CI as unit tests. What's missing is the runner that feeds REAL model answers through the graders and reports per-bucket pass rates — the number for the /trust page. Design: a script (`evals/run.ts`, run via `tsx`) that reuses `api/claude.ts` exports (`executeLookupRate`, `LOOKUP_RATE_TOOL`, `buildParams`) to run the tool loop against a Supabase `tax_rules` read + a direct Anthropic call, grading each `GOLDEN` case with `gradeCase`.
+- **Needs from user:** `ANTHROPIC_API_KEY` (and `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`) as **GitHub Actions secrets** for a nightly/manual `workflow_dispatch` job (NOT the required PR check — keeps the model cost off every PR). Locally it runs from `.env`.
+- **Why P1:** without it the golden set is inert — no measured pass rate, no drift detection against the live model.
+- **Effort:** M → (CC: M). **Decisions to make at kickoff:** `tsx` devDep vs `node --experimental-strip-types`; nightly cadence; per-bucket gate thresholds (what pass rate fails the nightly).
+
 ### P2 — Enable typecheck gating in CI (deferred from CI setup)
 - **What:** The new CI (`.github/workflows/ci.yml`) gates on `npm run build` + `npm test`, NOT `tsc --noEmit`. tsc has pre-existing baseline errors (`@vercel/node` types, `*.svg` module decls, `import.meta.env` needs `vite/client` types) that would red the gate. Fix the tsconfig/ambient decls, then add a `tsc --noEmit` step so type regressions are caught.
 - **Why:** vitest transpiles via esbuild and ignores type errors, so CI currently won't catch a type break. Build+test is a solid first gate but not complete.
