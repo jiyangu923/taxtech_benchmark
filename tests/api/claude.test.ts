@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { computeCostUsd, resolveWindow, buildParams, resolveMaxTokens, extractQuestion, canUseAi, DAILY_LIMIT_USD, WINDOW_MS, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING,
   resolveTools, normalizeJurisdiction, resolveLookupKeys, pickCurrentRule, formatRateResult, executeLookupRate, addUsage, LOOKUP_RATE_TOOL, MAX_TOOL_ITERATIONS,
+  sanitizeIntakeMessages, buildIntakeParams, INTAKE_ENUMS, INTAKE_SCHEMA, INTAKE_SYSTEM, INTAKE_MAX_TOKENS, INTAKE_MAX_MESSAGES, INTAKE_MAX_CONTENT_CHARS,
   type TaxRuleRow } from '../../api/claude';
+import { OPTS_COMPANY_PROFILE, OPTS_RESPONDENT_ROLE, OPTS_REVENUE, OPTS_AUTOMATION, OPTS_GENAI_STAGE, OPTS_FTE_TECH } from '../../constants';
 
 const usage = (o: Partial<{ input: number; output: number; cacheRead: number; cacheWrite: number }>) => ({
   input_tokens: o.input ?? 0,
@@ -311,6 +313,126 @@ describe('executeLookupRate (injected admin)', () => {
     const r = await executeLookupRate(fakeAdmin([], [], { eqError: 'connection reset' }), { jurisdiction: 'DE' });
     expect(r.found).toBe(false);
     expect(r.message).toMatch(/unavailable/i);
+  });
+});
+
+// ── AI-led intake mode (docs/AI_INTAKE_PIVOT.md) ─────────────────────────────
+
+describe('INTAKE_ENUMS parity with constants.ts (drift guard)', () => {
+  // The serverless function can't import client constants (no-imports-outside-
+  // /api rule), so the enum values are inlined — THIS test is what keeps them
+  // honest. If it fails, someone changed an option list on one side only.
+  const values = (opts: Array<{ value: string }>) => opts.map(o => o.value);
+
+  it('every inlined enum matches its OPTS_* source exactly', () => {
+    expect([...INTAKE_ENUMS.companyProfile]).toEqual(values(OPTS_COMPANY_PROFILE));
+    expect([...INTAKE_ENUMS.respondentRole]).toEqual(values(OPTS_RESPONDENT_ROLE));
+    expect([...INTAKE_ENUMS.revenueRange]).toEqual(values(OPTS_REVENUE));
+    expect([...INTAKE_ENUMS.taxCalculationAutomationRange]).toEqual(values(OPTS_AUTOMATION));
+    expect([...INTAKE_ENUMS.genAIAdoptionStage]).toEqual(values(OPTS_GENAI_STAGE));
+    expect([...INTAKE_ENUMS.taxTechFTEsRange]).toEqual(values(OPTS_FTE_TECH));
+  });
+});
+
+describe('canUseAi with intake mode', () => {
+  it('intake bypasses the cohort gate for non-admins without a submission', () => {
+    expect(canUseAi(false, false, true)).toBe(true);
+  });
+  it('non-intake behavior is unchanged (2-arg calls keep working)', () => {
+    expect(canUseAi(false, false)).toBe(false);
+    expect(canUseAi(false, true)).toBe(true);
+    expect(canUseAi(true, false)).toBe(true);
+  });
+});
+
+describe('buildIntakeParams (server-owned lockdown)', () => {
+  const msgs = [{ role: 'user' as const, content: 'hi' }];
+  const p = buildIntakeParams(msgs);
+
+  it('model, budget, system, and schema are all server-chosen', () => {
+    expect(p.model).toBe(DEFAULT_MODEL);
+    expect(p.max_tokens).toBe(INTAKE_MAX_TOKENS);
+    expect(p.system).toBe(INTAKE_SYSTEM);
+    expect(p.output_config.format.schema).toBe(INTAKE_SCHEMA);
+  });
+
+  it('never includes tools (no tool loop in intake)', () => {
+    expect(p.tools).toBeUndefined();
+  });
+
+  it('passes only the provided turns as messages', () => {
+    expect(p.messages).toBe(msgs);
+  });
+});
+
+describe('sanitizeIntakeMessages (abuse bounds)', () => {
+  const turn = (role: string, content: unknown) => ({ role, content });
+
+  it('passes a normal conversation and strips extra keys', () => {
+    const out = sanitizeIntakeMessages([
+      { role: 'user', content: 'hello', evil: 'x' } as any,
+      { role: 'assistant', content: 'hi — what kind of company?' },
+    ]);
+    expect(out).toEqual([
+      { role: 'user', content: 'hello' },
+      { role: 'assistant', content: 'hi — what kind of company?' },
+    ]);
+  });
+
+  it('rejects non-arrays, empty conversations, and over-long ones', () => {
+    expect(sanitizeIntakeMessages(undefined)).toBeNull();
+    expect(sanitizeIntakeMessages([])).toBeNull();
+    expect(sanitizeIntakeMessages(Array.from({ length: INTAKE_MAX_MESSAGES + 1 }, () => turn('user', 'x')))).toBeNull();
+  });
+
+  it('rejects content-block smuggling and bad roles', () => {
+    expect(sanitizeIntakeMessages([turn('user', [{ type: 'image' }])])).toBeNull();
+    expect(sanitizeIntakeMessages([turn('system', 'sneaky')])).toBeNull();
+    expect(sanitizeIntakeMessages([turn('user', 42)])).toBeNull();
+  });
+
+  it('rejects blank and over-long turns', () => {
+    expect(sanitizeIntakeMessages([turn('user', '   ')])).toBeNull();
+    expect(sanitizeIntakeMessages([turn('user', 'x'.repeat(INTAKE_MAX_CONTENT_CHARS + 1))])).toBeNull();
+  });
+});
+
+describe('INTAKE_SCHEMA + INTAKE_SYSTEM contracts', () => {
+  it('every object level has additionalProperties:false (structured-outputs req)', () => {
+    const visit = (node: any) => {
+      if (!node || typeof node !== 'object') return;
+      const t = node.type;
+      if (t === 'object' || (Array.isArray(t) && t.includes('object'))) {
+        expect(node.additionalProperties).toBe(false);
+      }
+      if (node.properties) Object.values(node.properties).forEach(visit);
+      if (node.items) visit(node.items);
+    };
+    visit(INTAKE_SCHEMA);
+  });
+
+  it('requires reply/extracted/complete, and extracted covers all interview fields', () => {
+    expect((INTAKE_SCHEMA as any).required).toEqual(['reply', 'extracted', 'complete']);
+    const fields = Object.keys((INTAKE_SCHEMA as any).properties.extracted.properties);
+    expect(fields).toEqual(expect.arrayContaining([
+      'companyProfile', 'respondentRole', 'revenueRange', 'jurisdictionsCovered',
+      'taxCalculationAutomationRange', 'aiAdopted', 'genAIAdoptionStage', 'taxTechFTEsRange', 'otherFacts',
+    ]));
+  });
+
+  it('PRIVACY: no identity fields in the schema; the prompt forbids collecting them', () => {
+    const extracted = (INTAKE_SCHEMA as any).properties.extracted.properties;
+    expect(extracted.companyName).toBeUndefined();
+    expect(extracted.userName).toBeUndefined();
+    expect(INTAKE_SYSTEM).toMatch(/never ask for the user's name, email, or company name/i);
+    expect(INTAKE_SYSTEM).toMatch(/do NOT record them/);
+  });
+
+  it('the prompt states the four required fields and one-question-at-a-time', () => {
+    expect(INTAKE_SYSTEM).toContain('ONE question at a time');
+    expect(INTAKE_SYSTEM).toMatch(/company profile/i);
+    expect(INTAKE_SYSTEM).toMatch(/revenue/i);
+    expect(INTAKE_SYSTEM).toMatch(/jurisdictions/i);
   });
 });
 
