@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeCostUsd, resolveWindow, buildParams, resolveMaxTokens, extractQuestion, canUseAi, DAILY_LIMIT_USD, WINDOW_MS, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING,
   resolveTools, normalizeJurisdiction, resolveLookupKeys, pickCurrentRule, formatRateResult, executeLookupRate, addUsage, LOOKUP_RATE_TOOL, MAX_TOOL_ITERATIONS,
-  sanitizeIntakeMessages, buildIntakeParams, INTAKE_ENUMS, INTAKE_SCHEMA, INTAKE_SYSTEM, INTAKE_MAX_TOKENS, INTAKE_MAX_MESSAGES, INTAKE_MAX_CONTENT_CHARS,
+  sanitizeIntakeMessages, buildIntakeParams, persistIntakeAnswer, INTAKE_ENUMS, INTAKE_SCHEMA, INTAKE_SYSTEM, INTAKE_MAX_TOKENS, INTAKE_MAX_MESSAGES, INTAKE_MAX_CONTENT_CHARS,
   type TaxRuleRow } from '../../api/claude';
 import { OPTS_COMPANY_PROFILE, OPTS_RESPONDENT_ROLE, OPTS_REVENUE, OPTS_AUTOMATION, OPTS_GENAI_STAGE, OPTS_FTE_TECH } from '../../constants';
 
@@ -372,10 +372,12 @@ describe('sanitizeIntakeMessages (abuse bounds)', () => {
     const out = sanitizeIntakeMessages([
       { role: 'user', content: 'hello', evil: 'x' } as any,
       { role: 'assistant', content: 'hi — what kind of company?' },
+      { role: 'user', content: 'a public multinational' },
     ]);
     expect(out).toEqual([
       { role: 'user', content: 'hello' },
       { role: 'assistant', content: 'hi — what kind of company?' },
+      { role: 'user', content: 'a public multinational' },
     ]);
   });
 
@@ -391,9 +393,53 @@ describe('sanitizeIntakeMessages (abuse bounds)', () => {
     expect(sanitizeIntakeMessages([turn('user', 42)])).toBeNull();
   });
 
-  it('rejects blank and over-long turns', () => {
+  it('rejects blank and over-long turns; accepts exact boundaries', () => {
     expect(sanitizeIntakeMessages([turn('user', '   ')])).toBeNull();
     expect(sanitizeIntakeMessages([turn('user', 'x'.repeat(INTAKE_MAX_CONTENT_CHARS + 1))])).toBeNull();
+    expect(sanitizeIntakeMessages([turn('user', 'x'.repeat(INTAKE_MAX_CONTENT_CHARS))])).not.toBeNull();
+  });
+
+  it('requires the conversation to start AND end with a user turn (anti-prefill)', () => {
+    expect(sanitizeIntakeMessages([turn('assistant', 'hi, tell me about your company')])).toBeNull();
+    expect(sanitizeIntakeMessages([turn('user', 'hello'), turn('assistant', 'prefill{')])).toBeNull();
+    expect(sanitizeIntakeMessages([
+      turn('user', 'hello'), turn('assistant', 'what kind of company?'), turn('user', 'public'),
+    ])).not.toBeNull();
+  });
+});
+
+describe('persistIntakeAnswer (privacy-safe audit trail)', () => {
+  const captured: any[] = [];
+  const fakeAdmin = {
+    from: () => ({
+      insert: (row: any) => {
+        captured.push(row);
+        return { select: () => ({ single: async () => ({ data: { id: 'ans-42' }, error: null }) }) };
+      },
+    }),
+  };
+  const usage = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 };
+
+  it('PRIVACY: stores a fixed marker, never the raw user turn', async () => {
+    captured.length = 0;
+    const id = await persistIntakeAnswer(fakeAdmin, 'u1', '{"reply":"Got it — revenue?","extracted":{},"complete":false}', usage);
+    expect(id).toBe('ans-42');
+    expect(captured[0].question).toBe('[intake turn]');
+    // A volunteered name in a turn can never appear: the turn is not an input here.
+    expect(JSON.stringify(captured[0])).not.toContain('Coca-Cola');
+  });
+
+  it('stores the parsed object (not a string blob) for eval mining', async () => {
+    captured.length = 0;
+    await persistIntakeAnswer(fakeAdmin, 'u1', '{"reply":"hi","extracted":{},"complete":false}', usage);
+    expect(captured[0].answer).toEqual({ reply: 'hi', extracted: {}, complete: false });
+  });
+
+  it('falls back to {text} on malformed JSON and never throws', async () => {
+    captured.length = 0;
+    const id = await persistIntakeAnswer(fakeAdmin, 'u1', 'not json', usage);
+    expect(id).toBe('ans-42');
+    expect(captured[0].answer).toEqual({ text: 'not json' });
   });
 });
 

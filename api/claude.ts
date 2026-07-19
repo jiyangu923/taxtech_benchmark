@@ -203,23 +203,12 @@ type Persist = (text: string, usage: UsageOut) => Promise<string | null>;
 // Best-effort like recordUsage: the user already has their answer — a logging
 // failure must never break the response. The [harness] tag keeps these
 // greppable in Vercel logs so silent-failure streaks are visible.
-async function persistAnswer(
-  admin: any, userId: string, body: ClaudeRequestBody, text: string, usage: UsageOut
+async function insertAnswer(
+  admin: any, userId: string, question: string, answer: Record<string, unknown>, usage: UsageOut
 ): Promise<string | null> {
   try {
-    const lastUser = [...body.messages].reverse().find(m => m.role === 'user');
-    let answer: Record<string, unknown>;
-    try {
-      answer = body.outputFormat ? JSON.parse(text) : { text };
-    } catch {
-      answer = { text };
-    }
     const { data, error } = await admin.from('ai_answers').insert({
-      userId,
-      question: extractQuestion(lastUser?.content ?? ''),
-      answer,
-      model: DEFAULT_MODEL,
-      usage,
+      userId, question, answer, model: DEFAULT_MODEL, usage,
     }).select('id').single();
     if (error) throw new Error(error.message);
     return (data as { id: string }).id;
@@ -227,6 +216,39 @@ async function persistAnswer(
     console.warn('[harness] ai_answers persist failed:', e?.message);
     return null;
   }
+}
+
+async function persistAnswer(
+  admin: any, userId: string, body: ClaudeRequestBody, text: string, usage: UsageOut
+): Promise<string | null> {
+  const lastUser = [...body.messages].reverse().find(m => m.role === 'user');
+  let answer: Record<string, unknown>;
+  try {
+    answer = body.outputFormat ? JSON.parse(text) : { text };
+  } catch {
+    answer = { text };
+  }
+  return insertAnswer(admin, userId, extractQuestion(lastUser?.content ?? ''), answer, usage);
+}
+
+/**
+ * Intake persistence NEVER stores the raw user turn (privacy: a user may
+ * volunteer identity details mid-interview; the model is told not to extract
+ * them, and the audit trail must not record them either — the raw turn would).
+ * Stored: a fixed marker as the question + the parsed {reply, extracted,
+ * complete} as the answer (always the object form — better eval mining, and
+ * not dependent on client fields intake ignores).
+ */
+async function persistIntakeAnswer(
+  admin: any, userId: string, text: string, usage: UsageOut
+): Promise<string | null> {
+  let answer: Record<string, unknown>;
+  try {
+    answer = JSON.parse(text);
+  } catch {
+    answer = { text };
+  }
+  return insertAnswer(admin, userId, '[intake turn]', answer, usage);
 }
 
 // ── Deterministic tools (harness L2: law-as-code, never model memory) ────────
@@ -512,7 +534,7 @@ INTERVIEW RULES:
 - Map answers onto the allowed field values yourself ("we're about 200 million" → revenueRange 100m_500m; "eight countries" → jurisdictionsCovered 8). Only set a field when the user actually answered it; never guess. If an answer is ambiguous, ask a short clarifying question.
 - Users may correct earlier answers at any time — re-extract the corrected value.
 - Extra benchmark-relevant facts that don't fit a field (tools they use, team structure, pain points) go in otherFacts as short plain statements.
-- PRIVACY: never ask for the user's name, email, or company name. If they volunteer identifying details, do NOT record them anywhere (not even otherFacts).
+- PRIVACY: never ask for the user's name, email, or company name. If they volunteer identifying details, do NOT record them anywhere (not even otherFacts) and do NOT repeat them back in your replies — acknowledge without the name and move on.
 - Set complete=true only when all four REQUIRED fields have been captured across the conversation. Then close with one sentence: their benchmark profile is being created and their first peer comparison is seconds away.
 - Stay on the interview. If asked something else, answer in one sentence and steer back. Keep every reply under 80 words.`;
 
@@ -563,6 +585,11 @@ function sanitizeIntakeMessages(messages: unknown): Array<{ role: 'user' | 'assi
     if (!content.trim() || content.length > INTAKE_MAX_CONTENT_CHARS) return null;
     out.push({ role, content });
   }
+  // First and last turn must be the user's: assistant-first is not a valid
+  // conversation shape, and assistant-last would be a prefill vector (the API
+  // rejects prefill with structured outputs anyway — this turns that 400/500
+  // into a clean client 400 and removes the vector structurally).
+  if (out[0].role !== 'user' || out[out.length - 1].role !== 'user') return null;
   return out;
 }
 
@@ -592,6 +619,11 @@ async function runIntake(client: Anthropic, body: ClaudeRequestBody, res: Vercel
   const usage = pickUsage(response.usage);
   if (meter) await meter(usage);
   const answerId = persist ? await persist(text, usage) : null;
+  if ((response as any).stop_reason === 'max_tokens') {
+    // Truncated mid-JSON — distinct error so the client can retry cleanly
+    // instead of surfacing a generic parse failure.
+    return res.status(502).json({ error: 'Intake reply was truncated — please try again.', usage });
+  }
   try {
     return res.status(200).json({ text, json: JSON.parse(text), usage, answerId });
   } catch {
@@ -705,17 +737,20 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
   // current submission — pending/waitlist/rejected/no-submission are all denied.
   // EXCEPT intake mode: it exists for users with no submission yet, and is safe
   // to exempt because the server owns its prompt/schema (runIntake) and the
-  // meter below still applies in full. See canUseAi + docs/AI_INTAKE_PIVOT.md.
+  // meter below still applies in full. canUseAi is the SINGLE decision point —
+  // the intake exemption lives there, not in a parallel branch. See
+  // docs/AI_INTAKE_PIVOT.md.
   const isIntake = body.mode === 'intake';
-  if (!isAdmin && !isIntake) {
-    if (subRes.error) {
+  if (!isAdmin) {
+    if (subRes.error && !isIntake) {
       // Fail closed, but don't mislead an approved user into "go do the survey"
       // on a transient DB hiccup — that's a backend problem, not a gate denial.
+      // (Intake doesn't need the lookup, so a DB hiccup must not block it.)
       console.warn('[gate] submission lookup failed:', subRes.error.message);
       return res.status(503).json({ error: 'Could not verify your access right now — try again in a moment.' });
     }
-    const hasApproved = Array.isArray(subRes.data) && subRes.data.length > 0;
-    if (!canUseAi(isAdmin, hasApproved)) {
+    const hasApproved = !subRes.error && Array.isArray(subRes.data) && subRes.data.length > 0;
+    if (!canUseAi(isAdmin, hasApproved, isIntake)) {
       return res.status(403).json({
         error: 'Complete the benchmark survey to unlock Taxi. Once your submission is approved, the AI analyst is yours.',
       });
@@ -740,9 +775,12 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
   // Persist every answer (admins included — the audit trail is universal).
   // Best-effort: a failed insert logs [harness] and never blocks the answer.
   const persist: Persist = (text, usage) => persistAnswer(admin, userId, body, text, usage);
-  // Intake first: it ignores tools/stream entirely (server-owned request).
+  // Intake first: it ignores tools/stream entirely (server-owned request), and
+  // uses the privacy-safe persist (never stores raw user turns — a volunteered
+  // name must not reach the audit trail).
   if (isIntake) {
-    return runIntake(client, body, res, meter, persist);
+    const intakePersist: Persist = (text, usage) => persistIntakeAnswer(admin, userId, text, usage);
+    return runIntake(client, body, res, meter, intakePersist);
   }
   // Tools force the non-streaming loop (it needs the full messages array between
   // turns); a caller that opts into tools accepts JSON, not SSE. body.stream is
@@ -775,7 +813,8 @@ export { buildParams, pickUsage, computeCostUsd, resolveWindow, resolveMaxTokens
 // Deterministic-tool helpers (harness L2). executeLookupRate takes an injected
 // admin client, so it's testable with a fake; the rest are pure.
 export { resolveTools, normalizeJurisdiction, resolveLookupKeys, pickCurrentRule, formatRateResult, executeLookupRate, addUsage, LOOKUP_RATE_TOOL, MAX_TOOL_ITERATIONS };
-// AI-led intake (docs/AI_INTAKE_PIVOT.md). All pure; INTAKE_ENUMS parity with
-// constants.ts OPTS_* is asserted in tests.
-export { sanitizeIntakeMessages, buildIntakeParams, INTAKE_ENUMS, INTAKE_SCHEMA, INTAKE_SYSTEM, INTAKE_MAX_TOKENS, INTAKE_MAX_MESSAGES, INTAKE_MAX_CONTENT_CHARS };
+// AI-led intake (docs/AI_INTAKE_PIVOT.md). Pure except persistIntakeAnswer
+// (injected admin, testable with a fake); INTAKE_ENUMS parity with constants.ts
+// OPTS_* is asserted in tests.
+export { sanitizeIntakeMessages, buildIntakeParams, persistIntakeAnswer, INTAKE_ENUMS, INTAKE_SCHEMA, INTAKE_SYSTEM, INTAKE_MAX_TOKENS, INTAKE_MAX_MESSAGES, INTAKE_MAX_CONTENT_CHARS };
 export type { ClaudeRequestBody, UsageOut, SystemBlock, TaxRuleRow, RateResult };
