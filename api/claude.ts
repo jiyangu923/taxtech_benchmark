@@ -31,6 +31,15 @@ const MAX_TOKENS_CEILING = 8000;
 // user's spend cap. One lookup is the norm; 5 is generous headroom.
 const MAX_TOOL_ITERATIONS = 5;
 
+// Intake replies are one short question + a small extraction JSON — a much
+// tighter budget than analysis answers. Applied server-side; client maxTokens
+// is ignored in intake mode.
+const INTAKE_MAX_TOKENS = 1024;
+// Abuse bounds on intake conversations: turns beyond this are a runaway or a
+// scripted abuse loop, not a 5-7 question interview.
+const INTAKE_MAX_MESSAGES = 40;
+const INTAKE_MAX_CONTENT_CHARS = 2000;
+
 // ─── Per-user AI rate limiting ──────────────────────────────────────────────
 // Claude Haiku 4.5 pricing, USD per 1M tokens. Cached input is ~90% cheaper;
 // cache writes are 1.25x base input. https://platform.claude.com (pricing)
@@ -53,6 +62,10 @@ interface ClaudeRequestBody {
   stream?: boolean;
   tools?: string[];            // NAMES only (e.g. ['lookup_rate']) — server owns
                                // the specs; unknown names dropped. See resolveTools.
+  mode?: string;               // 'intake' = AI-led survey interview (docs/AI_INTAKE_PIVOT.md).
+                               // Bypasses ONLY the cohort gate; auth + meter still apply,
+                               // and the server supplies its own prompt/schema — client
+                               // system/tools/outputFormat are IGNORED in this mode.
 }
 
 interface UsageOut {
@@ -136,10 +149,13 @@ function resolveWindow(row: UsageRow | null, nowMs: number): WindowState {
 }
 
 // Cohort gate decision, server side. Mirrors services/cohort.ts hasCohortAccess:
-// admins always; everyone else needs an approved, current submission. Pure so
-// it's unit-testable without a live Supabase.
-function canUseAi(isAdmin: boolean, hasApprovedCurrentSubmission: boolean): boolean {
-  return isAdmin || hasApprovedCurrentSubmission;
+// admins always; everyone else needs an approved, current submission — EXCEPT
+// intake mode (docs/AI_INTAKE_PIVOT.md), which exists precisely for users with
+// no submission yet. Intake is safe to exempt because the server owns its
+// prompt/schema end-to-end (see buildIntakeParams) and the meter still applies.
+// Pure so it's unit-testable without a live Supabase.
+function canUseAi(isAdmin: boolean, hasApprovedCurrentSubmission: boolean, isIntake = false): boolean {
+  return isAdmin || isIntake || hasApprovedCurrentSubmission;
 }
 
 function bearerToken(req: VercelRequest): string | null {
@@ -187,23 +203,12 @@ type Persist = (text: string, usage: UsageOut) => Promise<string | null>;
 // Best-effort like recordUsage: the user already has their answer — a logging
 // failure must never break the response. The [harness] tag keeps these
 // greppable in Vercel logs so silent-failure streaks are visible.
-async function persistAnswer(
-  admin: any, userId: string, body: ClaudeRequestBody, text: string, usage: UsageOut
+async function insertAnswer(
+  admin: any, userId: string, question: string, answer: Record<string, unknown>, usage: UsageOut
 ): Promise<string | null> {
   try {
-    const lastUser = [...body.messages].reverse().find(m => m.role === 'user');
-    let answer: Record<string, unknown>;
-    try {
-      answer = body.outputFormat ? JSON.parse(text) : { text };
-    } catch {
-      answer = { text };
-    }
     const { data, error } = await admin.from('ai_answers').insert({
-      userId,
-      question: extractQuestion(lastUser?.content ?? ''),
-      answer,
-      model: DEFAULT_MODEL,
-      usage,
+      userId, question, answer, model: DEFAULT_MODEL, usage,
     }).select('id').single();
     if (error) throw new Error(error.message);
     return (data as { id: string }).id;
@@ -211,6 +216,39 @@ async function persistAnswer(
     console.warn('[harness] ai_answers persist failed:', e?.message);
     return null;
   }
+}
+
+async function persistAnswer(
+  admin: any, userId: string, body: ClaudeRequestBody, text: string, usage: UsageOut
+): Promise<string | null> {
+  const lastUser = [...body.messages].reverse().find(m => m.role === 'user');
+  let answer: Record<string, unknown>;
+  try {
+    answer = body.outputFormat ? JSON.parse(text) : { text };
+  } catch {
+    answer = { text };
+  }
+  return insertAnswer(admin, userId, extractQuestion(lastUser?.content ?? ''), answer, usage);
+}
+
+/**
+ * Intake persistence NEVER stores the raw user turn (privacy: a user may
+ * volunteer identity details mid-interview; the model is told not to extract
+ * them, and the audit trail must not record them either — the raw turn would).
+ * Stored: a fixed marker as the question + the parsed {reply, extracted,
+ * complete} as the answer (always the object form — better eval mining, and
+ * not dependent on client fields intake ignores).
+ */
+async function persistIntakeAnswer(
+  admin: any, userId: string, text: string, usage: UsageOut
+): Promise<string | null> {
+  let answer: Record<string, unknown>;
+  try {
+    answer = JSON.parse(text);
+  } catch {
+    answer = { text };
+  }
+  return insertAnswer(admin, userId, '[intake turn]', answer, usage);
 }
 
 // ── Deterministic tools (harness L2: law-as-code, never model memory) ────────
@@ -468,6 +506,131 @@ async function runToolLoop(
   return res.status(200).json({ text: finalText, usage, answerId, rulesApplied });
 }
 
+// ── AI-led intake (docs/AI_INTAKE_PIVOT.md: "the survey becomes the backend") ─
+//
+// mode:'intake' turns Taxi into the survey: it interviews a brand-new user,
+// interprets their answers, and returns enum-constrained survey fields the
+// client accumulates into a submissions record. Server-owned END TO END: the
+// prompt and extraction schema live here (client system/tools/outputFormat are
+// ignored), so bypassing the cohort gate for this mode cannot be repurposed as
+// a free general-purpose Claude proxy. Enum values are inlined (the no-imports-
+// outside-/api rule) — tests/api/claude.test.ts asserts parity with constants.ts.
+
+const INTAKE_ENUMS = {
+  companyProfile: ['public', 'private_pe', 'pre_ipo', 'multinational', 'domestic'],
+  respondentRole: ['tax_professionals', 'tax_technology'],
+  revenueRange: ['under_10m', '10m_100m', '100m_500m', '500m_5b', 'over_5b', 'over_100b'],
+  taxCalculationAutomationRange: ['99_plus', '90_99', '70_90', '40_70', 'under_40'],
+  genAIAdoptionStage: ['exploration', 'poc', 'production', 'enterprise_wide'],
+  taxTechFTEsRange: ['zero', '1_5', '6_15', '16_30', '31_100', 'over_100'],
+} as const;
+
+const INTAKE_SYSTEM = `You are **Taxi**, the AI benchmark analyst for Taxable AI. A new member just joined and you're getting to know their tax organization so you can benchmark them against peers. This replaces a survey form — you ARE the survey now.
+
+INTERVIEW RULES:
+- Ask ONE question at a time, conversationally. Acknowledge each answer briefly before the next question.
+- REQUIRED (must have all four before you're done): company profile (public / PE-backed / pre-IPO / multinational / domestic — multiple OK), their role (tax professional vs tax technology), annual revenue range, and how many tax jurisdictions they operate in.
+- NICE TO HAVE (weave in naturally, skip freely if the user seems rushed): tax-calculation automation level, whether they've adopted AI (and what stage), tax-technology team size (FTEs).
+- Map answers onto the allowed field values yourself ("we're about 200 million" → revenueRange 100m_500m; "eight countries" → jurisdictionsCovered 8). Only set a field when the user actually answered it; never guess. If an answer is ambiguous, ask a short clarifying question.
+- Users may correct earlier answers at any time — re-extract the corrected value.
+- Extra benchmark-relevant facts that don't fit a field (tools they use, team structure, pain points) go in otherFacts as short plain statements.
+- PRIVACY: never ask for the user's name, email, or company name. If they volunteer identifying details, do NOT record them anywhere (not even otherFacts) and do NOT repeat them back in your replies — acknowledge without the name and move on.
+- Set complete=true only when all four REQUIRED fields have been captured across the conversation. Then close with one sentence: their benchmark profile is being created and their first peer comparison is seconds away.
+- Stay on the interview. If asked something else, answer in one sentence and steer back. Keep every reply under 80 words.`;
+
+// Structured-output schema for every intake turn. All extraction fields are
+// nullable — null means "not answered this turn"; the client accumulates
+// non-null values across turns. additionalProperties:false everywhere (API req).
+const INTAKE_SCHEMA = {
+  type: 'object',
+  properties: {
+    reply: { type: 'string', description: 'Your next conversational message to the user (acknowledgement + next question, or the closing line).' },
+    extracted: {
+      type: 'object',
+      description: 'Survey fields answered IN THIS CONVERSATION so far. null = not yet answered. Re-state previously extracted values (with any corrections) every turn.',
+      properties: {
+        companyProfile: { type: ['array', 'null'], items: { type: 'string', enum: [...INTAKE_ENUMS.companyProfile] } },
+        respondentRole: { type: ['string', 'null'], enum: [...INTAKE_ENUMS.respondentRole, null] },
+        revenueRange: { type: ['string', 'null'], enum: [...INTAKE_ENUMS.revenueRange, null] },
+        jurisdictionsCovered: { type: ['integer', 'null'] },
+        taxCalculationAutomationRange: { type: ['string', 'null'], enum: [...INTAKE_ENUMS.taxCalculationAutomationRange, null] },
+        aiAdopted: { type: ['boolean', 'null'] },
+        genAIAdoptionStage: { type: ['string', 'null'], enum: [...INTAKE_ENUMS.genAIAdoptionStage, null] },
+        taxTechFTEsRange: { type: ['string', 'null'], enum: [...INTAKE_ENUMS.taxTechFTEsRange, null] },
+        otherFacts: { type: 'array', items: { type: 'string' }, description: 'Benchmark-relevant facts with no fixed field. Empty array if none. Never identity details.' },
+      },
+      required: ['companyProfile', 'respondentRole', 'revenueRange', 'jurisdictionsCovered', 'taxCalculationAutomationRange', 'aiAdopted', 'genAIAdoptionStage', 'taxTechFTEsRange', 'otherFacts'],
+      additionalProperties: false,
+    },
+    complete: { type: 'boolean', description: 'true only when all four required fields have been captured.' },
+  },
+  required: ['reply', 'extracted', 'complete'],
+  additionalProperties: false,
+} as const;
+
+/**
+ * Intake accepts ONLY plain conversation turns from the client. Strips any
+ * extra keys / non-string content (no content-block smuggling), enforces
+ * role alternation is left to the API, and bounds turn count + length.
+ * Returns null when the conversation is out of bounds (reject, don't truncate
+ * silently — a 40-turn "interview" is abuse, not UX).
+ */
+function sanitizeIntakeMessages(messages: unknown): Array<{ role: 'user' | 'assistant'; content: string }> | null {
+  if (!Array.isArray(messages) || messages.length === 0 || messages.length > INTAKE_MAX_MESSAGES) return null;
+  const out: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  for (const m of messages) {
+    const role = (m as any)?.role;
+    const content = (m as any)?.content;
+    if ((role !== 'user' && role !== 'assistant') || typeof content !== 'string') return null;
+    if (!content.trim() || content.length > INTAKE_MAX_CONTENT_CHARS) return null;
+    out.push({ role, content });
+  }
+  // First and last turn must be the user's: assistant-first is not a valid
+  // conversation shape, and assistant-last would be a prefill vector (the API
+  // rejects prefill with structured outputs anyway — this turns that 400/500
+  // into a clean client 400 and removes the vector structurally).
+  if (out[0].role !== 'user' || out[out.length - 1].role !== 'user') return null;
+  return out;
+}
+
+/** Server-owned request params for an intake turn. Client system/tools/
+ *  outputFormat/maxTokens are all ignored — only the sanitized turns pass. */
+function buildIntakeParams(messages: Array<{ role: 'user' | 'assistant'; content: string }>): Record<string, any> {
+  return {
+    model: DEFAULT_MODEL,
+    max_tokens: INTAKE_MAX_TOKENS,
+    system: INTAKE_SYSTEM,
+    messages,
+    output_config: { format: { type: 'json_schema', schema: INTAKE_SCHEMA } },
+  };
+}
+
+// One intake turn: sanitize → server-owned request → structured JSON back.
+// Same meter/persist contract as runNonStreaming (intake turns are audit-
+// trailed in ai_answers like every other answer).
+async function runIntake(client: Anthropic, body: ClaudeRequestBody, res: VercelResponse, meter?: Meter, persist?: Persist) {
+  const msgs = sanitizeIntakeMessages(body.messages);
+  if (!msgs) {
+    return res.status(400).json({ error: 'Invalid intake conversation (bad shape, empty turn, or over limits).' });
+  }
+  const response = await client.messages.create(buildIntakeParams(msgs) as any);
+  const textBlock = response.content.find((b: any) => b.type === 'text') as { text: string } | undefined;
+  const text = textBlock?.text ?? '';
+  const usage = pickUsage(response.usage);
+  if (meter) await meter(usage);
+  const answerId = persist ? await persist(text, usage) : null;
+  if ((response as any).stop_reason === 'max_tokens') {
+    // Truncated mid-JSON — distinct error so the client can retry cleanly
+    // instead of surfacing a generic parse failure.
+    return res.status(502).json({ error: 'Intake reply was truncated — please try again.', usage });
+  }
+  try {
+    return res.status(200).json({ text, json: JSON.parse(text), usage, answerId });
+  } catch {
+    return res.status(502).json({ error: 'Model returned invalid JSON', text, usage });
+  }
+}
+
 async function runNonStreaming(client: Anthropic, body: ClaudeRequestBody, res: VercelResponse, meter?: Meter, persist?: Persist) {
   const response = await client.messages.create(buildParams(body) as any);
   const textBlock = response.content.find((b: any) => b.type === 'text') as { text: string } | undefined;
@@ -572,15 +735,22 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
 
   // Admins bypass the gate (same as the client). Non-admins need an approved,
   // current submission — pending/waitlist/rejected/no-submission are all denied.
+  // EXCEPT intake mode: it exists for users with no submission yet, and is safe
+  // to exempt because the server owns its prompt/schema (runIntake) and the
+  // meter below still applies in full. canUseAi is the SINGLE decision point —
+  // the intake exemption lives there, not in a parallel branch. See
+  // docs/AI_INTAKE_PIVOT.md.
+  const isIntake = body.mode === 'intake';
   if (!isAdmin) {
-    if (subRes.error) {
+    if (subRes.error && !isIntake) {
       // Fail closed, but don't mislead an approved user into "go do the survey"
       // on a transient DB hiccup — that's a backend problem, not a gate denial.
+      // (Intake doesn't need the lookup, so a DB hiccup must not block it.)
       console.warn('[gate] submission lookup failed:', subRes.error.message);
       return res.status(503).json({ error: 'Could not verify your access right now — try again in a moment.' });
     }
-    const hasApproved = Array.isArray(subRes.data) && subRes.data.length > 0;
-    if (!canUseAi(isAdmin, hasApproved)) {
+    const hasApproved = !subRes.error && Array.isArray(subRes.data) && subRes.data.length > 0;
+    if (!canUseAi(isAdmin, hasApproved, isIntake)) {
       return res.status(403).json({
         error: 'Complete the benchmark survey to unlock Taxi. Once your submission is approved, the AI analyst is yours.',
       });
@@ -605,6 +775,13 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
   // Persist every answer (admins included — the audit trail is universal).
   // Best-effort: a failed insert logs [harness] and never blocks the answer.
   const persist: Persist = (text, usage) => persistAnswer(admin, userId, body, text, usage);
+  // Intake first: it ignores tools/stream entirely (server-owned request), and
+  // uses the privacy-safe persist (never stores raw user turns — a volunteered
+  // name must not reach the audit trail).
+  if (isIntake) {
+    const intakePersist: Persist = (text, usage) => persistIntakeAnswer(admin, userId, text, usage);
+    return runIntake(client, body, res, meter, intakePersist);
+  }
   // Tools force the non-streaming loop (it needs the full messages array between
   // turns); a caller that opts into tools accepts JSON, not SSE. body.stream is
   // ignored in that case.
@@ -636,4 +813,8 @@ export { buildParams, pickUsage, computeCostUsd, resolveWindow, resolveMaxTokens
 // Deterministic-tool helpers (harness L2). executeLookupRate takes an injected
 // admin client, so it's testable with a fake; the rest are pure.
 export { resolveTools, normalizeJurisdiction, resolveLookupKeys, pickCurrentRule, formatRateResult, executeLookupRate, addUsage, LOOKUP_RATE_TOOL, MAX_TOOL_ITERATIONS };
+// AI-led intake (docs/AI_INTAKE_PIVOT.md). Pure except persistIntakeAnswer
+// (injected admin, testable with a fake); INTAKE_ENUMS parity with constants.ts
+// OPTS_* is asserted in tests.
+export { sanitizeIntakeMessages, buildIntakeParams, persistIntakeAnswer, INTAKE_ENUMS, INTAKE_SCHEMA, INTAKE_SYSTEM, INTAKE_MAX_TOKENS, INTAKE_MAX_MESSAGES, INTAKE_MAX_CONTENT_CHARS };
 export type { ClaudeRequestBody, UsageOut, SystemBlock, TaxRuleRow, RateResult };
