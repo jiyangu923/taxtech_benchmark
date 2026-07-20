@@ -25,6 +25,7 @@ import { pathToFileURL } from 'node:url';
 import { writeFileSync } from 'node:fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
+import { checkServiceKeyShape } from './env';
 import { GOLDEN } from './golden';
 import { gradeCase, summarize, acknowledgesNotCovered, type Bucket, type GoldenCase, type GradeResult } from './graders';
 import { buildSystem, buildUserMessage, RESPONSE_SCHEMA } from '../services/taxi';
@@ -131,6 +132,10 @@ async function main(): Promise<number> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceKey) {
+    const keyErr = checkServiceKeyShape(serviceKey);
+    if (keyErr) { console.error(`NOT CONFIGURED — ${keyErr}`); return 2; }
+  }
   if (!apiKey || !supabaseUrl || !serviceKey) {
     const missing = [
       !apiKey && 'ANTHROPIC_API_KEY',
