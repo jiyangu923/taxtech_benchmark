@@ -60,12 +60,25 @@ export const INTAKE_GREETING =
   'First up: what kind of company are you? Public, PE-backed, pre-IPO, a multinational, ' +
   'domestic-only — whatever combination fits.';
 
-/** Display turns → wire turns (opener + greeting + the visible conversation). */
+// Client-side copies of the server sanitizer's bounds (api/claude.ts
+// INTAKE_MAX_MESSAGES / INTAKE_MAX_CONTENT_CHARS). The server REJECTS rather
+// than truncates, and a rejected conversation stored in the draft would be
+// permanently stuck — so the client trims BEFORE the wire, guaranteeing every
+// request it builds is acceptable. `acc` carries all extraction state, so old
+// turns are only conversational color; dropping them loses nothing.
+const WIRE_MAX_CONTENT_CHARS = 2000;
+const WIRE_MAX_DISPLAY_TURNS = 30; // + opener + greeting = 32 wire turns, well under the server's 40
+
+/** Display turns → wire turns (opener + greeting + recent visible conversation),
+ *  bounded so the server sanitizer can never reject a client-built request. */
 export function toWireTurns(displayTurns: IntakeTurn[]): IntakeTurn[] {
+  const recent = displayTurns.slice(-WIRE_MAX_DISPLAY_TURNS);
   return [
     { role: 'user', content: INTAKE_OPENER },
     { role: 'assistant', content: INTAKE_GREETING },
-    ...displayTurns,
+    ...recent.map(t => (t.content.length > WIRE_MAX_CONTENT_CHARS
+      ? { ...t, content: t.content.slice(0, WIRE_MAX_CONTENT_CHARS) }
+      : t)),
   ];
 }
 
@@ -79,7 +92,11 @@ export function mergeExtracted(prev: IntakeExtracted, next: Partial<IntakeExtrac
   const merged: IntakeExtracted = { ...prev };
   for (const key of ['companyProfile', 'respondentRole', 'revenueRange', 'jurisdictionsCovered', 'taxCalculationAutomationRange', 'aiAdopted', 'genAIAdoptionStage', 'taxTechFTEsRange'] as const) {
     const v = next[key];
-    if (v !== null && v !== undefined) (merged as any)[key] = v;
+    if (v === null || v === undefined) continue;
+    // An empty companyProfile array is "nothing extracted this turn", not a
+    // correction to zero — never let it wipe a captured profile.
+    if (key === 'companyProfile' && Array.isArray(v) && v.length === 0) continue;
+    (merged as any)[key] = v;
   }
   if (Array.isArray(next.otherFacts) && next.otherFacts.length) {
     merged.otherFacts = [...new Set([...prev.otherFacts, ...next.otherFacts.filter(f => typeof f === 'string' && f.trim())])];

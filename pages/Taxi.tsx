@@ -52,7 +52,7 @@ const SUGGESTED_PROMPTS = [
 
 const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const isAdmin = user?.role === 'admin';
-  const { data: allSubmissions = [] } = useSubmissions({ enabled: !!user });
+  const { data: allSubmissions = [], isLoading: submissionsLoading } = useSubmissions({ enabled: !!user });
   // Curated industry news — joins Taxi's cached system prompt so answers can
   // reference current events. Empty array (table empty / not yet migrated)
   // degrades to the pre-KB behavior.
@@ -417,10 +417,21 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     );
   }
   if (taxiGate !== 'granted') {
+    // While the submissions query is in flight we don't yet know whether this
+    // user has a record — show a quiet loading state instead of flashing the
+    // interactive interview at an approved member on a cold load.
+    if (submissionsLoading) {
+      return (
+        <div className="max-w-2xl mx-auto py-24 px-4 text-center text-gray-400 text-sm" role="status">
+          Loading your benchmark…
+        </div>
+      );
+    }
     // AI-led intake: no survey form, no lock screen — Taxi interviews the new
     // member right here and creates their benchmark record from the answers.
     return (
       <IntakeExperience
+        userId={user?.id ?? 'anon'}
         onDone={async (payload) => {
           await createSubmissionMut.mutateAsync(payload as Omit<Submission, 'id' | 'userId' | 'userName' | 'status' | 'submittedAt'>);
           setAutoAskPending(true);
@@ -852,13 +863,15 @@ const AnswerFeedback: React.FC<{
 // render as chips, and when the four required fields are in, the record is
 // created and the parent flips straight into benchmark mode.
 
-const INTAKE_DRAFT_KEY = 'taxtech_intake_draft_v1';
+// Per-user key: on a shared machine another account must never inherit (or
+// submit!) someone else's interview transcript and extracted fields.
+const intakeDraftKey = (userId: string) => `taxtech_intake_draft_v1:${userId}`;
 
 interface IntakeDraft { turns: IntakeTurn[]; acc: IntakeExtracted; }
 
-function loadIntakeDraft(): IntakeDraft {
+function loadIntakeDraft(userId: string): IntakeDraft {
   try {
-    const raw = localStorage.getItem(INTAKE_DRAFT_KEY);
+    const raw = localStorage.getItem(intakeDraftKey(userId));
     if (!raw) return { turns: [], acc: EMPTY_EXTRACTED };
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed?.turns) || typeof parsed?.acc !== 'object' || !parsed.acc) {
@@ -874,8 +887,8 @@ function loadIntakeDraft(): IntakeDraft {
   }
 }
 
-const IntakeExperience: React.FC<{ onDone: (payload: Partial<Submission>) => Promise<void> }> = ({ onDone }) => {
-  const [draft] = useState(loadIntakeDraft);
+export const IntakeExperience: React.FC<{ userId: string; onDone: (payload: Partial<Submission>) => Promise<void> }> = ({ userId, onDone }) => {
+  const [draft] = useState(() => loadIntakeDraft(userId));
   const [turns, setTurns] = useState<IntakeTurn[]>(draft.turns);
   const [acc, setAcc] = useState<IntakeExtracted>(draft.acc);
   const [input, setInput] = useState('');
@@ -887,8 +900,8 @@ const IntakeExperience: React.FC<{ onDone: (payload: Partial<Submission>) => Pro
 
   useEffect(() => {
     // Draft survives reloads mid-interview, mirroring the old form's autosave.
-    try { localStorage.setItem(INTAKE_DRAFT_KEY, JSON.stringify({ turns, acc })); } catch { /* quota — non-fatal */ }
-  }, [turns, acc]);
+    try { localStorage.setItem(intakeDraftKey(userId), JSON.stringify({ turns, acc })); } catch { /* quota — non-fatal */ }
+  }, [turns, acc, userId]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [turns, busy, creating]);
 
   const finish = async (finalAcc: IntakeExtracted) => {
@@ -896,9 +909,11 @@ const IntakeExperience: React.FC<{ onDone: (payload: Partial<Submission>) => Pro
     setError(null);
     try {
       await onDone(buildIntakeSubmission(finalAcc));
-      localStorage.removeItem(INTAKE_DRAFT_KEY);
-      // No local state flip needed: the parent's queries refetch, the gate
-      // turns 'granted', and this component unmounts.
+      localStorage.removeItem(intakeDraftKey(userId));
+      // Normally the parent's queries refetch, the gate flips, and this
+      // component unmounts. If that refetch fails, don't leave the spinner
+      // stuck forever (setState after unmount is a no-op in React 19).
+      setCreating(false);
     } catch {
       setError('Could not create your profile just now — tap "Create my benchmark profile" to retry.');
       setCreating(false);
@@ -910,14 +925,17 @@ const IntakeExperience: React.FC<{ onDone: (payload: Partial<Submission>) => Pro
   const advance = async (nextTurns: IntakeTurn[]) => {
     setBusy(true);
     setError(null);
+    // Commit the user's turn BEFORE the round trip: a failed request must
+    // never eat what they typed, and Retry needs the turn in state to rerun.
+    setTurns(nextTurns);
     try {
       const r = await runIntakeTurn(nextTurns, acc);
       setTurns([...nextTurns, { role: 'assistant', content: r.reply }]);
       setAcc(r.acc);
       if (r.complete) await finish(r.acc);
     } catch (e: any) {
-      // 429 (daily limit) / 403 / network — surface the server's message and
-      // keep the user's turn so Retry can rerun it.
+      // 429 (daily limit) / 403 / network — surface the server's message; the
+      // user's turn is already committed, so Retry can rerun it.
       setError(e?.message || 'Something went wrong — please retry.');
     } finally {
       setBusy(false);
@@ -932,7 +950,10 @@ const IntakeExperience: React.FC<{ onDone: (payload: Partial<Submission>) => Pro
     void advance([...turns, { role: 'user', content: text }]);
   };
 
-  const canRetry = !busy && !creating && error && turns.length > 0 && turns[turns.length - 1].role === 'user';
+  // Retry is available whenever the conversation ends on an unanswered user
+  // turn — after an in-session failure OR a reload of a failed-turn draft
+  // (where `error` state was lost with the page).
+  const canRetry = !busy && !creating && turns.length > 0 && turns[turns.length - 1].role === 'user';
   const chips = capturedChips(acc);
   const missing = missingRequired(acc);
   const readyToFinish = requiredComplete(acc) && !creating;
@@ -944,9 +965,11 @@ const IntakeExperience: React.FC<{ onDone: (payload: Partial<Submission>) => Pro
         <div>
           <h2 className="font-display text-lg font-semibold text-gray-900">Set up your benchmark — just chat</h2>
           <p className="text-xs text-gray-500">
-            {missing.length === 0
-              ? 'All set — creating your profile'
-              : `Anonymous · ~2 minutes · still needed: ${missing.join(', ')}`}
+            {creating
+              ? 'Creating your profile…'
+              : missing.length === 0
+                ? 'All set — create your profile below'
+                : `Anonymous · ~2 minutes · still needed: ${missing.join(', ')}`}
           </p>
         </div>
       </div>
@@ -965,7 +988,7 @@ const IntakeExperience: React.FC<{ onDone: (payload: Partial<Submission>) => Pro
         <IntakeBubble role="assistant" content={INTAKE_GREETING} />
         {turns.map((t, i) => <IntakeBubble key={i} role={t.role} content={t.content} />)}
         {(busy || creating) && (
-          <div className="flex items-center gap-2 text-gray-400 text-sm pl-1">
+          <div className="flex items-center gap-2 text-gray-400 text-sm pl-1" role="status">
             <span className="inline-flex gap-1">
               <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0ms]" />
               <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:120ms]" />
@@ -975,11 +998,17 @@ const IntakeExperience: React.FC<{ onDone: (payload: Partial<Submission>) => Pro
           </div>
         )}
         {error && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[13px] text-amber-800">
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[13px] text-amber-800" role="alert">
             {error}
             {canRetry && (
               <button onClick={() => void advance(turns)} className="ml-2 font-bold underline">Retry</button>
             )}
+          </div>
+        )}
+        {!error && canRetry && (
+          <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-[13px] text-gray-600">
+            Your last answer wasn't sent.
+            <button onClick={() => void advance(turns)} className="ml-2 font-bold underline">Retry</button>
           </div>
         )}
         <div ref={endRef} />
@@ -1007,6 +1036,7 @@ const IntakeExperience: React.FC<{ onDone: (payload: Partial<Submission>) => Pro
           rows={1}
           maxLength={2000}
           placeholder="Type your answer…"
+          aria-label="Your answer"
           disabled={creating}
           className="flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] outline-none disabled:opacity-50"
         />

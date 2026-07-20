@@ -32,6 +32,29 @@ describe('toWireTurns (server sanitizer contract)', () => {
     expect(wire[0].role).toBe('user');
     expect(wire[wire.length - 1].role).toBe('user');
   });
+
+  it('bounds the wire so the server sanitizer can never reject it (40-turn cap)', () => {
+    // 50 display turns (user/assistant alternating, ending user) → recent slice
+    // only; total wire stays comfortably under the server's 40-message limit.
+    const display = Array.from({ length: 50 }, (_, i) => ({
+      role: (i % 2 === 0 ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: `turn ${i}`,
+    }));
+    const wire = toWireTurns(display);
+    expect(wire.length).toBeLessThanOrEqual(32);
+    expect(wire[0].content).toBe(INTAKE_OPENER);
+    expect(wire[wire.length - 1]).toEqual(display[display.length - 1]); // newest turn survives
+  });
+
+  it('truncates over-long turn content instead of letting the server 400', () => {
+    // e.g. a verbose assistant reply echoed back — server caps at 2000 chars.
+    const wire = toWireTurns([
+      { role: 'assistant', content: 'y'.repeat(3000) },
+      { role: 'user', content: 'x'.repeat(2500) },
+    ]);
+    expect(wire[wire.length - 1].content.length).toBe(2000);
+    expect(wire[wire.length - 2].content.length).toBe(2000);
+  });
 });
 
 describe('mergeExtracted', () => {
@@ -57,6 +80,12 @@ describe('mergeExtracted', () => {
   it('aiAdopted false is a real answer, not a null (falsy but valid)', () => {
     const merged = mergeExtracted(acc(), { aiAdopted: false });
     expect(merged.aiAdopted).toBe(false);
+  });
+
+  it('an empty companyProfile array never wipes a captured profile', () => {
+    const prev = acc({ companyProfile: ['public', 'multinational'] });
+    const merged = mergeExtracted(prev, { companyProfile: [] });
+    expect(merged.companyProfile).toEqual(['public', 'multinational']);
   });
 });
 

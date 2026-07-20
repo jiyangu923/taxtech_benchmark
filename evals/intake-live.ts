@@ -17,7 +17,7 @@
 
 import { pathToFileURL } from 'node:url';
 import { INTAKE_ENUMS } from '../api/claude';
-import { EMPTY_EXTRACTED, INTAKE_OPENER, INTAKE_GREETING, mergeExtracted, requiredComplete, type IntakeExtracted, type IntakeTurn } from '../services/intake';
+import { EMPTY_EXTRACTED, toWireTurns, mergeExtracted, requiredComplete, type IntakeExtracted, type IntakeTurn } from '../services/intake';
 
 const SITE_URL = process.env.SITE_URL || 'https://taxbenchmark.ai';
 // The publishable (anon) key ships in the public client bundle — not a secret.
@@ -60,9 +60,16 @@ async function adminFetch(path: string, init: RequestInit, serviceKey: string, s
 }
 
 async function findUserIdByEmail(email: string, serviceKey: string, supabaseUrl: string): Promise<string | null> {
-  const { body } = await adminFetch(`/auth/v1/admin/users?page=1&per_page=200`, { method: 'GET' }, serviceKey, supabaseUrl);
-  const users: any[] = body?.users || [];
-  return users.find(u => u.email?.toLowerCase() === email.toLowerCase())?.id ?? null;
+  // Paginate: the launch cohort is already 100+ users and growing.
+  for (let page = 1; page <= 20; page++) {
+    const { body } = await adminFetch(`/auth/v1/admin/users?page=${page}&per_page=200`, { method: 'GET' }, serviceKey, supabaseUrl);
+    const users: any[] = body?.users || [];
+    if (!users.length) return null;
+    const hit = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    if (hit) return hit.id;
+    if (users.length < 200) return null;
+  }
+  return null;
 }
 
 async function confirmMode(supabaseUrl: string, serviceKey: string): Promise<number> {
@@ -112,11 +119,8 @@ async function driveMode(supabaseUrl: string, serviceKey: string): Promise<numbe
     for (const answer of answers) {
       if (complete) break;
       display.push({ role: 'user', content: answer });
-      const wire = [
-        { role: 'user', content: INTAKE_OPENER },
-        { role: 'assistant', content: INTAKE_GREETING },
-        ...display,
-      ];
+      // The exact wire shape the client sends — same function, zero drift.
+      const wire = toWireTurns(display);
       const resp = await fetch(`${SITE_URL}/api/claude`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
