@@ -112,6 +112,18 @@ export async function askClaude(args: BaseArgs): Promise<TextResponse> {
   return postClaude<TextResponse>({ ...args });
 }
 
+/**
+ * AI-led intake turn (docs/AI_INTAKE_PIVOT.md). Sends ONLY the conversation
+ * turns + mode:'intake' — the server owns the interview prompt and extraction
+ * schema end-to-end (any client system/outputFormat/tools would be ignored, so
+ * none are sent). T is the parsed {reply, extracted, complete} shape.
+ */
+export async function askIntake<T>(
+  messages: ClaudeMessage[],
+): Promise<StructuredResponse<T>> {
+  return postClaude<StructuredResponse<T>>({ mode: 'intake', messages });
+}
+
 export async function askClaudeStructured<T>(
   args: BaseArgs & { outputFormat: Record<string, unknown> }
 ): Promise<StructuredResponse<T>> {

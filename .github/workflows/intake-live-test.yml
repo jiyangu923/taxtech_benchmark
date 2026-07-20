@@ -1,0 +1,49 @@
+name: Intake live test
+
+# Live UX-brain test of the AI-led intake (docs/AI_INTAKE_PIVOT.md) against the
+# DEPLOYED site. Two modes:
+#   drive   — ephemeral confirmed user, scripted persona interview, extraction
+#             assertions, user always deleted. Password generated in-run,
+#             never printed (public repo — logs are public).
+#   confirm — email-confirm an existing throwaway (input) so a human can log in
+#             and test the real interview UI. No password involved.
+# Manual-only: costs a few cents of model usage per drive run.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'drive (scripted interview) or confirm (activate an email)'
+        type: choice
+        options: [drive, confirm]
+        default: drive
+      confirm_email:
+        description: 'Email to confirm (confirm mode only)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  intake-live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Run
+        env:
+          MODE: ${{ inputs.mode }}
+          CONFIRM_EMAIL: ${{ inputs.confirm_email }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SITE_URL: https://taxbenchmark.ai
+        run: |
+          # In-run throwaway password for the ephemeral drive user; never echoed.
+          export DRIVE_PASSWORD="$(openssl rand -base64 24)"
+          npx tsx evals/intake-live.ts

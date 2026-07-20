@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowUp, Lock, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, Menu, X } from 'lucide-react';
+import { ArrowUp, Lock, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, Menu, X, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -11,16 +10,21 @@ import {
   useCreateChatSession,
   useUpdateChatSession,
   useDeleteChatSession,
+  useCreateSubmission,
   usePublishedKbArticles,
   useMyAiUsage,
   queryKeys,
 } from '../services/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import { askTaxiWithTools } from '../services/taxi';
+import {
+  IntakeTurn, IntakeExtracted, EMPTY_EXTRACTED, INTAKE_GREETING,
+  runIntakeTurn, requiredComplete, missingRequired, capturedChips, buildIntakeSubmission,
+} from '../services/intake';
 import { gateReason } from '../services/cohort';
 import { api } from '../services/api';
 import { usageState } from '../services/usageMeter';
-import { User } from '../types';
+import { User, Submission } from '../types';
 import taxiAvatar from '../assets/taxi-avatar-cab.svg';
 import {
   ACTIVE_SESSION_KEY,
@@ -48,7 +52,7 @@ const SUGGESTED_PROMPTS = [
 
 const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const isAdmin = user?.role === 'admin';
-  const { data: allSubmissions = [] } = useSubmissions({ enabled: !!user });
+  const { data: allSubmissions = [], isLoading: submissionsLoading } = useSubmissions({ enabled: !!user });
   // Curated industry news — joins Taxi's cached system prompt so answers can
   // reference current events. Empty array (table empty / not yet migrated)
   // degrades to the pre-KB behavior.
@@ -77,6 +81,10 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   const createSession = useCreateChatSession();
   const updateSession = useUpdateChatSession();
   const deleteSessionMutation = useDeleteChatSession();
+  // AI-led intake (docs/AI_INTAKE_PIVOT.md): the interview replaces the old
+  // survey lock screen; completing it creates the submission right here.
+  const createSubmissionMut = useCreateSubmission();
+  const [autoAskPending, setAutoAskPending] = useState(false);
 
   const [pendingSession, setPendingSession] = useState<Session | null>(null);
 
@@ -252,6 +260,20 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
     }
   };
 
+  // The intake→benchmark hand-off: once the interview created the submission
+  // and the queries refetched (gate flips to granted, a session exists), fire
+  // the first benchmark question automatically — the payoff moment arrives
+  // without the user having to type anything.
+  useEffect(() => {
+    if (autoAskPending && mySubmission && activeSession && !isAiLoading) {
+      setAutoAskPending(false);
+      handleAiQuery('How does my tax organization compare to peers overall?');
+    }
+    // handleAiQuery is stable enough for this purpose; including it would
+    // re-run the effect on every render since it's redeclared each time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAskPending, mySubmission, activeSession, isAiLoading]);
+
   // 👍/👎 on a specific answer: optimistic write into the session (survives
   // reloads) + fire-and-forget server rating. Only answers with an answerId
   // (post-harness) show controls — legacy messages have nothing to anchor to.
@@ -379,25 +401,42 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   );
 
   const taxiGate = gateReason(mySubmission, isAdmin);
-  if (taxiGate !== 'granted') {
-    const waitlisted = taxiGate === 'waitlist';
+  if (taxiGate === 'waitlist') {
+    // Dead in practice since the cap was decoupled (PR #130); kept until the
+    // waitlist cleanup PR removes the status entirely.
     return (
       <div className="max-w-2xl mx-auto py-20 px-4">
         <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-3xl shadow-lg border border-gray-100">
           <Lock className="h-16 w-16 text-gray-200 mb-6" />
-          <h2 className="font-display text-2xl font-semibold text-gray-900">
-            {waitlisted ? "You're on the founding-cohort waitlist" : 'Meet Taxi — after a quick survey'}
-          </h2>
+          <h2 className="font-display text-2xl font-semibold text-gray-900">You're on the founding-cohort waitlist</h2>
           <p className="text-gray-500 mt-2 max-w-sm">
-            {waitlisted
-              ? "Thanks for submitting — the pilot cohort is full right now. Your answers are saved, and we'll email you the moment a spot opens and Taxi unlocks."
-              : 'Contribute your ~3-minute benchmark survey and Taxi unlocks instantly — your answers join the peer data it analyzes for you.'}
+            Thanks for submitting — the pilot cohort is full right now. Your answers are saved, and we'll email you the moment a spot opens and Taxi unlocks.
           </p>
-          {!waitlisted && (
-            <Link to="/survey" className="mt-8 px-8 py-3 bg-primary text-white rounded-xl font-bold">Take the 3-minute survey</Link>
-          )}
         </div>
       </div>
+    );
+  }
+  if (taxiGate !== 'granted') {
+    // While the submissions query is in flight we don't yet know whether this
+    // user has a record — show a quiet loading state instead of flashing the
+    // interactive interview at an approved member on a cold load.
+    if (submissionsLoading) {
+      return (
+        <div className="max-w-2xl mx-auto py-24 px-4 text-center text-gray-400 text-sm" role="status">
+          Loading your benchmark…
+        </div>
+      );
+    }
+    // AI-led intake: no survey form, no lock screen — Taxi interviews the new
+    // member right here and creates their benchmark record from the answers.
+    return (
+      <IntakeExperience
+        userId={user?.id ?? 'anon'}
+        onDone={async (payload) => {
+          await createSubmissionMut.mutateAsync(payload as Omit<Submission, 'id' | 'userId' | 'userName' | 'status' | 'submittedAt'>);
+          setAutoAskPending(true);
+        }}
+      />
     );
   }
 
@@ -816,5 +855,215 @@ const AnswerFeedback: React.FC<{
     </div>
   );
 };
+
+// ─── AI-led intake (docs/AI_INTAKE_PIVOT.md) ─────────────────────────────────
+//
+// Replaces the old survey lock screen: Taxi interviews the new member, the
+// server extracts survey fields turn by turn (mode:'intake'), captured fields
+// render as chips, and when the four required fields are in, the record is
+// created and the parent flips straight into benchmark mode.
+
+// Per-user key: on a shared machine another account must never inherit (or
+// submit!) someone else's interview transcript and extracted fields.
+const intakeDraftKey = (userId: string) => `taxtech_intake_draft_v1:${userId}`;
+
+interface IntakeDraft { turns: IntakeTurn[]; acc: IntakeExtracted; }
+
+function loadIntakeDraft(userId: string): IntakeDraft {
+  try {
+    const raw = localStorage.getItem(intakeDraftKey(userId));
+    if (!raw) return { turns: [], acc: EMPTY_EXTRACTED };
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.turns) || typeof parsed?.acc !== 'object' || !parsed.acc) {
+      return { turns: [], acc: EMPTY_EXTRACTED };
+    }
+    return {
+      turns: parsed.turns.filter((t: any) =>
+        (t?.role === 'user' || t?.role === 'assistant') && typeof t?.content === 'string'),
+      acc: { ...EMPTY_EXTRACTED, ...parsed.acc },
+    };
+  } catch {
+    return { turns: [], acc: EMPTY_EXTRACTED };
+  }
+}
+
+export const IntakeExperience: React.FC<{ userId: string; onDone: (payload: Partial<Submission>) => Promise<void> }> = ({ userId, onDone }) => {
+  const [draft] = useState(() => loadIntakeDraft(userId));
+  const [turns, setTurns] = useState<IntakeTurn[]>(draft.turns);
+  const [acc, setAcc] = useState<IntakeExtracted>(draft.acc);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    // Draft survives reloads mid-interview, mirroring the old form's autosave.
+    try { localStorage.setItem(intakeDraftKey(userId), JSON.stringify({ turns, acc })); } catch { /* quota — non-fatal */ }
+  }, [turns, acc, userId]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [turns, busy, creating]);
+
+  const finish = async (finalAcc: IntakeExtracted) => {
+    setCreating(true);
+    setError(null);
+    try {
+      await onDone(buildIntakeSubmission(finalAcc));
+      localStorage.removeItem(intakeDraftKey(userId));
+      // Normally the parent's queries refetch, the gate flips, and this
+      // component unmounts. If that refetch fails, don't leave the spinner
+      // stuck forever (setState after unmount is a no-op in React 19).
+      setCreating(false);
+    } catch {
+      setError('Could not create your profile just now — tap "Create my benchmark profile" to retry.');
+      setCreating(false);
+    }
+  };
+
+  // Runs the model on the current turns (last turn must be the user's — true
+  // both for a fresh send and for a retry after a failed round trip).
+  const advance = async (nextTurns: IntakeTurn[]) => {
+    setBusy(true);
+    setError(null);
+    // Commit the user's turn BEFORE the round trip: a failed request must
+    // never eat what they typed, and Retry needs the turn in state to rerun.
+    setTurns(nextTurns);
+    try {
+      const r = await runIntakeTurn(nextTurns, acc);
+      setTurns([...nextTurns, { role: 'assistant', content: r.reply }]);
+      setAcc(r.acc);
+      if (r.complete) await finish(r.acc);
+    } catch (e: any) {
+      // 429 (daily limit) / 403 / network — surface the server's message; the
+      // user's turn is already committed, so Retry can rerun it.
+      setError(e?.message || 'Something went wrong — please retry.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const send = () => {
+    const text = input.trim();
+    if (!text || busy || creating) return;
+    setInput('');
+    if (inputRef.current) inputRef.current.style.height = 'auto';
+    void advance([...turns, { role: 'user', content: text }]);
+  };
+
+  // Retry is available whenever the conversation ends on an unanswered user
+  // turn — after an in-session failure OR a reload of a failed-turn draft
+  // (where `error` state was lost with the page).
+  const canRetry = !busy && !creating && turns.length > 0 && turns[turns.length - 1].role === 'user';
+  const chips = capturedChips(acc);
+  const missing = missingRequired(acc);
+  const readyToFinish = requiredComplete(acc) && !creating;
+
+  return (
+    <div className="max-w-2xl mx-auto py-10 px-4 flex flex-col h-[calc(100vh-4rem)]">
+      <div className="flex items-center gap-3 mb-4">
+        <img src={taxiAvatar} alt="" className="w-9 h-9 rounded-lg" />
+        <div>
+          <h2 className="font-display text-lg font-semibold text-gray-900">Set up your benchmark — just chat</h2>
+          <p className="text-xs text-gray-500">
+            {creating
+              ? 'Creating your profile…'
+              : missing.length === 0
+                ? 'All set — create your profile below'
+                : `Anonymous · ~2 minutes · still needed: ${missing.join(', ')}`}
+          </p>
+        </div>
+      </div>
+
+      {chips.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3" data-testid="intake-chips">
+          {chips.map(c => (
+            <span key={c.field} className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-semibold text-emerald-700">
+              <Check className="w-3 h-3" /> {c.text}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+        <IntakeBubble role="assistant" content={INTAKE_GREETING} />
+        {turns.map((t, i) => <IntakeBubble key={i} role={t.role} content={t.content} />)}
+        {(busy || creating) && (
+          <div className="flex items-center gap-2 text-gray-400 text-sm pl-1" role="status">
+            <span className="inline-flex gap-1">
+              <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:0ms]" />
+              <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:120ms]" />
+              <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce [animation-delay:240ms]" />
+            </span>
+            {creating ? 'Creating your benchmark profile…' : 'Taxi is thinking…'}
+          </div>
+        )}
+        {error && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[13px] text-amber-800" role="alert">
+            {error}
+            {canRetry && (
+              <button onClick={() => void advance(turns)} className="ml-2 font-bold underline">Retry</button>
+            )}
+          </div>
+        )}
+        {!error && canRetry && (
+          <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-[13px] text-gray-600">
+            Your last answer wasn't sent.
+            <button onClick={() => void advance(turns)} className="ml-2 font-bold underline">Retry</button>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {readyToFinish && (
+        <button
+          onClick={() => void finish(acc)}
+          className="mb-2 w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm"
+        >
+          Create my benchmark profile
+        </button>
+      )}
+
+      <div className="flex items-end gap-2 bg-white border border-gray-200 rounded-2xl p-2 shadow-sm">
+        <textarea
+          ref={inputRef}
+          value={input}
+          onChange={e => {
+            setInput(e.target.value);
+            const el = inputRef.current;
+            if (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+          }}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+          rows={1}
+          maxLength={2000}
+          placeholder="Type your answer…"
+          aria-label="Your answer"
+          disabled={creating}
+          className="flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] outline-none disabled:opacity-50"
+        />
+        <button
+          onClick={send}
+          disabled={!input.trim() || busy || creating}
+          aria-label="Send"
+          className="p-2.5 bg-primary text-white rounded-xl disabled:opacity-30"
+        >
+          <ArrowUp className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const IntakeBubble: React.FC<{ role: 'user' | 'assistant'; content: string }> = ({ role, content }) => (
+  role === 'user' ? (
+    <div className="flex justify-end">
+      <div className="bg-gray-100 text-gray-900 px-4 py-2.5 rounded-2xl text-[15px] leading-6 max-w-[85%] whitespace-pre-wrap">{content}</div>
+    </div>
+  ) : (
+    <div className="flex items-start gap-2.5">
+      <img src={taxiAvatar} alt="" className="w-6 h-6 rounded-md mt-1" />
+      <div className="text-[15px] text-gray-800 leading-6 max-w-[85%] whitespace-pre-wrap">{content}</div>
+    </div>
+  )
+);
 
 export default Taxi;
