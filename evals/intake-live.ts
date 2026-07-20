@@ -17,6 +17,7 @@
 
 import { pathToFileURL } from 'node:url';
 import { INTAKE_ENUMS } from '../api/claude';
+import { checkServiceKeyShape } from './env';
 import { EMPTY_EXTRACTED, toWireTurns, mergeExtracted, requiredComplete, type IntakeExtracted, type IntakeTurn } from '../services/intake';
 
 const SITE_URL = process.env.SITE_URL || 'https://taxbenchmark.ai';
@@ -184,6 +185,8 @@ async function main(): Promise<number> {
     console.error('NOT CONFIGURED — need SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY');
     return 2;
   }
+  const keyErr = checkServiceKeyShape(serviceKey);
+  if (keyErr) { console.error(`NOT CONFIGURED — ${keyErr}`); return 2; }
   return (process.env.MODE === 'confirm' ? confirmMode : driveMode)(supabaseUrl, serviceKey);
 }
 
