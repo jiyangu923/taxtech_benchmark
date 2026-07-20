@@ -444,17 +444,42 @@ describe('persistIntakeAnswer (privacy-safe audit trail)', () => {
 });
 
 describe('INTAKE_SCHEMA + INTAKE_SYSTEM contracts', () => {
+  // Walks properties, items, AND anyOf branches.
+  const walk = (node: any, fn: (n: any) => void) => {
+    if (!node || typeof node !== 'object') return;
+    fn(node);
+    if (node.properties) Object.values(node.properties).forEach((c: any) => walk(c, fn));
+    if (node.items) walk(node.items, fn);
+    if (Array.isArray(node.anyOf)) node.anyOf.forEach((c: any) => walk(c, fn));
+  };
+
   it('every object level has additionalProperties:false (structured-outputs req)', () => {
-    const visit = (node: any) => {
-      if (!node || typeof node !== 'object') return;
+    walk(INTAKE_SCHEMA, node => {
       const t = node.type;
       if (t === 'object' || (Array.isArray(t) && t.includes('object'))) {
         expect(node.additionalProperties).toBe(false);
       }
-      if (node.properties) Object.values(node.properties).forEach(visit);
-      if (node.items) visit(node.items);
-    };
-    visit(INTAKE_SCHEMA);
+    });
+  });
+
+  it('LIVE-400 regression: never enum combined with a union type (use anyOf)', () => {
+    // The API rejects {type:['string','null'], enum:[...]} — caught live by the
+    // intake drive test ("Enum value 'tax_professionals' does not match
+    // declared type"). Nullable enums must be anyOf[{type,enum},{type:null}].
+    walk(INTAKE_SCHEMA, node => {
+      if (node.enum) expect(Array.isArray(node.type)).toBe(false);
+    });
+  });
+
+  it('every nullable enum field still constrains its values (anyOf branch carries the enum)', () => {
+    const extracted = (INTAKE_SCHEMA as any).properties.extracted.properties;
+    for (const field of ['respondentRole', 'revenueRange', 'taxCalculationAutomationRange', 'genAIAdoptionStage', 'taxTechFTEsRange']) {
+      const branches = extracted[field].anyOf;
+      expect(branches.some((b: any) => Array.isArray(b.enum) && b.enum.length > 0)).toBe(true);
+      expect(branches.some((b: any) => b.type === 'null')).toBe(true);
+    }
+    const cp = extracted.companyProfile.anyOf;
+    expect(cp.some((b: any) => b.items?.enum?.length > 0)).toBe(true);
   });
 
   it('requires reply/extracted/complete, and extracted covers all interview fields', () => {

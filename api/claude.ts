@@ -549,14 +549,19 @@ const INTAKE_SCHEMA = {
       type: 'object',
       description: 'Survey fields answered IN THIS CONVERSATION so far. null = not yet answered. Re-state previously extracted values (with any corrections) every turn.',
       properties: {
-        companyProfile: { type: ['array', 'null'], items: { type: 'string', enum: [...INTAKE_ENUMS.companyProfile] } },
-        respondentRole: { type: ['string', 'null'], enum: [...INTAKE_ENUMS.respondentRole, null] },
-        revenueRange: { type: ['string', 'null'], enum: [...INTAKE_ENUMS.revenueRange, null] },
+        // Nullable enums use anyOf — the live API rejects `enum` combined with
+        // a union type (400: "Enum value 'x' does not match declared type
+        // ['string','null']"), caught by the intake live test. Plain unions
+        // WITHOUT enum (integer/boolean below) are fine (production-proven by
+        // taxi.ts chart: ['object','null']).
+        companyProfile: { anyOf: [{ type: 'array', items: { type: 'string', enum: [...INTAKE_ENUMS.companyProfile] } }, { type: 'null' }] },
+        respondentRole: { anyOf: [{ type: 'string', enum: [...INTAKE_ENUMS.respondentRole] }, { type: 'null' }] },
+        revenueRange: { anyOf: [{ type: 'string', enum: [...INTAKE_ENUMS.revenueRange] }, { type: 'null' }] },
         jurisdictionsCovered: { type: ['integer', 'null'] },
-        taxCalculationAutomationRange: { type: ['string', 'null'], enum: [...INTAKE_ENUMS.taxCalculationAutomationRange, null] },
+        taxCalculationAutomationRange: { anyOf: [{ type: 'string', enum: [...INTAKE_ENUMS.taxCalculationAutomationRange] }, { type: 'null' }] },
         aiAdopted: { type: ['boolean', 'null'] },
-        genAIAdoptionStage: { type: ['string', 'null'], enum: [...INTAKE_ENUMS.genAIAdoptionStage, null] },
-        taxTechFTEsRange: { type: ['string', 'null'], enum: [...INTAKE_ENUMS.taxTechFTEsRange, null] },
+        genAIAdoptionStage: { anyOf: [{ type: 'string', enum: [...INTAKE_ENUMS.genAIAdoptionStage] }, { type: 'null' }] },
+        taxTechFTEsRange: { anyOf: [{ type: 'string', enum: [...INTAKE_ENUMS.taxTechFTEsRange] }, { type: 'null' }] },
         otherFacts: { type: 'array', items: { type: 'string' }, description: 'Benchmark-relevant facts with no fixed field. Empty array if none. Never identity details.' },
       },
       required: ['companyProfile', 'respondentRole', 'revenueRange', 'jurisdictionsCovered', 'taxCalculationAutomationRange', 'aiAdopted', 'genAIAdoptionStage', 'taxTechFTEsRange', 'otherFacts'],
