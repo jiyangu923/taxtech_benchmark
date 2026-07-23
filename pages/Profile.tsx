@@ -184,7 +184,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
               <div className="min-w-0">
                 <p className="font-semibold text-gray-900">Email reminders</p>
                 <p className="text-sm text-gray-500 font-medium mt-1 leading-relaxed">
-                  We'll occasionally email you to finish your survey, update your data when the survey changes, or refresh your numbers each quarter so the benchmark stays current. Turn this off to opt out of all reminder emails.
+                  We'll occasionally email you to finish setting up your benchmark with Taxi, or to refresh your numbers each quarter so the peer comparison stays current. Turn this off to opt out of all reminder emails.
                 </p>
               </div>
               <button

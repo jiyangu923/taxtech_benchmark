@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  EMPTY_EXTRACTED, INTAKE_OPENER, INTAKE_GREETING,
+  EMPTY_EXTRACTED, INTAKE_OPENER, INTAKE_GREETING, INTAKE_REFRESH_GREETING,
   toWireTurns, mergeExtracted, requiredComplete, missingRequired,
-  labelFor, capturedChips, buildIntakeSubmission, runIntakeTurn,
+  labelFor, capturedChips, buildIntakeSubmission, submissionToSeed, runIntakeTurn,
   type IntakeExtracted,
 } from './intake';
+import type { Submission } from '../types';
 
 const acc = (o: Partial<IntakeExtracted> = {}): IntakeExtracted => ({ ...EMPTY_EXTRACTED, ...o });
 
@@ -149,6 +150,86 @@ describe('buildIntakeSubmission', () => {
     expect('companyName' in p).toBe(false);
     expect('userName' in p).toBe(false);
     expect('userId' in p).toBe(false);
+  });
+});
+
+// ─── Refresh flow: seed + carry-over (the reminder emails' promise) ──────────
+
+const PREV = {
+  id: 'sub-1', userId: 'u-1', userName: 'Jane Real', companyName: 'SecretCo',
+  status: 'approved', submittedAt: '2026-04-01T00:00:00Z', is_current: true, survey_version: 1,
+  companyProfile: ['public'], respondentRole: 'tax_technology', revenueRange: '500m_5b',
+  jurisdictionsCovered: 12, aiAdopted: true, genAIAdoptionStage: 'production',
+  // Rich form-era optional fields that the interview never asks about:
+  annualTaxTechBudgetRange: '1m_5m', vatSalesTaxAutomationRange: '90_99',
+  eInvoicingAutomationRange: '70_90', taxTechSkillMixBackendPercent: 60,
+  additionalNotes: 'Long-time member notes.',
+} as unknown as Submission;
+
+describe('submissionToSeed (refresh: chips show what is on file)', () => {
+  it('maps the interview fields from an existing record', () => {
+    const seed = submissionToSeed(PREV);
+    expect(seed.companyProfile).toEqual(['public']);
+    expect(seed.respondentRole).toBe('tax_technology');
+    expect(seed.revenueRange).toBe('500m_5b');
+    expect(seed.jurisdictionsCovered).toBe(12);
+    expect(seed.aiAdopted).toBe(true);
+    expect(seed.genAIAdoptionStage).toBe('production');
+    expect(requiredComplete(seed)).toBe(true); // a member's seed is instantly saveable
+  });
+
+  it('treats empty-string/absent fields as not-captured', () => {
+    const seed = submissionToSeed({ ...PREV, revenueRange: '', taxTechFTEsRange: undefined } as any);
+    expect(seed.revenueRange).toBeNull();
+    expect(seed.taxTechFTEsRange).toBeNull();
+  });
+});
+
+describe('buildIntakeSubmission with prev (carry-over)', () => {
+  it('EMAIL-PROMISE: unmentioned optional fields carry over, never wiped', () => {
+    // User only mentioned a new automation level; everything else on file survives.
+    const p = buildIntakeSubmission({ ...submissionToSeed(PREV), taxCalculationAutomationRange: '99_plus' }, PREV);
+    expect(p.taxCalculationAutomationRange).toBe('99_plus');           // the update
+    expect(p.annualTaxTechBudgetRange).toBe('1m_5m');                  // carried
+    expect(p.vatSalesTaxAutomationRange).toBe('90_99');                // carried
+    expect(p.eInvoicingAutomationRange).toBe('70_90');                 // carried
+    expect(p.taxTechSkillMixBackendPercent).toBe(60);                  // carried
+    expect(p.revenueRange).toBe('500m_5b');                            // carried via seed
+  });
+
+  it('captured values override carried ones (corrections win)', () => {
+    const p = buildIntakeSubmission({ ...submissionToSeed(PREV), revenueRange: 'over_5b' }, PREV);
+    expect(p.revenueRange).toBe('over_5b');
+  });
+
+  it('server-managed + identity fields never ride the carry-over', () => {
+    const p = buildIntakeSubmission(submissionToSeed(PREV), PREV) as Record<string, unknown>;
+    for (const f of ['id', 'userId', 'userName', 'companyName', 'status', 'submittedAt', 'is_current', 'survey_version']) {
+      expect(f in p).toBe(false);
+    }
+  });
+
+  it('appends new otherFacts after existing notes instead of clobbering', () => {
+    const p = buildIntakeSubmission({ ...submissionToSeed(PREV), otherFacts: ['Now on Vertex'] }, PREV);
+    expect(p.additionalNotes).toBe('Long-time member notes.\n[AI intake] Now on Vertex');
+  });
+
+  it('without prev, behavior is unchanged (fresh intake path)', () => {
+    const p = buildIntakeSubmission(FULL_REQUIRED);
+    expect(p.annualTaxTechBudgetRange).toBe('');   // form-parity default
+    expect(p.revenueRange).toBe('100m_500m');
+  });
+});
+
+describe('toWireTurns refresh greeting', () => {
+  it('rides the refresh greeting as the assistant turn when provided', () => {
+    const wire = toWireTurns([{ role: 'user', content: 'automation is 90-99 now' }], INTAKE_REFRESH_GREETING);
+    expect(wire[1]).toEqual({ role: 'assistant', content: INTAKE_REFRESH_GREETING });
+    expect(wire[0].content).toBe(INTAKE_OPENER);
+  });
+
+  it('defaults to the fresh-intake greeting', () => {
+    expect(toWireTurns([{ role: 'user', content: 'x' }])[1].content).toBe(INTAKE_GREETING);
   });
 });
 

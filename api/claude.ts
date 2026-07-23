@@ -757,7 +757,7 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
     const hasApproved = !subRes.error && Array.isArray(subRes.data) && subRes.data.length > 0;
     if (!canUseAi(isAdmin, hasApproved, isIntake)) {
       return res.status(403).json({
-        error: 'Complete the benchmark survey to unlock Taxi. Once your submission is approved, the AI analyst is yours.',
+        error: 'Set up your benchmark profile first — chat with Taxi for two minutes and the AI analyst unlocks instantly.',
       });
     }
   }

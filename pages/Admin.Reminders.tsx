@@ -157,7 +157,7 @@ const AdminReminders: React.FC = () => {
 
       <CandidateSection
         title="Outdated submissions"
-        description={`Users on a survey version older than v${currentVersion}. Reminder copy: 'We added new questions — please refresh your benchmark.'`}
+        description={`Users on a benchmark schema version older than v${currentVersion}. Reminder copy: 'The benchmark grew — spend a couple of minutes with Taxi filling in what's new.'`}
         icon={<FileWarning className="h-5 w-5 text-orange-500" />}
         candidates={outdated}
         sectionKey="outdated"
