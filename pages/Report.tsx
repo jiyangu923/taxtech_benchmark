@@ -108,21 +108,14 @@ const Report: React.FC<ReportProps> = ({ user }) => {
 
   const reportGate = gateReason(mySubmission, isAdmin);
   if (reportGate !== 'granted') {
-    const waitlisted = reportGate === 'waitlist';
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-12 bg-white rounded-3xl shadow-lg border border-gray-100">
         <Lock className="h-16 w-16 text-gray-200 mb-6" />
-        <h2 className="font-display text-2xl font-semibold text-gray-900">
-          {waitlisted ? "You're on the founding-cohort waitlist" : 'Analysis Restricted'}
-        </h2>
+        <h2 className="font-display text-2xl font-semibold text-gray-900">Analysis Restricted</h2>
         <p className="text-gray-500 mt-2 max-w-sm">
-          {waitlisted
-            ? "Thanks for submitting — the pilot cohort is full. Your answers are saved, and we'll email you the moment a spot opens and the benchmarks unlock."
-            : 'Submit your benchmark survey to unlock industry analytics — access is instant.'}
+          Chat with Taxi for two minutes to set up your benchmark profile — analytics unlock instantly.
         </p>
-        {!waitlisted && (
-          <Link to="/survey" className="mt-8 px-8 py-3 bg-primary text-white rounded-xl font-bold">Start Survey</Link>
-        )}
+        <Link to="/taxi" className="mt-8 px-8 py-3 bg-primary text-white rounded-xl font-bold">Chat with Taxi</Link>
       </div>
     );
   }

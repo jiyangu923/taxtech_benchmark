@@ -64,12 +64,12 @@ const Home: React.FC<HomeProps> = ({ user, onOpenLogin }) => {
                 <h3 className="font-display text-2xl font-medium text-gray-900 group-hover:text-primary transition-colors">{card.title}</h3>
                 <p className="mt-3 text-base text-gray-600 leading-relaxed">{card.desc}</p>
                 <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary group-hover:gap-2.5 transition-all">
-                  {user ? 'Start Survey' : 'Sign in to participate'} <ArrowRight className="h-4 w-4" />
+                  {user ? 'Chat with Taxi' : 'Sign in to participate'} <ArrowRight className="h-4 w-4" />
                 </span>
               </>
             );
             return user ? (
-              <Link key={card.title} to="/survey" className={cardClasses}>{cardBody}</Link>
+              <Link key={card.title} to="/taxi" className={cardClasses}>{cardBody}</Link>
             ) : (
               <button key={card.title} type="button" onClick={onOpenLogin} className={cardClasses}>{cardBody}</button>
             );

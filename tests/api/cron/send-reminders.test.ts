@@ -159,9 +159,9 @@ describe('renderReminderEmail — incomplete', () => {
     expect(out.html).toContain('Jane');
   });
 
-  it('CTA points at /#/survey', () => {
-    expect(out.text).toContain('https://taxbenchmark.ai/#/survey');
-    expect(out.html).toContain('href="https://taxbenchmark.ai/#/survey"');
+  it('CTA points at /#/taxi (the interview — the form is retired)', () => {
+    expect(out.text).toContain('https://taxbenchmark.ai/#/taxi');
+    expect(out.html).toContain('href="https://taxbenchmark.ai/#/taxi"');
   });
 
   it('includes an unsubscribe path to /#/profile', () => {
@@ -188,17 +188,17 @@ describe('renderReminderEmail — stale', () => {
     expect(out.text).toContain('quarter');
   });
 
-  it('still points at /#/survey to refresh', () => {
+  it('still points at /#/taxi to refresh', () => {
     const out = renderReminderEmail('stale', baseInput);
-    expect(out.text).toContain('/#/survey');
+    expect(out.text).toContain('/#/taxi');
   });
 });
 
 describe('renderReminderEmail — outdated', () => {
-  it('mentions new questions / pre-fill', () => {
+  it('mentions the expanded benchmark and carried-over answers', () => {
     const out = renderReminderEmail('outdated', baseInput);
-    expect(out.text.toLowerCase()).toContain('new questions');
-    expect(out.text.toLowerCase()).toContain('pre-filled');
+    expect(out.text.toLowerCase()).toContain('more dimensions');
+    expect(out.text.toLowerCase()).toContain('carry over');
   });
 
   it('subject communicates a survey update', () => {
@@ -223,6 +223,6 @@ describe('siteUrl handling', () => {
   it('joins paths without double slashes', () => {
     const out = renderReminderEmail('incomplete', { name: 'X', siteUrl: 'https://taxbenchmark.ai' });
     expect(out.text).not.toContain('//#/');
-    expect(out.text).toContain('https://taxbenchmark.ai/#/survey');
+    expect(out.text).toContain('https://taxbenchmark.ai/#/taxi');
   });
 });

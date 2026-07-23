@@ -79,24 +79,24 @@ function renderShared(greeting: string, body: string, ctaLabel: string, ctaPath:
 
 function renderReminderEmail(kind: ReminderKind, input: RenderInput): RenderedEmail {
   if (kind === 'incomplete') {
-    const greeting = `${firstName(input.name)}, your benchmark is two clicks away`;
-    const body = `You signed up to benchmark your tax-tech function against industry peers but didn't finish the survey. It takes about 10 minutes — once approved, you unlock automation, FTE, AI adoption, and trend comparisons against the rest of the community.`;
-    const shared = renderShared(greeting, body, 'Finish the survey', '/#/survey', input);
+    const greeting = `${firstName(input.name)}, your benchmark is a two-minute chat away`;
+    const body = `You signed up to benchmark your tax-tech function against industry peers but haven't set up your profile yet. There's no form anymore — Taxi, our AI analyst, asks you a few questions in plain English and benchmarks you against your peers on the spot.`;
+    const shared = renderShared(greeting, body, 'Chat with Taxi', '/#/taxi', input);
     return { subject: `Finish your tax-tech benchmark, ${firstName(input.name)}`, ...shared };
   }
   if (kind === 'stale') {
     const days = daysSince(input.lastSubmittedAt);
     const dayPhrase = days != null ? `${days} days ago` : `more than a quarter ago`;
     const greeting = `Quarterly check-in: refresh your benchmark`;
-    const body = `Your last benchmark was ${dayPhrase}. A lot can change in a quarter — new automation rollouts, AI tooling, headcount shifts. Resubmitting takes a couple of minutes and keeps your peer comparison (and the industry trend lines you contribute to) accurate.`;
-    const shared = renderShared(greeting, body, 'Update your benchmark', '/#/survey', input);
+    const body = `Your last benchmark was ${dayPhrase}. A lot can change in a quarter — new automation rollouts, AI tooling, headcount shifts. Tell Taxi what's changed in a couple of minutes and your peer comparison (and the industry trend lines you contribute to) stays accurate.`;
+    const shared = renderShared(greeting, body, 'Update your benchmark', '/#/taxi', input);
     return { subject: `Time to refresh your tax-tech benchmark`, ...shared };
   }
   // outdated
-  const greeting = `New questions in the benchmark — please update`;
-  const body = `We added new questions to the survey since you last submitted. To keep your peer comparison apples-to-apples, please take a couple of minutes to fill in the new fields. Your previous answers are pre-filled — you only need to address what's new.`;
-  const shared = renderShared(greeting, body, 'Update your benchmark', '/#/survey', input);
-  return { subject: `Survey updated — please refresh your responses`, ...shared };
+  const greeting = `The benchmark grew — please update yours`;
+  const body = `We benchmark on more dimensions than when you last submitted. To keep your peer comparison apples-to-apples, spend a couple of minutes with Taxi filling in what's new — your existing answers carry over.`;
+  const shared = renderShared(greeting, body, 'Update your benchmark', '/#/taxi', input);
+  return { subject: `Benchmark updated — please refresh your responses`, ...shared };
 }
 
 // ─── Cron handler ─────────────────────────────────────────────────────────────

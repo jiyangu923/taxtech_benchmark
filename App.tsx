@@ -6,7 +6,6 @@ import AuthModal from './components/AuthModal';
 import SetPasswordModal from './components/SetPasswordModal';
 import FeedbackWidget from './components/FeedbackWidget';
 import Home from './pages/Home';
-import Survey from './pages/Survey';
 import Admin from './pages/Admin';
 import Report from './pages/Report';
 import Taxi from './pages/Taxi';
@@ -47,7 +46,6 @@ const queryClient = new QueryClient({
 const PAGE_TITLES: Record<string, string> = {
   '/': 'AI Tax Technology Analyst | taxbenchmark.ai',
   '/direct-tax': 'Direct Tax Benchmark | taxbenchmark.ai',
-  '/survey': 'Submit Data | taxbenchmark.ai',
   '/report': 'Analytics | taxbenchmark.ai',
   '/taxi': 'Ask Taxi | taxbenchmark.ai',
   '/community': 'Community | taxbenchmark.ai',
@@ -158,10 +156,9 @@ const App: React.FC = () => {
             <Route path="/community" element={<Community />} />
             <Route path="/confirm-member" element={<ConfirmMember />} />
 
-            <Route
-              path="/survey"
-              element={user ? <Survey /> : <Navigate to="/" replace />}
-            />
+            {/* The survey form is retired (docs/AI_INTAKE_PIVOT.md): Taxi
+                interviews new members instead. Old links/emails land there. */}
+            <Route path="/survey" element={<Navigate to="/taxi" replace />} />
 
             <Route
               path="/report"

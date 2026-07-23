@@ -161,9 +161,9 @@ export function capturedChips(acc: IntakeExtracted): Array<{ field: string; text
   return chips;
 }
 
-// Mirrors the old form's INITIAL_FORM (Survey.tsx) so intake-created records
-// have the exact shape form-created records had. Lives here (not imported)
-// because Survey.tsx is scheduled for deletion in PR C of the pivot.
+// Mirrors the retired form's INITIAL_FORM (pages/Survey.tsx, deleted in the
+// funnel-switch PR) so intake-created records keep the exact shape historical
+// form-created records have.
 const INTAKE_FORM_DEFAULTS: Partial<Submission> = {
   companyProfile: [],
   participationGoal: [],

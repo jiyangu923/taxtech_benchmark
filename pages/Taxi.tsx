@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowUp, Lock, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, Menu, X, Check } from 'lucide-react';
+import { ArrowUp, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, Menu, X, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -401,21 +401,6 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   );
 
   const taxiGate = gateReason(mySubmission, isAdmin);
-  if (taxiGate === 'waitlist') {
-    // Dead in practice since the cap was decoupled (PR #130); kept until the
-    // waitlist cleanup PR removes the status entirely.
-    return (
-      <div className="max-w-2xl mx-auto py-20 px-4">
-        <div className="flex flex-col items-center justify-center text-center p-12 bg-white rounded-3xl shadow-lg border border-gray-100">
-          <Lock className="h-16 w-16 text-gray-200 mb-6" />
-          <h2 className="font-display text-2xl font-semibold text-gray-900">You're on the founding-cohort waitlist</h2>
-          <p className="text-gray-500 mt-2 max-w-sm">
-            Thanks for submitting — the pilot cohort is full right now. Your answers are saved, and we'll email you the moment a spot opens and Taxi unlocks.
-          </p>
-        </div>
-      </div>
-    );
-  }
   if (taxiGate !== 'granted') {
     // While the submissions query is in flight we don't yet know whether this
     // user has a record — show a quiet loading state instead of flashing the
