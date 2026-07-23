@@ -1,0 +1,28 @@
+name: Ops stats
+
+# Read-only aggregate health snapshot (evals/stats.ts) — run on demand when we
+# want cohort/AI-usage/feedback numbers without dashboard access. Aggregates
+# only: this is a public repo, logs must never contain identifiers.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Snapshot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx tsx evals/stats.ts
