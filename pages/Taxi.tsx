@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowUp, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, Menu, X, Check } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { ArrowUp, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, Menu, X, Check, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -18,8 +19,8 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { askTaxiWithTools } from '../services/taxi';
 import {
-  IntakeTurn, IntakeExtracted, EMPTY_EXTRACTED, INTAKE_GREETING,
-  runIntakeTurn, requiredComplete, missingRequired, capturedChips, buildIntakeSubmission,
+  IntakeTurn, IntakeExtracted, EMPTY_EXTRACTED, INTAKE_GREETING, INTAKE_REFRESH_GREETING,
+  runIntakeTurn, requiredComplete, missingRequired, capturedChips, buildIntakeSubmission, submissionToSeed,
 } from '../services/intake';
 import { gateReason } from '../services/cohort';
 import { api } from '../services/api';
@@ -85,6 +86,17 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   // survey lock screen; completing it creates the submission right here.
   const createSubmissionMut = useCreateSubmission();
   const [autoAskPending, setAutoAskPending] = useState(false);
+  // Refresh flow: approved members update their record by chatting — seeded
+  // from the current submission, everything unmentioned carries over. Openable
+  // via the sidebar button or the reminder emails' /#/taxi?refresh=1 deep link.
+  const [refreshOpen, setRefreshOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('refresh') === '1' && mySubmission) {
+      setRefreshOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, mySubmission, setSearchParams]);
 
   const [pendingSession, setPendingSession] = useState<Session | null>(null);
 
@@ -401,6 +413,23 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   );
 
   const taxiGate = gateReason(mySubmission, isAdmin);
+  // Refresh: same interview surface, seeded from the record on file; cancellable.
+  if (taxiGate === 'granted' && refreshOpen && mySubmission) {
+    return (
+      <IntakeExperience
+        userId={user?.id ?? 'anon'}
+        refresh
+        seed={submissionToSeed(mySubmission)}
+        prevSubmission={mySubmission}
+        onCancel={() => setRefreshOpen(false)}
+        onDone={async (payload) => {
+          await createSubmissionMut.mutateAsync(payload as Omit<Submission, 'id' | 'userId' | 'userName' | 'status' | 'submittedAt'>);
+          setRefreshOpen(false);
+          setAutoAskPending(true);
+        }}
+      />
+    );
+  }
   if (taxiGate !== 'granted') {
     // While the submissions query is in flight we don't yet know whether this
     // user has a record — show a quiet loading state instead of flashing the
@@ -465,6 +494,15 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
             <Plus className="h-4 w-4 text-primary" />
             <span>New chat</span>
           </button>
+          {mySubmission && (
+            <button
+              onClick={() => setRefreshOpen(true)}
+              className="mt-2 w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-semibold text-gray-500 hover:text-primary hover:bg-indigo-50 transition-all"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Update my benchmark</span>
+            </button>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-3">
           <p className="px-2 mb-2 text-[10px] font-black uppercase text-gray-400 tracking-widest">Recent</p>
@@ -872,10 +910,20 @@ function loadIntakeDraft(userId: string): IntakeDraft {
   }
 }
 
-export const IntakeExperience: React.FC<{ userId: string; onDone: (payload: Partial<Submission>) => Promise<void> }> = ({ userId, onDone }) => {
+export const IntakeExperience: React.FC<{
+  userId: string;
+  onDone: (payload: Partial<Submission>) => Promise<void>;
+  /** Refresh flow: seeded from the record on file; unmentioned fields carry over. */
+  refresh?: boolean;
+  seed?: IntakeExtracted;
+  prevSubmission?: Submission | null;
+  onCancel?: () => void;
+}> = ({ userId, onDone, refresh = false, seed, prevSubmission = null, onCancel }) => {
   const [draft] = useState(() => loadIntakeDraft(userId));
   const [turns, setTurns] = useState<IntakeTurn[]>(draft.turns);
-  const [acc, setAcc] = useState<IntakeExtracted>(draft.acc);
+  // A resumed draft wins; otherwise a refresh starts from what's on file.
+  const [acc, setAcc] = useState<IntakeExtracted>(draft.turns.length ? draft.acc : (seed ?? draft.acc));
+  const greeting = refresh ? INTAKE_REFRESH_GREETING : INTAKE_GREETING;
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -893,7 +941,7 @@ export const IntakeExperience: React.FC<{ userId: string; onDone: (payload: Part
     setCreating(true);
     setError(null);
     try {
-      await onDone(buildIntakeSubmission(finalAcc));
+      await onDone(buildIntakeSubmission(finalAcc, prevSubmission));
       localStorage.removeItem(intakeDraftKey(userId));
       // Normally the parent's queries refetch, the gate flips, and this
       // component unmounts. If that refetch fails, don't leave the spinner
@@ -914,7 +962,7 @@ export const IntakeExperience: React.FC<{ userId: string; onDone: (payload: Part
     // never eat what they typed, and Retry needs the turn in state to rerun.
     setTurns(nextTurns);
     try {
-      const r = await runIntakeTurn(nextTurns, acc);
+      const r = await runIntakeTurn(nextTurns, acc, greeting);
       setTurns([...nextTurns, { role: 'assistant', content: r.reply }]);
       setAcc(r.acc);
       if (r.complete) await finish(r.acc);
@@ -947,16 +995,25 @@ export const IntakeExperience: React.FC<{ userId: string; onDone: (payload: Part
     <div className="max-w-2xl mx-auto py-10 px-4 flex flex-col h-[calc(100vh-4rem)]">
       <div className="flex items-center gap-3 mb-4">
         <img src={taxiAvatar} alt="" className="w-9 h-9 rounded-lg" />
-        <div>
-          <h2 className="font-display text-lg font-semibold text-gray-900">Set up your benchmark — just chat</h2>
+        <div className="flex-1">
+          <h2 className="font-display text-lg font-semibold text-gray-900">
+            {refresh ? 'Update your benchmark — just chat' : 'Set up your benchmark — just chat'}
+          </h2>
           <p className="text-xs text-gray-500">
             {creating
-              ? 'Creating your profile…'
-              : missing.length === 0
-                ? 'All set — create your profile below'
-                : `Anonymous · ~2 minutes · still needed: ${missing.join(', ')}`}
+              ? (refresh ? 'Saving your updates…' : 'Creating your profile…')
+              : refresh
+                ? 'Tell Taxi what changed · everything unmentioned stays as it is'
+                : missing.length === 0
+                  ? 'All set — create your profile below'
+                  : `Anonymous · ~2 minutes · still needed: ${missing.join(', ')}`}
           </p>
         </div>
+        {onCancel && (
+          <button onClick={onCancel} aria-label="Cancel update" className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {chips.length > 0 && (
@@ -970,7 +1027,7 @@ export const IntakeExperience: React.FC<{ userId: string; onDone: (payload: Part
       )}
 
       <div className="flex-1 overflow-y-auto space-y-4 pb-4">
-        <IntakeBubble role="assistant" content={INTAKE_GREETING} />
+        <IntakeBubble role="assistant" content={greeting} />
         {turns.map((t, i) => <IntakeBubble key={i} role={t.role} content={t.content} />)}
         {(busy || creating) && (
           <div className="flex items-center gap-2 text-gray-400 text-sm pl-1" role="status">
@@ -1004,7 +1061,7 @@ export const IntakeExperience: React.FC<{ userId: string; onDone: (payload: Part
           onClick={() => void finish(acc)}
           className="mb-2 w-full py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm"
         >
-          Create my benchmark profile
+          {refresh ? 'Save my updates' : 'Create my benchmark profile'}
         </button>
       )}
 

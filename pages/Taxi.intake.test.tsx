@@ -75,4 +75,23 @@ describe('IntakeExperience (error-path regressions)', () => {
     render(<IntakeExperience userId="u2" onDone={vi.fn()} />);
     expect(screen.queryByText('user ones private answer')).toBeNull();
   });
+
+  it('refresh mode: seeded chips, refresh greeting, Save label, cancellable', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    const seed = {
+      ...EMPTY_EXTRACTED,
+      companyProfile: ['public'], respondentRole: 'tax_technology',
+      revenueRange: '500m_5b', jurisdictionsCovered: 12,
+    };
+    render(<IntakeExperience userId="u3" refresh seed={seed} prevSubmission={null} onCancel={onCancel} onDone={vi.fn()} />);
+    // Refresh greeting, not the fresh-intake one:
+    expect(screen.getByText(new RegExp("Welcome back", 'i'))).toBeTruthy();
+    // Seeded record renders as chips and the save button is immediately available:
+    expect(screen.getByTestId('intake-chips').textContent).toContain('12 jurisdictions');
+    expect(screen.getByText('Save my updates')).toBeTruthy();
+    // Cancellable (the gated intake has no X; refresh must):
+    await user.click(screen.getByLabelText('Cancel update'));
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
 });

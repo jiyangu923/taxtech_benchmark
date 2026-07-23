@@ -188,9 +188,14 @@ describe('renderReminderEmail — stale', () => {
     expect(out.text).toContain('quarter');
   });
 
-  it('still points at /#/taxi to refresh', () => {
+  it('points at the refresh deep link (seeded interview, carry-over save)', () => {
     const out = renderReminderEmail('stale', baseInput);
-    expect(out.text).toContain('/#/taxi');
+    expect(out.text).toContain('/#/taxi?refresh=1');
+  });
+
+  it("promises carry-over honestly — buildIntakeSubmission(acc, prev) makes it true", () => {
+    const out = renderReminderEmail('stale', baseInput);
+    expect(out.text.toLowerCase()).toContain("stays exactly as it is");
   });
 });
 
@@ -199,6 +204,7 @@ describe('renderReminderEmail — outdated', () => {
     const out = renderReminderEmail('outdated', baseInput);
     expect(out.text.toLowerCase()).toContain('more dimensions');
     expect(out.text.toLowerCase()).toContain('carry over');
+    expect(out.text).toContain('/#/taxi?refresh=1');
   });
 
   it('subject communicates a survey update', () => {

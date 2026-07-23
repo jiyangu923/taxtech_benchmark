@@ -88,14 +88,14 @@ function renderReminderEmail(kind: ReminderKind, input: RenderInput): RenderedEm
     const days = daysSince(input.lastSubmittedAt);
     const dayPhrase = days != null ? `${days} days ago` : `more than a quarter ago`;
     const greeting = `Quarterly check-in: refresh your benchmark`;
-    const body = `Your last benchmark was ${dayPhrase}. A lot can change in a quarter — new automation rollouts, AI tooling, headcount shifts. Tell Taxi what's changed in a couple of minutes and your peer comparison (and the industry trend lines you contribute to) stays accurate.`;
-    const shared = renderShared(greeting, body, 'Update your benchmark', '/#/taxi', input);
+    const body = `Your last benchmark was ${dayPhrase}. A lot can change in a quarter — new automation rollouts, AI tooling, headcount shifts. Tell Taxi what's changed in a couple of minutes; everything you don't mention stays exactly as it is, and your peer comparison (and the industry trend lines you contribute to) stays accurate.`;
+    const shared = renderShared(greeting, body, 'Update your benchmark', '/#/taxi?refresh=1', input);
     return { subject: `Time to refresh your tax-tech benchmark`, ...shared };
   }
   // outdated
   const greeting = `The benchmark grew — please update yours`;
   const body = `We benchmark on more dimensions than when you last submitted. To keep your peer comparison apples-to-apples, spend a couple of minutes with Taxi filling in what's new — your existing answers carry over.`;
-  const shared = renderShared(greeting, body, 'Update your benchmark', '/#/taxi', input);
+  const shared = renderShared(greeting, body, 'Update your benchmark', '/#/taxi?refresh=1', input);
   return { subject: `Benchmark updated — please refresh your responses`, ...shared };
 }
 

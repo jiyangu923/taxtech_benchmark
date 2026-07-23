@@ -60,6 +60,14 @@ export const INTAKE_GREETING =
   'First up: what kind of company are you? Public, PE-backed, pre-IPO, a multinational, ' +
   'domestic-only — whatever combination fits.';
 
+/** Refresh variant (returning member updating an existing record): the chips
+ *  above the chat already show what's on file, so Taxi just asks what moved. */
+export const INTAKE_REFRESH_GREETING =
+  "Welcome back — let's refresh your benchmark. The green chips above show what I " +
+  'have on file. Tell me what changed — automation, team size, AI adoption, revenue, ' +
+  'anything — and I\'ll update it. When you\'re done, hit "Save my updates" below. ' +
+  'Everything you don\'t mention stays exactly as it is.';
+
 // Client-side copies of the server sanitizer's bounds (api/claude.ts
 // INTAKE_MAX_MESSAGES / INTAKE_MAX_CONTENT_CHARS). The server REJECTS rather
 // than truncates, and a rejected conversation stored in the draft would be
@@ -70,12 +78,14 @@ const WIRE_MAX_CONTENT_CHARS = 2000;
 const WIRE_MAX_DISPLAY_TURNS = 30; // + opener + greeting = 32 wire turns, well under the server's 40
 
 /** Display turns → wire turns (opener + greeting + recent visible conversation),
- *  bounded so the server sanitizer can never reject a client-built request. */
-export function toWireTurns(displayTurns: IntakeTurn[]): IntakeTurn[] {
+ *  bounded so the server sanitizer can never reject a client-built request.
+ *  The greeting rides as the first assistant turn — pass the refresh greeting
+ *  so the model knows it's updating an existing record, not starting fresh. */
+export function toWireTurns(displayTurns: IntakeTurn[], greeting: string = INTAKE_GREETING): IntakeTurn[] {
   const recent = displayTurns.slice(-WIRE_MAX_DISPLAY_TURNS);
   return [
     { role: 'user', content: INTAKE_OPENER },
-    { role: 'assistant', content: INTAKE_GREETING },
+    { role: 'assistant', content: greeting },
     ...recent.map(t => (t.content.length > WIRE_MAX_CONTENT_CHARS
       ? { ...t, content: t.content.slice(0, WIRE_MAX_CONTENT_CHARS) }
       : t)),
@@ -191,26 +201,62 @@ const INTAKE_FORM_DEFAULTS: Partial<Submission> = {
 };
 
 /**
+ * Seed an interview accumulator from an existing record — the refresh flow
+ * (docs/AI_INTAKE_PIVOT.md: returning members update by chatting; chips show
+ * what's on file; unmentioned fields stay put via the prev spread below).
+ */
+export function submissionToSeed(sub: Submission): IntakeExtracted {
+  return {
+    ...EMPTY_EXTRACTED,
+    companyProfile: sub.companyProfile?.length ? sub.companyProfile : null,
+    respondentRole: sub.respondentRole || null,
+    revenueRange: sub.revenueRange || null,
+    jurisdictionsCovered: typeof sub.jurisdictionsCovered === 'number' ? sub.jurisdictionsCovered : null,
+    taxCalculationAutomationRange: sub.taxCalculationAutomationRange || null,
+    aiAdopted: typeof sub.aiAdopted === 'boolean' ? sub.aiAdopted : null,
+    genAIAdoptionStage: sub.genAIAdoptionStage || null,
+    taxTechFTEsRange: sub.taxTechFTEsRange || null,
+  };
+}
+
+// Server-managed / identity fields that must never ride a carry-over spread —
+// createSubmission stamps its own copies of these.
+const NON_CARRYOVER_FIELDS = ['id', 'userId', 'userName', 'companyName', 'status', 'submittedAt', 'is_current', 'survey_version'] as const;
+
+/**
  * The accumulated interview → a createSubmission payload. Identity fields are
  * structurally absent (the schema never captures them; userName is stamped
  * server-side from the profile; companyName simply no longer exists as an
  * input — anonymity by default). otherFacts land in additionalNotes, tagged so
  * they're distinguishable from human-typed notes later.
+ *
+ * `prev` (refresh flow): the member's current submission — every field it has
+ * carries over unless the interview captured a new value. This is what makes
+ * the reminder emails' "everything else stays as it is" TRUE: a refresh never
+ * wipes previously-submitted optional fields (budgets, automation ranges, …).
  */
-export function buildIntakeSubmission(acc: IntakeExtracted): Partial<Submission> {
+export function buildIntakeSubmission(acc: IntakeExtracted, prev?: Submission | null): Partial<Submission> {
+  const carried: Partial<Submission> = {};
+  if (prev) {
+    Object.assign(carried, prev);
+    for (const f of NON_CARRYOVER_FIELDS) delete (carried as Record<string, unknown>)[f];
+  }
   const payload: Partial<Submission> = {
     ...INTAKE_FORM_DEFAULTS,
-    companyProfile: acc.companyProfile ?? [],
-    respondentRole: (acc.respondentRole ?? '') as Submission['respondentRole'],
-    revenueRange: acc.revenueRange ?? '',
-    jurisdictionsCovered: acc.jurisdictionsCovered ?? undefined,
-    aiAdopted: acc.aiAdopted ?? false,
+    ...carried,
+    companyProfile: acc.companyProfile ?? carried.companyProfile ?? [],
+    respondentRole: (acc.respondentRole ?? carried.respondentRole ?? '') as Submission['respondentRole'],
+    revenueRange: acc.revenueRange ?? carried.revenueRange ?? '',
+    jurisdictionsCovered: acc.jurisdictionsCovered ?? carried.jurisdictionsCovered ?? undefined,
+    aiAdopted: acc.aiAdopted ?? carried.aiAdopted ?? false,
   };
   if (acc.taxCalculationAutomationRange) payload.taxCalculationAutomationRange = acc.taxCalculationAutomationRange;
   if (acc.genAIAdoptionStage) payload.genAIAdoptionStage = acc.genAIAdoptionStage;
   if (acc.taxTechFTEsRange) payload.taxTechFTEsRange = acc.taxTechFTEsRange;
   if (acc.otherFacts.length) {
-    payload.additionalNotes = `[AI intake] ${acc.otherFacts.join(' | ')}`;
+    const tagged = `[AI intake] ${acc.otherFacts.join(' | ')}`;
+    // On refresh, append new facts after any existing notes rather than clobbering.
+    payload.additionalNotes = carried.additionalNotes ? `${carried.additionalNotes}\n${tagged}` : tagged;
   }
   return payload;
 }
@@ -223,8 +269,9 @@ export function buildIntakeSubmission(acc: IntakeExtracted): Partial<Submission>
 export async function runIntakeTurn(
   displayTurns: IntakeTurn[],
   acc: IntakeExtracted,
+  greeting?: string,
 ): Promise<{ reply: string; acc: IntakeExtracted; complete: boolean }> {
-  const { json } = await askIntake<IntakeTurnResult>(toWireTurns(displayTurns));
+  const { json } = await askIntake<IntakeTurnResult>(toWireTurns(displayTurns, greeting));
   const nextAcc = mergeExtracted(acc, json.extracted);
   // complete is the model's judgment; requiredComplete is ours. BOTH must hold
   // before we create the record — the model can't force a submit with missing
