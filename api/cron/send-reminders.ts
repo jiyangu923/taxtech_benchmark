@@ -102,7 +102,11 @@ function renderReminderEmail(kind: ReminderKind, input: RenderInput): RenderedEm
 // ─── Cron handler ─────────────────────────────────────────────────────────────
 
 /**
- * Vercel Cron handler — runs daily and sends reminder emails to candidates.
+ * Reminder-email sender. DORMANT since 2026-07-23: the weekly schedule was
+ * removed from vercel.json (user call — the founder announcement email covers
+ * the stalled-signup outreach, and automated nagging is paused). The endpoint
+ * stays deployed behind CRON_SECRET; to re-enable, restore the crons entry:
+ *   { "path": "/api/cron/send-reminders", "schedule": "0 14 * * 2" }
  *
  * Auth: optional bearer-token check via CRON_SECRET. Vercel automatically
  * sends `Authorization: Bearer <CRON_SECRET>` for scheduled invocations on
