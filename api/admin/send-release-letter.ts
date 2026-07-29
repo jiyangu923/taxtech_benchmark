@@ -153,7 +153,7 @@ function renderEmailShell(input: ShellInput): string {
   ${input.bodyHtml}
   <hr style="${baseStyles.divider}" />
   <p style="${baseStyles.small}">
-    You're getting this because you signed up at <a href="${input.siteUrl}" style="color:#1e3a8a;">taxbenchmark.ai</a>.<br />
+    You're getting this because you signed up at <a href="${input.siteUrl}" style="color:#1e3a8a;">taxbenchmark.ai</a>, operated by Seven Twenty Two LLC.<br />
     To stop receiving release emails, <a href="${unsub}" style="color:#1e3a8a;">manage your preferences</a>.
   </p>
 </body></html>`;
@@ -175,7 +175,7 @@ function plainTextFallback(title: string, weekOf: string, md: string, siteUrl: s
     stripped.trim(),
     '',
     '--',
-    `taxbenchmark.ai`,
+    `taxbenchmark.ai — operated by Seven Twenty Two LLC`,
     `Manage email preferences: ${siteUrl}/#/profile`,
   ].join('\n');
 }

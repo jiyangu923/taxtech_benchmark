@@ -59,6 +59,7 @@ function renderShared(greeting: string, body: string, ctaLabel: string, ctaPath:
     '',
     '--',
     `taxbenchmark.ai — community-built peer comparison for in-house tax-tech functions.`,
+    `Operated by Seven Twenty Two LLC.`,
     `To stop these reminders, visit ${unsub} and toggle off email reminders.`,
   ].join('\n');
 
@@ -69,7 +70,7 @@ function renderShared(greeting: string, body: string, ctaLabel: string, ctaPath:
   <a href="${url}" style="${baseStyles.cta}">${ctaLabel}</a>
   <hr style="${baseStyles.divider}" />
   <p style="${baseStyles.small}">
-    taxbenchmark.ai — community-built peer comparison for in-house tax-tech functions.<br />
+    taxbenchmark.ai — community-built peer comparison for in-house tax-tech functions. Operated by Seven Twenty Two LLC.<br />
     To stop these reminders, <a href="${unsub}" style="color:#1e3a8a;">manage your email preferences</a>.
   </p>
 </body></html>`;

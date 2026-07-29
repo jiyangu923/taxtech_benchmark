@@ -189,7 +189,7 @@ const App: React.FC = () => {
 
         <footer className="bg-white border-t border-gray-200 py-8 mt-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-gray-500">
-            <span>&copy; {new Date().getFullYear()} taxbenchmark.ai. All rights reserved.</span>
+            <span>&copy; {new Date().getFullYear()} Seven Twenty Two LLC &middot; taxbenchmark.ai. All rights reserved.</span>
             <div className="flex gap-6">
               <a href="mailto:contact@taxbenchmark.ai" className="hover:text-primary transition-colors">Contact</a>
               <Link to="/" className="hover:text-primary transition-colors">Home</Link>
