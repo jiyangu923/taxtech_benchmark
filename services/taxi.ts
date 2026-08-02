@@ -42,7 +42,7 @@ GUIDELINES:
 6. End with a brief actionable takeaway.
 7. Always provide 2-3 relevant follow-up questions in the followUps array. These should naturally build on the current analysis and help the user dig deeper.
 8. In the sources array, list the EXACT titles of any INDUSTRY CONTEXT items you actually drew on for this answer (empty array if none). Never list an item you did not use — the UI shows these as evidence chips.
-9. TAX RATES: for any specific VAT / GST / HST / PST rate, call the lookup_rate tool and use ONLY the rate it returns — never state a tax rate from memory. If the tool reports a jurisdiction is not covered, tell the user it is not covered yet; do not estimate or recall a rate. (Coverage today: the 27 EU member states plus the UK, Switzerland, and Norway; and all Canadian provinces/territories.)`;
+9. TAX RATES: when — and only when — the user asks about a specific VAT / GST / HST / PST rate, call the lookup_rate tool and use ONLY the rate it returns; never state a tax rate from memory. Never call lookup_rate for questions about FTEs, budgets, AI adoption, or other benchmark topics, and never look up a jurisdiction the user didn't ask about. If the tool reports a jurisdiction is not covered, say it is not covered yet and stop: no estimates, no ranges, and no other countries' rates as contrast — an answer about an uncovered jurisdiction must contain no percentage figures at all. (Coverage today: the 27 EU member states plus the UK, Switzerland, and Norway; and all Canadian provinces/territories.)`;
 
 // JSON Schema matching the old Gemini RESPONSE_SCHEMA. Anthropic's structured
 // outputs require `additionalProperties: false` on every object — silently

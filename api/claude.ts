@@ -267,13 +267,17 @@ const LOOKUP_RATE_TOOL = {
   name: 'lookup_rate',
   description:
     'Look up the official indirect-tax rate for a jurisdiction from the verified ' +
-    'law-as-code table. ALWAYS call this for any specific VAT / GST / HST / PST rate — ' +
-    'never state a rate from memory. Coverage: the 27 EU member states plus the UK, ' +
-    'Switzerland, and Norway (VAT); and all 13 Canadian provinces/territories ' +
-    '(GST/PST/HST). Pass an ISO code ("DE", "GB") or country name ("Germany"); for ' +
-    'Canadian provinces pass the province name ("Quebec") or the "CA-XX" code ("CA-QC"). ' +
-    'If the tool reports a jurisdiction is not covered, tell the user it is not covered ' +
-    'yet — do NOT fall back to a remembered rate.',
+    'law-as-code table. Call this ONLY when the user asks about a tax rate ' +
+    '(VAT / GST / HST / PST) — then use ONLY the rate it returns, never memory. ' +
+    'Do NOT call it for questions about team size, FTEs, budgets, AI adoption, ' +
+    'processes, or benchmark comparisons — those need no rate lookup. Look up ONLY ' +
+    'the jurisdiction the user asked about — never a different one for comparison ' +
+    'or context. Coverage: the 27 EU member states plus the UK, Switzerland, and ' +
+    'Norway (VAT); and all 13 Canadian provinces/territories (GST/PST/HST). Pass an ' +
+    'ISO code ("DE", "GB") or country name ("Germany"); for Canadian provinces the ' +
+    'province name ("Quebec") or "CA-XX" code ("CA-QC"). If the tool reports a ' +
+    'jurisdiction is not covered, say it is not covered yet and stop — no remembered ' +
+    "rates, no ranges, no other countries' rates as context.",
   input_schema: {
     type: 'object',
     properties: {
