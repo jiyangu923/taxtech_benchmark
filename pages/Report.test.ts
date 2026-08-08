@@ -50,22 +50,33 @@ describe('calculateIndustryStats', () => {
     expect(calculateIndustryStats(subs)).toBeNull();
   });
 
-  it('excludes rejected submissions from the averages', () => {
+  it('excludes rejected submissions from the medians', () => {
     const subs = [
       baseSub({ taxCalculationAutomationRange: '99_plus', status: 'approved' }),  // 99.5
       baseSub({ taxCalculationAutomationRange: 'under_40', status: 'rejected' }), // excluded
     ];
     const stats = calculateIndustryStats(subs)!;
-    expect(stats.averages.calculation).toBe(Math.round(99.5));
+    expect(stats.medians.calculation).toBe(Math.round(99.5));
   });
 
-  it('calculates correct averages across multiple approved submissions', () => {
+  it('calculates correct medians across multiple approved submissions', () => {
     const subs = [
       baseSub({ taxCalculationAutomationRange: '99_plus' }), // 99.5
       baseSub({ taxCalculationAutomationRange: '40_70' }),   // 55
     ];
     const stats = calculateIndustryStats(subs)!;
-    expect(stats.averages.calculation).toBe(Math.round((99.5 + 55) / 2)); // 77
+    expect(stats.medians.calculation).toBe(Math.round((99.5 + 55) / 2)); // median of two = midpoint = 77
+  });
+
+  it('WHY MEDIANS: one outlier member cannot drag the typical-peer number', () => {
+    const subs = [
+      baseSub({ taxCalculationAutomationRange: 'under_40' }), // 20
+      baseSub({ taxCalculationAutomationRange: 'under_40' }), // 20
+      baseSub({ taxCalculationAutomationRange: '99_plus' }),  // 99.5 — the outlier
+    ];
+    const stats = calculateIndustryStats(subs)!;
+    expect(stats.medians.calculation).toBe(20);   // median holds at the typical peer
+    // (the mean would have reported ~47 — a number NO member actually resembles)
   });
 
   it('calculates AI adoption rate as a percentage', () => {
@@ -76,19 +87,19 @@ describe('calculateIndustryStats', () => {
       baseSub({ aiAdopted: false }),
     ];
     const stats = calculateIndustryStats(subs)!;
-    expect(stats.averages.aiRate).toBe(50);
+    expect(stats.medians.aiRate).toBe(50);
   });
 
   it('returns 0% AI adoption when no submissions have AI adopted', () => {
     const subs = [baseSub({ aiAdopted: false }), baseSub({ aiAdopted: false })];
     const stats = calculateIndustryStats(subs)!;
-    expect(stats.averages.aiRate).toBe(0);
+    expect(stats.medians.aiRate).toBe(0);
   });
 
   it('returns 100% AI adoption when all submissions have AI adopted', () => {
     const subs = [baseSub({ aiAdopted: true }), baseSub({ aiAdopted: true })];
     const stats = calculateIndustryStats(subs)!;
-    expect(stats.averages.aiRate).toBe(100);
+    expect(stats.medians.aiRate).toBe(100);
   });
 
   it('builds archData with correct labels and counts', () => {

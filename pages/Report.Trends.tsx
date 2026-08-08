@@ -94,7 +94,7 @@ const ReportTrends: React.FC = () => {
       <TrendCard
         icon={<Activity className="h-5 w-5 text-primary" />}
         title="Industry automation index"
-        subtitle="Average composite automation score (0–100) across all in-quarter submissions. Higher = more automated tax operations."
+        subtitle="Median composite automation score (0–100) across in-quarter submissions — the typical member, not skewed by outliers. Higher = more automated tax operations."
       >
         <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
           <LineChart data={autoData}>
@@ -102,7 +102,7 @@ const ReportTrends: React.FC = () => {
             <XAxis dataKey="quarter" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
             <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip formatter={(v: number) => v.toFixed(1)} />
-            <Line type="monotone" dataKey="avgAutomationIndex" name="Avg automation index" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 5, fill: '#6366f1' }} />
+            <Line type="monotone" dataKey="medianAutomationIndex" name="Median automation index" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 5, fill: '#6366f1' }} />
           </LineChart>
         </ResponsiveContainer>
       </TrendCard>
@@ -126,7 +126,7 @@ const ReportTrends: React.FC = () => {
       <TrendCard
         icon={<Clock className="h-5 w-5 text-primary" />}
         title="FTE composition by quarter"
-        subtitle="Average tax-tech and tax-business FTE counts per submitted snapshot. Tracks team-size shifts over time."
+        subtitle="Median tax-tech and tax-business FTE counts per submitted snapshot. Tracks team-size shifts over time."
       >
         <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
           <BarChart data={fteData}>
@@ -135,8 +135,8 @@ const ReportTrends: React.FC = () => {
             <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip formatter={(v: number) => v.toFixed(1)} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="avgTaxTechFte" name="Avg tax-tech FTEs" stackId="fte" fill="#6366f1" />
-            <Bar dataKey="avgTaxBusinessFte" name="Avg tax-business FTEs" stackId="fte" fill="#c7d2fe" />
+            <Bar dataKey="medianTaxTechFte" name="Median tax-tech FTEs" stackId="fte" fill="#6366f1" />
+            <Bar dataKey="medianTaxBusinessFte" name="Median tax-business FTEs" stackId="fte" fill="#c7d2fe" />
           </BarChart>
         </ResponsiveContainer>
       </TrendCard>
