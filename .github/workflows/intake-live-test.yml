@@ -7,15 +7,18 @@ name: Intake live test
 #             never printed (public repo — logs are public).
 #   confirm — email-confirm an existing throwaway (input) so a human can log in
 #             and test the real interview UI. No password involved.
+#   report  — ephemeral user + approved submission, POST the deployed
+#             /api/benchmark-report, assert 200 (email goes to Resend's
+#             official test inbox). Everything deleted afterwards.
 # Manual-only: costs a few cents of model usage per drive run.
 
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'drive (scripted interview) or confirm (activate an email)'
+        description: 'drive (scripted interview), report (benchmark-report email), or confirm (activate an email)'
         type: choice
-        options: [drive, confirm]
+        options: [drive, report, confirm]
         default: drive
       confirm_email:
         description: 'Email to confirm (confirm mode only)'
