@@ -7,7 +7,7 @@ import { useUpdateEmailReminderPref } from '../services/queries';
 
 interface ProfileProps {
   user: User;
-  onUpdate: (updatedUser: User) => void;
+  onUpdate: (updatedUser: User) => void | Promise<void>;
 }
 
 const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
@@ -52,10 +52,10 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
     setIsSuccess(false);
 
     try {
-      // Simulate network latency
-      await new Promise(resolve => setTimeout(resolve, 800));
       const updatedUser: User = { ...user, name, email };
-      onUpdate(updatedUser);
+      // Await the real save — an un-awaited onUpdate turned DB rejections
+      // into a green "saved" state over an unhandled promise rejection.
+      await onUpdate(updatedUser);
       setIsSuccess(true);
       setTimeout(() => setIsSuccess(false), 3000);
     } catch (err) {

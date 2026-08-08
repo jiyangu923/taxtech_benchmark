@@ -323,11 +323,39 @@ async function rlsMode(supabaseUrl: string, serviceKey: string): Promise<number>
     if (nameStatus >= 400) failures.push(`legit name update REJECTED (HTTP ${nameStatus}) — lockdown is too broad`);
     if (rowAfter.name !== 'RLS Drivebot Renamed') failures.push(`name in DB is '${rowAfter.name}' — the allowed column did not update`);
 
+    // INSERT path — simulate the fetchOrCreateProfile self-heal with a
+    // missing row. Forged email and client-supplied role must both be
+    // rejected; the legit payload (own auth email) must succeed.
+    await adminFetch(`/rest/v1/profiles?id=eq.${userId}`, { method: 'DELETE' }, serviceKey, supabaseUrl);
+    const userInsert = async (payload: Record<string, unknown>) => {
+      const resp = await fetch(`${supabaseUrl}/rest/v1/profiles`, {
+        method: 'POST',
+        headers: {
+          apikey: ANON_KEY, Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json', Prefer: 'return=minimal',
+        },
+        body: JSON.stringify(payload),
+      });
+      return resp.status;
+    };
+    const forgedInsert = await userInsert({ id: userId, name: 'RLS Drivebot', email: `evil-${runId}@example.com` });
+    const roleInsert = await userInsert({ id: userId, name: 'RLS Drivebot', email, role: 'admin' });
+    const legitInsert = await userInsert({ id: userId, name: 'RLS Drivebot', email });
+    const check2 = await adminFetch(`/rest/v1/profiles?id=eq.${userId}&select=role,email`, { method: 'GET' }, serviceKey, supabaseUrl);
+    const healed = (check2.body as any[])?.[0] ?? {};
+
+    if (forgedInsert < 400) failures.push(`forged-email insert was ACCEPTED (HTTP ${forgedInsert}) — expected 4xx policy violation`);
+    if (roleInsert < 400) failures.push(`insert with role was ACCEPTED (HTTP ${roleInsert}) — expected 4xx permission denied`);
+    if (legitInsert >= 400) failures.push(`legit self-heal insert REJECTED (HTTP ${legitInsert}) — lockdown is too broad`);
+    if (healed.role !== 'user') failures.push(`healed row role is '${healed.role}' — expected default 'user'`);
+    if (healed.email !== email) failures.push(`healed row email is forged ('${healed.email}')`);
+
     console.log('\n── Result ─────────────────────────────');
     console.log(`role patch: HTTP ${roleStatus} · email patch: HTTP ${emailStatus} · name patch: HTTP ${nameStatus}`);
+    console.log(`forged insert: HTTP ${forgedInsert} · role insert: HTTP ${roleInsert} · legit insert: HTTP ${legitInsert}`);
     failures.forEach(f => console.error(`FAIL: ${f}`));
     if (failures.length) { exitCode = 1; } else {
-      console.log('PASS — role/email writes rejected, name write allowed, DB row confirms.');
+      console.log('PASS — role/email writes rejected (update AND insert), legit writes allowed, DB rows confirm.');
     }
   } finally {
     const del = await adminFetch(`/auth/v1/admin/users/${userId}`, { method: 'DELETE' }, serviceKey, supabaseUrl);

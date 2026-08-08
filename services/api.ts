@@ -112,9 +112,13 @@ export const api = {
   },
 
   async updateUserProfile(updatedUser: User): Promise<User> {
+    // name ONLY. email/role are not client-writable (lock_profiles_columns.sql
+    // column grants) — Postgres rejects the whole UPDATE if a revoked column
+    // appears in SET, even with an unchanged value. The Profile UI already
+    // renders email readOnly ("cannot be changed here").
     const { data, error } = await supabase
       .from('profiles')
-      .update({ name: updatedUser.name, email: updatedUser.email })
+      .update({ name: updatedUser.name })
       .eq('id', updatedUser.id)
       .select()
       .single();
