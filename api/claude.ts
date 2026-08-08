@@ -819,6 +819,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 // Exported for tests — pure helpers, no env/network dependencies.
 export { buildParams, pickUsage, computeCostUsd, resolveWindow, resolveMaxTokens, extractQuestion, canUseAi, DEFAULT_MODEL, DEFAULT_MAX_TOKENS, MAX_TOKENS_CEILING, DAILY_LIMIT_USD, WINDOW_MS, PRICE_PER_MTOK };
+// Shared with sibling API functions (api/benchmark-report.ts) — same-dir
+// imports are fine; the no-imports rule only bars files OUTSIDE /api.
+export { recordUsage, bearerToken };
 // Deterministic-tool helpers (harness L2). executeLookupRate takes an injected
 // admin client, so it's testable with a fake; the rest are pure.
 export { resolveTools, normalizeJurisdiction, resolveLookupKeys, pickCurrentRule, formatRateResult, executeLookupRate, addUsage, LOOKUP_RATE_TOOL, MAX_TOOL_ITERATIONS };
