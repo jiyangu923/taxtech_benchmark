@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowUp, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, Menu, X, Check, RefreshCw } from 'lucide-react';
+import { ArrowUp, Plus, MessageSquare, MoreHorizontal, Pencil, Trash2, Menu, X, Check, RefreshCw, Mail } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -90,6 +90,23 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   // from the current submission, everything unmentioned carries over. Openable
   // via the sidebar button or the reminder emails' /#/taxi?refresh=1 deep link.
   const [refreshOpen, setRefreshOpen] = useState(false);
+  // Printable benchmark report → member's registered email. Fired
+  // automatically after intake/refresh completes, and on-demand from the
+  // sidebar. Best-effort: a failed email never blocks the chat experience.
+  const [reportStatus, setReportStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [reportNotice, setReportNotice] = useState('');
+  const requestReport = async () => {
+    if (reportStatus === 'sending') return;
+    setReportStatus('sending');
+    try {
+      const { emailedTo } = await api.requestBenchmarkReport();
+      setReportStatus('sent');
+      setReportNotice(`Report sent to ${emailedTo}`);
+    } catch (e: any) {
+      setReportStatus('error');
+      setReportNotice(e?.message || 'Could not send the report.');
+    }
+  };
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     if (searchParams.get('refresh') === '1' && mySubmission) {
@@ -279,7 +296,11 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
   useEffect(() => {
     if (autoAskPending && mySubmission && activeSession && !isAiLoading) {
       setAutoAskPending(false);
-      handleAiQuery('How does my tax organization compare to peers overall?');
+      // The opening answer IS the tailored summary (founder feedback): role-
+      // aware, leading with what matters — not a generic comparison.
+      handleAiQuery('Give me an executive summary of how my tax organization compares to peers — tailored to my role, leading with the two or three metrics that matter most for someone in my position, using peer medians.');
+      // And the printable version lands in their inbox without being asked.
+      void requestReport();
     }
     // handleAiQuery is stable enough for this purpose; including it would
     // re-run the effect on every render since it's redeclared each time.
@@ -495,13 +516,28 @@ const Taxi: React.FC<TaxiProps> = ({ user }) => {
             <span>New chat</span>
           </button>
           {mySubmission && (
-            <button
-              onClick={() => setRefreshOpen(true)}
-              className="mt-2 w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-semibold text-gray-500 hover:text-primary hover:bg-indigo-50 transition-all"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span>Update my benchmark</span>
-            </button>
+            <>
+              <button
+                onClick={() => setRefreshOpen(true)}
+                className="mt-2 w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-semibold text-gray-500 hover:text-primary hover:bg-indigo-50 transition-all"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span>Update my benchmark</span>
+              </button>
+              <button
+                onClick={() => void requestReport()}
+                disabled={reportStatus === 'sending'}
+                className="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl text-[13px] font-semibold text-gray-500 hover:text-primary hover:bg-indigo-50 transition-all disabled:opacity-50"
+              >
+                <Mail className="h-3.5 w-3.5" />
+                <span>{reportStatus === 'sending' ? 'Sending report…' : 'Email my report'}</span>
+              </button>
+              {reportNotice && (
+                <p className={`px-3.5 pt-1 text-[11px] ${reportStatus === 'error' ? 'text-amber-600' : 'text-emerald-600'}`} role="status">
+                  {reportNotice}
+                </p>
+              )}
+            </>
           )}
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-3">

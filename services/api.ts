@@ -504,6 +504,31 @@ export const api = {
     return body;
   },
 
+  /**
+   * Ask the server to generate the member's printable benchmark report and
+   * email it to their registered address. Server computes all numbers
+   * (medians) and always mails the authed user's own profile email — the
+   * client can't pick a recipient. Returns the masked address for the toast.
+   */
+  async requestBenchmarkReport(): Promise<{ ok: boolean; emailedTo: string }> {
+    const { data: { session } } = await withTimeout(
+      supabase.auth.getSession(),
+      AUTH_TIMEOUT_MS,
+      STALE_SESSION_MESSAGE,
+    );
+    if (!session) throw new Error('Must be logged in');
+    const resp = await fetch('/api/benchmark-report', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(body.error || `HTTP ${resp.status}`);
+    return body;
+  },
+
   // ─── Knowledge Base ──────────────────────────────────────────────────────
   //
   // Curated industry news for the AI analyst. Admins CRUD via the Knowledge
