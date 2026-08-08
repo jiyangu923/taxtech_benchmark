@@ -41,18 +41,18 @@ async function fetchOrCreateProfile(
     .single();
   if (profile) return profile as User;
 
-  // Use hard-coded initial admins for the role check here to avoid reading
-  // the settings table (which requires admin RLS) in a non-admin context.
   const email = (authUser.email ?? '').toLowerCase();
-  const role = INITIAL_ADMINS.map(e => e.toLowerCase()).includes(email) ? 'admin' : 'user';
   const name =
     authUser.user_metadata?.full_name ||
     authUser.user_metadata?.name ||
     email.split('@')[0];
 
+  // role is intentionally NOT sent: lock_profiles_columns.sql revokes INSERT
+  // on that column (a client-supplied role was a self-promotion hole), so it
+  // always lands as the default 'user'. Admins are made via promote_to_admin.
   const { data: created } = await supabase
     .from('profiles')
-    .insert({ id: authUser.id, email, name, role })
+    .insert({ id: authUser.id, email, name })
     .select()
     .single();
 

@@ -119,6 +119,15 @@ create policy "Users can update own profile"
   on public.profiles for update
   using (auth.uid() = id);
 
+-- ⚠️ INVARIANT (lock_profiles_columns.sql — run it after this file plus
+-- add_reminders_schema.sql): the RLS above grants row-level self-access,
+-- but column-level grants restrict authenticated writes to
+-- name / email_reminders_enabled / last_reminder_sent_at (update) and
+-- id / name / email (insert). role and email are NOT client-writable —
+-- users must not self-promote (the server AI meter reads profiles.role)
+-- or repoint profiles.email. role changes go exclusively through the
+-- promote_to_admin / demote_from_admin SECURITY DEFINER RPCs.
+
 create policy "Admins can view all profiles"
   on public.profiles for select
   using (
