@@ -1,10 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
+// NOTE: the explicit .js extension is REQUIRED. package.json is type:module,
+// so the compiled function resolves this specifier with strict Node ESM rules
+// — extensionless './claude' crashes at cold start with ERR_MODULE_NOT_FOUND
+// (verified in production logs, 2026-08-08).
 import {
   bearerToken, recordUsage, resolveWindow, pickUsage,
   DEFAULT_MODEL, DAILY_LIMIT_USD, WINDOW_MS,
-} from './claude';
+} from './claude.js';
 
 /**
  * POST /api/benchmark-report — generate the member's printable benchmark
