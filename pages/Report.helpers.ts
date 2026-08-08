@@ -7,6 +7,7 @@ import * as C from '../constants';
  */
 export const FTE_LOADED_RATE = 150_000;
 
+
 /**
  * Maps the tax-tech FTE bucket key to a representative midpoint.
  * Buckets come from OPTS_FTE_TECH in constants.ts.
@@ -109,7 +110,13 @@ export function costPerAutoPoint(s: Submission): number {
   return Math.round(compositeCost(s) / auto / 1_000);
 }
 
-/** Median utility (handles even/odd lengths). */
+/**
+ * Median utility (handles even/odd lengths; 0 for empty). ALL cross-peer
+ * aggregations use the median, not the mean — with a small cohort one outlier
+ * member drags every mean toward itself; the median is the honest "typical
+ * peer". (Within-submission composites like compositeAuto still average their
+ * own dimensions — that's one org's profile, not a peer statistic.)
+ */
 export function median(arr: number[]): number {
   if (arr.length === 0) return 0;
   const sorted = [...arr].sort((a, b) => a - b);
@@ -180,24 +187,25 @@ export function costPerAutoRanking(mySub: Submission | null, peerSubs: Submissio
 }
 
 /**
- * Resource mix by revenue band: avg insourced tech FTE, avg insourced biz FTE,
- * avg outsourced (tech + biz) per band. Bands with 0 submissions are dropped.
+ * Resource mix by revenue band: median insourced tech FTE, median insourced
+ * biz FTE, median outsourced (tech + biz) per band. Bands with 0 submissions
+ * are dropped.
  */
 export function resourceMixByRevenue(subs: Submission[]) {
   return C.OPTS_REVENUE.map(band => {
     const inBand = subs.filter(s => s.revenueRange === band.value);
     if (inBand.length === 0) return null;
 
-    const avg = (fn: (s: Submission) => number) =>
-      Math.round(inBand.reduce((a, s) => a + fn(s), 0) / inBand.length);
+    const med = (fn: (s: Submission) => number) =>
+      Math.round(median(inBand.map(fn)));
 
     return {
       band: band.label.replace(' – ', '–'),
-      tech: avg(s => mapTechFTE(s.taxTechFTEsRange)),
-      biz:  avg(s => mapBizFTE(s.taxBusinessFTEsRange)),
+      tech: med(s => mapTechFTE(s.taxTechFTEsRange)),
+      biz:  med(s => mapBizFTE(s.taxBusinessFTEsRange)),
       outsourced:
-        avg(s => mapTechFTE(s.taxTechOutsourcedResourcesFTEsRange)) +
-        avg(s => mapBizFTE(s.taxBusinessOutsourcingFTEsRange)),
+        med(s => mapTechFTE(s.taxTechOutsourcedResourcesFTEsRange)) +
+        med(s => mapBizFTE(s.taxBusinessOutsourcingFTEsRange)),
       n: inBand.length,
     };
   }).filter(b => b !== null) as Array<{ band: string; tech: number; biz: number; outsourced: number; n: number }>;

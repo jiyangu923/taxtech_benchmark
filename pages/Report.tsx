@@ -18,8 +18,7 @@ import {
   compositeAuto, compositeCost, costPerAutoPoint,
   automationRadar, automationVsCost, costPerAutoRanking,
   resourceMixByRevenue, aiAdoptionFunnel, architectureByRevenue,
-  fmtCostM,
-} from './Report.helpers';
+  fmtCostM, median } from './Report.helpers';
 
 interface ReportProps { user: User | null; }
 
@@ -52,7 +51,9 @@ export function calculateIndustryStats(allSubs: Submission[]) {
   const n = valid.length;
   if (n === 0) return null;
 
-  const avg = (fn: (s: Submission) => number) => valid.reduce((acc, s) => acc + fn(s), 0) / n;
+  // Cross-peer stats are MEDIANS (see median() in Report.helpers): one outlier
+  // member must not drag the "typical peer" numbers.
+  const med = (fn: (s: Submission) => number) => median(valid.map(fn));
 
   const archCounts: Record<string, number> = {};
   valid.forEach(s => {
@@ -64,12 +65,13 @@ export function calculateIndustryStats(allSubs: Submission[]) {
   }));
 
   return {
-    averages: {
-      calculation: Math.round(avg(s => mapAuto(s.taxCalculationAutomationRange))),
-      payment:     Math.round(avg(s => mapAuto(s.taxPaymentAutomationRange))),
-      compliance:  Math.round(avg(s => mapAuto(s.complianceAutomationCoverageRange))),
-      techFTE:     Math.round(avg(s => (s.taxTechFTEsRange === 'over_100' ? 120 : 10))),
-      bizFTE:      Math.round(avg(s => (s.taxBusinessFTEsRange === 'over_150' ? 170 : 20))),
+    medians: {
+      calculation: Math.round(med(s => mapAuto(s.taxCalculationAutomationRange))),
+      payment:     Math.round(med(s => mapAuto(s.taxPaymentAutomationRange))),
+      compliance:  Math.round(med(s => mapAuto(s.complianceAutomationCoverageRange))),
+      techFTE:     Math.round(med(s => (s.taxTechFTEsRange === 'over_100' ? 120 : 10))),
+      bizFTE:      Math.round(med(s => (s.taxBusinessFTEsRange === 'over_150' ? 170 : 20))),
+      // A share, not a central tendency — stays a percentage of the cohort.
       aiRate:      Math.round((valid.filter(s => s.aiAdopted).length / n) * 100),
     },
     archData,
@@ -209,7 +211,7 @@ const OverviewTab: React.FC<{ subs: Submission[]; mySub: Submission | null; stat
   const archKeys  = archByRev.length > 0 ? Object.keys(archByRev[0]).filter(k => k !== 'band') : [];
 
   const myAuto = mySub ? compositeAuto(mySub) : 0;
-  const peerAuto = stats ? Math.round((stats.averages.calculation + stats.averages.payment + stats.averages.compliance) / 3) : 0;
+  const peerAuto = stats ? Math.round((stats.medians.calculation + stats.medians.payment + stats.medians.compliance) / 3) : 0;
 
   return (
     <div className="space-y-6">
@@ -217,7 +219,7 @@ const OverviewTab: React.FC<{ subs: Submission[]; mySub: Submission | null; stat
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label="Your Automation Index" value={`${myAuto}/100`} delta={mySub ? `${myAuto - peerAuto >= 0 ? '+' : ''}${myAuto - peerAuto} vs peers` : '—'} />
         <KpiCard label="Peer Sample" value={`${subs.length}`} delta="approved entities" />
-        <KpiCard label="AI Adoption (industry)" value={`${stats?.averages.aiRate ?? 0}%`} delta="have adopted GenAI" />
+        <KpiCard label="AI Adoption (industry)" value={`${stats?.medians.aiRate ?? 0}%`} delta="have adopted GenAI" />
         <KpiCard label="Architectures Tracked" value={`${stats?.archData?.length ?? 0}`} delta="distinct types" />
       </div>
 

@@ -108,7 +108,7 @@ describe('submissionVolumeTrend', () => {
 });
 
 describe('automationIndexTrend', () => {
-  it('averages composite automation per quarter', () => {
+  it('medians composite automation per quarter', () => {
     // Range keys from constants.ts: '99_plus', '90_99', '70_90', '40_70', 'under_40'
     const subs = [
       sub({ submittedAt: '2026-01-15T00:00:00Z', taxCalculationAutomationRange: '99_plus' }),
@@ -116,7 +116,7 @@ describe('automationIndexTrend', () => {
     ];
     const out = automationIndexTrend(subs);
     expect(out.map(p => p.quarter)).toEqual(['2026-Q1', '2026-Q2']);
-    expect(out[0].avgAutomationIndex).toBeGreaterThan(out[1].avgAutomationIndex);
+    expect(out[0].medianAutomationIndex).toBeGreaterThan(out[1].medianAutomationIndex);
   });
 
   it('preserves count + uniqueUsers fields', () => {
@@ -151,7 +151,7 @@ describe('aiAdoptionTrend', () => {
 });
 
 describe('fteCompositionTrend', () => {
-  it('averages tax-tech and tax-business FTE per quarter', () => {
+  it('medians tax-tech and tax-business FTE per quarter', () => {
     // Tech FTE keys: 'zero', '1_5', '6_15', '16_30', '31_100', 'over_100'
     // Biz FTE keys: 'under_10', '10_25', '26_50', '51_150', 'over_150'
     const subs = [
@@ -161,15 +161,15 @@ describe('fteCompositionTrend', () => {
     const out = fteCompositionTrend(subs);
     expect(out).toHaveLength(1);
     expect(out[0].quarter).toBe('2026-Q2');
-    expect(out[0].avgTaxTechFte).toBeGreaterThan(0);
-    expect(out[0].avgTaxBusinessFte).toBeGreaterThan(out[0].avgTaxTechFte);
+    expect(out[0].medianTaxTechFte).toBeGreaterThan(0);
+    expect(out[0].medianTaxBusinessFte).toBeGreaterThan(out[0].medianTaxTechFte);
   });
 
   it('handles missing range fields without throwing', () => {
     const subs = [sub({ submittedAt: '2026-04-15T00:00:00Z' })];
     const out = fteCompositionTrend(subs);
-    expect(out[0].avgTaxTechFte).toBeGreaterThanOrEqual(0);
-    expect(out[0].avgTaxBusinessFte).toBeGreaterThanOrEqual(0);
+    expect(out[0].medianTaxTechFte).toBeGreaterThanOrEqual(0);
+    expect(out[0].medianTaxBusinessFte).toBeGreaterThanOrEqual(0);
   });
 });
 

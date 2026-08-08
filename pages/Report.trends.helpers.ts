@@ -1,5 +1,5 @@
 import { Submission } from '../types';
-import { compositeAuto, mapTechFTE, mapBizFTE } from './Report.helpers';
+import { compositeAuto, mapTechFTE, mapBizFTE, median } from './Report.helpers';
 
 /**
  * Time-series helpers for the /report Trends tab.
@@ -30,8 +30,8 @@ export interface QuarterPoint {
 }
 
 export interface AutomationTrendPoint extends QuarterPoint {
-  /** Average composite automation index (0-100) of submissions in this quarter. NaN if count = 0. */
-  avgAutomationIndex: number;
+  /** Median composite automation index (0-100) of submissions in this quarter. NaN if count = 0. */
+  medianAutomationIndex: number;
 }
 
 export interface AiAdoptionPoint extends QuarterPoint {
@@ -40,10 +40,10 @@ export interface AiAdoptionPoint extends QuarterPoint {
 }
 
 export interface FteCompositionPoint extends QuarterPoint {
-  /** Average tax-tech FTE count across in-quarter submissions. */
-  avgTaxTechFte: number;
-  /** Average tax-business FTE count across in-quarter submissions. */
-  avgTaxBusinessFte: number;
+  /** Median tax-tech FTE count across in-quarter submissions. */
+  medianTaxTechFte: number;
+  /** Median tax-business FTE count across in-quarter submissions. */
+  medianTaxBusinessFte: number;
 }
 
 /**
@@ -96,17 +96,16 @@ export function submissionVolumeTrend(submissions: Submission[]): QuarterPoint[]
   }));
 }
 
-/** Average composite automation index per quarter. */
+/** Median composite automation index per quarter. */
 export function automationIndexTrend(submissions: Submission[]): AutomationTrendPoint[] {
   const buckets = bucketByQuarter(submissions);
   return [...buckets.entries()].map(([quarter, subs]) => {
     const scores = subs.map(compositeAuto).filter(n => Number.isFinite(n));
-    const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : NaN;
     return {
       quarter,
       count: subs.length,
       uniqueUsers: uniqueUserCount(subs),
-      avgAutomationIndex: avg,
+      medianAutomationIndex: scores.length ? median(scores) : NaN,
     };
   });
 }
@@ -126,20 +125,18 @@ export function aiAdoptionTrend(submissions: Submission[]): AiAdoptionPoint[] {
   });
 }
 
-/** Average FTE counts per quarter (tax tech vs tax business). */
+/** Median FTE counts per quarter (tax tech vs tax business). */
 export function fteCompositionTrend(submissions: Submission[]): FteCompositionPoint[] {
   const buckets = bucketByQuarter(submissions);
   return [...buckets.entries()].map(([quarter, subs]) => {
     const tech = subs.map(s => mapTechFTE(s.taxTechFTEsRange)).filter(n => Number.isFinite(n));
     const biz  = subs.map(s => mapBizFTE(s.taxBusinessFTEsRange)).filter(n => Number.isFinite(n));
-    const avgTech = tech.length ? tech.reduce((a, b) => a + b, 0) / tech.length : 0;
-    const avgBiz  = biz.length  ? biz.reduce((a, b) => a + b, 0) / biz.length  : 0;
     return {
       quarter,
       count: subs.length,
       uniqueUsers: uniqueUserCount(subs),
-      avgTaxTechFte: avgTech,
-      avgTaxBusinessFte: avgBiz,
+      medianTaxTechFte: median(tech),
+      medianTaxBusinessFte: median(biz),
     };
   });
 }
