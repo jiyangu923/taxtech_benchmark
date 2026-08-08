@@ -507,8 +507,9 @@ export const api = {
   /**
    * Ask the server to generate the member's printable benchmark report and
    * email it to their registered address. Server computes all numbers
-   * (medians) and always mails the authed user's own profile email — the
-   * client can't pick a recipient. Returns the masked address for the toast.
+   * (medians) and always mails the authed user's own login email (the
+   * verified auth identity, not the editable profile row) — the client can't
+   * pick a recipient. Returns the masked address for the toast.
    */
   async requestBenchmarkReport(): Promise<{ ok: boolean; emailedTo: string }> {
     const { data: { session } } = await withTimeout(

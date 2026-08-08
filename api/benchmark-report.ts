@@ -17,8 +17,10 @@ import {
  * narrative around it — it never computes a statistic, so it can't
  * hallucinate one.
  *
- * Recipient is always the authenticated user's own profile email — the
- * endpoint cannot be used to send mail anywhere else.
+ * Recipient is always the AUTH identity email (userData.user.email from the
+ * verified JWT) — never profiles.email, which is self-updatable under RLS and
+ * could be repointed at an arbitrary address. The endpoint cannot be used to
+ * send mail anywhere else.
  */
 
 // Enum→number maps, inlined (the no-imports-outside-/api rule). Parity with
@@ -221,16 +223,21 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
   const { data: userData, error: userErr } = await userClient.auth.getUser(token);
   if (userErr || !userData?.user) return res.status(401).json({ error: 'Your session expired — sign in again.' });
   const userId = userData.user.id;
+  // Recipient comes from the VERIFIED auth identity, never from profiles.email:
+  // the profiles row is self-updatable under RLS, so a client could repoint it
+  // at an arbitrary address. auth.users.email can only change via a confirmed
+  // email-change flow.
+  const authEmail = userData.user.email;
+  if (!authEmail) return res.status(500).json({ error: 'No registered email on your account.' });
 
   const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
   const [profileRes, mineRes, cohortRes, usageRes] = await Promise.all([
-    admin.from('profiles').select('name, email, role').eq('id', userId).maybeSingle(),
+    admin.from('profiles').select('name, role').eq('id', userId).maybeSingle(),
     admin.from('submissions').select('*').eq('userId', userId).eq('is_current', true).eq('status', 'approved').limit(1),
     admin.from('submissions').select('*').eq('is_current', true).eq('status', 'approved'),
     admin.from('ai_usage').select('window_started_at, cost_usd, input_tokens, output_tokens').eq('user_id', userId).maybeSingle(),
   ]);
-  const profile = profileRes.data as { name?: string; email?: string; role?: string } | null;
-  if (!profile?.email) return res.status(500).json({ error: 'No registered email on your profile.' });
+  const profile = profileRes.data as { name?: string; role?: string } | null;
   const mine = (mineRes.data as SubRow[] | null)?.[0];
   if (!mine) return res.status(403).json({ error: 'Set up your benchmark profile first — chat with Taxi for two minutes.' });
   const cohort = (cohortRes.data as SubRow[]) ?? [];
@@ -269,6 +276,9 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
     }],
     output_config: { format: { type: 'json_schema', schema: NARRATIVE_SCHEMA } },
   } as any);
+  // Meter before parsing — the model call cost money even if the output is
+  // unusable (mirrors /api/claude ordering).
+  if (!isAdmin && meterState) await recordUsage(admin, userId, meterState, pickUsage(response.usage));
   const text = (response.content.find((b: any) => b.type === 'text') as { text?: string } | undefined)?.text ?? '';
   let narrative: { headline: string; summary: string; strengths: string[]; gaps: string[]; recommendations: string[] };
   try {
@@ -276,20 +286,19 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
   } catch {
     return res.status(502).json({ error: 'Report generation failed — please try again.' });
   }
-  if (!isAdmin && meterState) await recordUsage(admin, userId, meterState, pickUsage(response.usage));
 
   // 3. Render + email to the member's own registered address (never elsewhere).
   const siteUrl = 'https://taxbenchmark.ai';
   const generatedAt = new Date().toISOString().slice(0, 10);
   const html = renderReportHtml({
-    name: profile.name || 'Member', role, ...narrative, metrics, cohortSize, generatedAt, siteUrl,
+    name: profile?.name || 'Member', role, ...narrative, metrics, cohortSize, generatedAt, siteUrl,
   });
   const sendResp = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: fromAddress,
-      to: profile.email,
+      to: authEmail,
       subject: 'Your tax benchmark report — taxbenchmark.ai',
       html,
     }),
@@ -300,7 +309,7 @@ async function runHandler(req: VercelRequest, res: VercelResponse) {
     return res.status(502).json({ error: 'Could not send the email right now — please try again.' });
   }
 
-  return res.status(200).json({ ok: true, emailedTo: maskEmail(profile.email) });
+  return res.status(200).json({ ok: true, emailedTo: maskEmail(authEmail) });
 }
 
 export const config = { maxDuration: 60 };
