@@ -10,15 +10,18 @@ name: Intake live test
 #   report  — ephemeral user + approved submission, POST the deployed
 #             /api/benchmark-report, assert 200 (email goes to Resend's
 #             official test inbox). Everything deleted afterwards.
+#   rls     — ephemeral user tries to self-promote role + repoint email on
+#             its own profiles row; both must be rejected, name update must
+#             pass (lock_profiles_columns.sql). No model cost.
 # Manual-only: costs a few cents of model usage per drive run.
 
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'drive (scripted interview), report (benchmark-report email), or confirm (activate an email)'
+        description: 'drive (interview), report (report email), rls (profiles lockdown), confirm (activate an email)'
         type: choice
-        options: [drive, report, confirm]
+        options: [drive, report, rls, confirm]
         default: drive
       confirm_email:
         description: 'Email to confirm (confirm mode only)'

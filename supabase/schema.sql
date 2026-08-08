@@ -109,7 +109,13 @@ alter table public.settings    enable row level security;
 -- Profiles: users can read/update/insert their own profile; admins can read all
 create policy "Users can insert own profile"
   on public.profiles for insert
-  with check (auth.uid() = id);
+  with check (
+    auth.uid() = id
+    -- email pinned to the verified JWT identity (lock_profiles_columns.sql):
+    -- a self-healed row must not carry a forged address. The signup trigger
+    -- is SECURITY DEFINER and bypasses this policy.
+    and lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+  );
 
 create policy "Users can view own profile"
   on public.profiles for select
@@ -118,6 +124,18 @@ create policy "Users can view own profile"
 create policy "Users can update own profile"
   on public.profiles for update
   using (auth.uid() = id);
+
+-- ⚠️ INVARIANT (lock_profiles_columns.sql — run it after this file plus
+-- add_reminders_schema.sql): the RLS above grants row-level self-access,
+-- but column-level grants restrict authenticated writes to
+-- name / email_reminders_enabled / last_reminder_sent_at (update) and
+-- id / name / email (insert; email pinned to the JWT identity by the
+-- insert policy above). role is never client-writable and email can
+-- never be UPDATEd nor inserted as a forged value — users must not
+-- self-promote (the server AI meter reads profiles.role) or repoint
+-- profiles.email (a live send-target for cron reminders and release
+-- letters). role changes go exclusively through the
+-- promote_to_admin / demote_from_admin SECURITY DEFINER RPCs.
 
 create policy "Admins can view all profiles"
   on public.profiles for select

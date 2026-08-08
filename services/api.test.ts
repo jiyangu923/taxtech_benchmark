@@ -189,6 +189,9 @@ describe('login', () => {
     profiles.single.mockResolvedValueOnce({ data: null });     // initial lookup misses
     profiles.single.mockResolvedValueOnce({ data: created });  // insert().select().single()
     expect(await api.login('new@test.com', 'pass')).toEqual(created);
+    // SECURITY: the self-heal insert must never send role (column-revoked;
+    // a client-supplied role was a self-promotion hole) — DB default applies.
+    expect(profiles.insert).toHaveBeenCalledWith({ id: 'u1', email: 'new@test.com', name: 'new' });
   });
 
   it('throws when the profile is missing and recreation also fails', async () => {
@@ -491,6 +494,15 @@ describe('updateUserProfile', () => {
     const result = await api.updateUserProfile(updated);
     expect(result.name).toBe('New Name');
     expect(result.email).toBe('new@test.com');
+  });
+
+  it('SECURITY: sends name ONLY — email/role are column-revoked (lock_profiles_columns.sql)', async () => {
+    // Postgres checks column privileges on every column in SET even when the
+    // value is unchanged, so including email would 42501 EVERY profile save.
+    const updated = { id: 'u1', name: 'New Name', email: 'new@test.com', role: 'admin' as const };
+    profiles.single.mockResolvedValueOnce({ data: updated, error: null });
+    await api.updateUserProfile(updated);
+    expect(profiles.update).toHaveBeenCalledWith({ name: 'New Name' });
   });
 
   it('throws on a database error', async () => {
