@@ -3,6 +3,30 @@
 Deferred work with context. Convention: every deferral from a review lands here or it
 didn't happen. Effort scale: human-team → (CC = with Claude Code). Priority P1-P3.
 
+## Unified platform consolidation (2026-08-30)
+
+### ✅ DONE — Additive Phase 1 workspace foundation
+- TaxBrains is integrated at `apps/tax-ops`; the benchmark stays at the root until Vercel parity is proven.
+- Workspace type/build/test/audit gates are active. The prior TypeScript baseline and production dependency advisories are fixed.
+- Deterministic packages now cover exact money, CSV transaction/GL imports, reconciliation, anomaly rules, effective-dated rate application, sourced workpaper aggregation, and recorded-tax close preflight.
+
+### P0 — Validate tax-operations schema and RLS in preview
+- Apply `supabase/add_tax_ops_foundation.sql` to a non-production project.
+- Test owner/member/non-member behavior with at least two users and two organizations.
+- Confirm authenticated clients cannot insert or update financial rows and service-role workflows re-check membership.
+- Add repeatable database tests before any customer data is accepted.
+
+### P0 — Build authenticated import and review slice
+- Add TaxBrains auth + organization selection.
+- Create trusted import-batch and persistence endpoints with idempotency/content hashes.
+- Render structured import errors, anomalies, and reconciliation results from `runComplianceClosePreflight`.
+- Use synthetic fixtures until preview RLS tests pass.
+
+### P0 — Select and verify first customer rule scope
+- Do not seed all countries. Choose the first design partner's jurisdiction/product combination.
+- Re-verify taxability, rate, effective dates, authority sources, and rounding rules.
+- Produce deterministic determinations and connect them to `buildFilingWorkpaper`.
+
 ## From lookup_rate tool loop (PR #132, 2026-07-14)
 
 ### ✅ DONE — Wire Taxi to the lookup_rate tool (PR #134)
@@ -14,10 +38,9 @@ didn't happen. Effort scale: human-team → (CC = with Claude Code). Priority P1
 - **Then:** trigger the first run (Actions → "Live evals" → Run workflow) to establish the baseline; tune `EVAL_MIN_OVERALL` + add per-bucket floors after a few nightlies.
 - **P3 runner nits (review #137, consciously skipped):** a malformed golden case's `gradeCase` throw is caught by runCase and labeled a per-case "runner error" FAIL rather than surfacing as config (cosmetic — the golden-integrity unit tests catch malformed cases first); runner crash exits 1, same code as gate-fail (red either way; a distinct code 3 would be cleaner). Also: consider counting transport-error outcomes separately and exiting 2 when they dominate (SDK already retries 429/5xx twice).
 
-### P2 — Enable typecheck gating in CI (deferred from CI setup)
-- **What:** The new CI (`.github/workflows/ci.yml`) gates on `npm run build` + `npm test`, NOT `tsc --noEmit`. tsc has pre-existing baseline errors (`@vercel/node` types, `*.svg` module decls, `import.meta.env` needs `vite/client` types) that would red the gate. Fix the tsconfig/ambient decls, then add a `tsc --noEmit` step so type regressions are caught.
-- **Why:** vitest transpiles via esbuild and ignores type errors, so CI currently won't catch a type break. Build+test is a solid first gate but not complete.
-- **Effort:** S → (CC: S).
+### ✅ DONE — Enable typecheck gating in CI (2026-08-30 consolidation workspace)
+- Added the missing Vercel and Vite type environments, created `typecheck:all`, and made it a CI gate for both the benchmark and TaxBrains apps.
+- The same CI job now builds both applications and audits production dependencies at high severity.
 
 ### P3 — lookup_rate hardening (adversarial review nits, PR #132)
 - **What:** (1) `output_config.format` is applied on tool-calling turns too (baked into `base`); fine on Haiku today, but if the schema ever blocks a tool call, omit it until the final composing turn. (2) `lookup_rate` doesn't filter by `tax_type` — harmless while each jurisdiction has one current row; add the filter when a jurisdiction gets concurrent rows of different type. (3) Soft-cap worst case is now ~6 Haiku calls/request (5 loop + 1 fallback) before metering — accepted, revisit if MAX_TOKENS_CEILING or the model tier rises. (4) The invalid-JSON 502 path omits `answerId` (cosmetic; mirrors runNonStreaming).

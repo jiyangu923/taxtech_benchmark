@@ -1,8 +1,7 @@
 name: CI
 
-# The repo's first automated gate. Runs the frontend build + the full vitest
-# suite (640+ tests) on every PR to main and every push to main. Until now
-# nothing gated a PR — Vercel only runs `npm run build` on deploy, no tests.
+# Builds and checks every application in the platform workspace, then runs the
+# full deterministic test suite on every PR to main and every push to main.
 #
 # No secrets are used and this is `pull_request` (not `pull_request_target`), so
 # fork PRs run in their own context with no access to repo secrets — safe.
@@ -31,6 +30,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Keep the historical job id so an existing required `build-and-test` branch
+  # protection check continues to match after the workspace expansion.
   build-and-test:
     runs-on: ubuntu-latest
     steps:
@@ -40,7 +41,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Build (frontend)
-        run: npm run build
-      - name: Test (vitest)
+      - name: Typecheck (all apps)
+        run: npm run typecheck:all
+      - name: Build (all apps)
+        run: npm run build:all
+      - name: Test (benchmark and workspace)
         run: npm test
+      - name: Audit dependencies
+        run: npm audit --audit-level=high

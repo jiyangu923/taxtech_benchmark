@@ -1,20 +1,34 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# TaxBrains platform workspace
 
-# Run and deploy your AI Studio app
+One codebase for two separately deployed product surfaces:
 
-This contains everything you need to run your app locally.
+- **taxbenchmark.ai** — community, benchmark reports, and the public acquisition layer. It remains at the repository root during the first consolidation phase.
+- **taxbrains.ai** — the commercial indirect-tax compliance workspace in `apps/tax-ops`.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1hqF5GCxOZpy_bMpNpzS5Uy63BLBwLBhz
+See [Platform workspace](docs/PLATFORM_WORKSPACE.md) for commands and security boundaries, and [ADR 0001](docs/decisions/0001-unified-platform-workspace.md) for the consolidation decision.
 
-## Run Locally
+## Local development
 
-**Prerequisites:**  Node.js
+Prerequisite: Node.js 22.
 
+```sh
+npm install
+npm run dev
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `ANTHROPIC_API_KEY` in [.env.local](.env.local) to your Anthropic API key
-3. Run the app:
-   `npm run dev`
+Set benchmark environment variables in `.env.local`. The Anthropic key is server-side only.
+
+Run TaxBrains separately:
+
+```sh
+npm --workspace=@taxbrains/tax-ops run dev
+```
+
+## Verification
+
+```sh
+npm run verify
+npm audit --audit-level=high
+```
+
+`verify` type-checks both applications, builds both production bundles, and runs the deterministic workspace test suite.
