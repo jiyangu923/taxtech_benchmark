@@ -19,6 +19,15 @@ function assertCurrency(currency: string): void {
   }
 }
 
+export function assertMoney(value: Money): void {
+  if (!value || typeof value !== 'object') throw new Error('Money value must be an object');
+  assertCurrency(value.currency);
+  assertScale(value.scale);
+  if (typeof value.minorUnits !== 'bigint') {
+    throw new Error('Money minorUnits must be a bigint');
+  }
+}
+
 export function moneyFromDecimal(currency: string, value: string, scale = 2): Money {
   assertCurrency(currency);
   assertScale(scale);
@@ -43,12 +52,12 @@ export function moneyFromDecimal(currency: string, value: string, scale = 2): Mo
 export function moneyFromMinorUnits(currency: string, minorUnits: bigint, scale = 2): Money {
   assertCurrency(currency);
   assertScale(scale);
+  if (typeof minorUnits !== 'bigint') throw new Error('Money minorUnits must be a bigint');
   return Object.freeze({ currency, minorUnits, scale });
 }
 
 export function moneyToDecimal(value: Money): string {
-  assertCurrency(value.currency);
-  assertScale(value.scale);
+  assertMoney(value);
 
   const negative = value.minorUnits < 0n;
   const magnitude = (negative ? -value.minorUnits : value.minorUnits).toString();
@@ -60,6 +69,8 @@ export function moneyToDecimal(value: Money): string {
 }
 
 export function assertSameMoneyUnit(left: Money, right: Money): void {
+  assertMoney(left);
+  assertMoney(right);
   if (left.currency !== right.currency || left.scale !== right.scale) {
     throw new Error(
       `Money unit mismatch: ${left.currency}/${left.scale} versus ${right.currency}/${right.scale}`,
@@ -78,6 +89,7 @@ export function subtractMoney(left: Money, right: Money): Money {
 }
 
 export function absoluteMoney(value: Money): Money {
+  assertMoney(value);
   return moneyFromMinorUnits(
     value.currency,
     value.minorUnits < 0n ? -value.minorUnits : value.minorUnits,

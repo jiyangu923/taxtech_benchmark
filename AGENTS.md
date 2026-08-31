@@ -19,9 +19,10 @@ The plan in `docs/decisions/0001-unified-platform-workspace.md` supersedes the o
 - The TaxBrains app lives in `apps/tax-ops`.
 - Shared executable domain code lives in `packages`; do not create empty package scaffolds.
 - Supabase is the identity and persistence platform, with separate organization-owned tax-operations tables.
+- Vercel hosts the benchmark and TaxBrains web surfaces as separate projects. A new Cloud Run service hosts authenticated TaxBrains APIs and durable workflow workers; the legacy FastAPI service is rollback-only during migration.
 - Keep benchmark and tax-operations deployments, secrets, service roles, and data access independent.
 
-Read `docs/PLATFORM_WORKSPACE.md` before changing boundaries or database tables.
+Read `docs/PLATFORM_WORKSPACE.md` and `docs/decisions/0002-taxbrains-deployment-architecture.md` before changing boundaries, deployment targets, or database tables.
 
 ## Required verification
 

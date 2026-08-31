@@ -31,3 +31,12 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+:focus-visible {
+  outline: 3px solid var(--color-amber-acc);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-amber-acc) 25%, transparent);
+}

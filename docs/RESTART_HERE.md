@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-08-30<br>
 **Working branch:** `codex/unify-platform-phase-1`<br>
-**Plan of record:** `docs/decisions/0001-unified-platform-workspace.md`
+**Plans of record:** `docs/decisions/0001-unified-platform-workspace.md` and `docs/decisions/0002-taxbrains-deployment-architecture.md`
 
 ## Current state
 
@@ -12,6 +12,7 @@ Implemented foundations:
 
 - npm workspace covering `apps/*` and `packages/*`;
 - compliance-first TaxBrains landing surface and separate Vercel project config;
+- TaxBrains routes for the automation roadmap, compliance pilot, benchmark intelligence, and explicit not-found behavior;
 - workspace-wide type, build, test, and dependency-audit CI gates;
 - shared agent instructions in `AGENTS.md` to prevent conflicting plans and fake agent scaffolds;
 - exact-money representation with explicit scale and no JavaScript floating point;
@@ -22,6 +23,8 @@ Implemented foundations:
 - effective-dated rational tax-rate application with explicit rounding;
 - an end-to-end recorded-tax compliance preflight that blocks bad imports, separates currencies, detects anomalies, and reconciles recorded tax to GL;
 - unapplied Supabase migrations for organization tenancy, idempotent imports, normalized transaction/GL data, versioned reconciliation results, sourced determinations, filing workpapers, approvals, and evidence artifacts.
+- a deployment boundary that uses Vercel for the two frontends, Supabase for auth/data, and a new Cloud Run service for authenticated APIs and durable workflow workers;
+- a `taxbrains.ai` cutover runbook that keeps the existing Cloud Run application available for rollback and leaves `taxbenchmark.ai` untouched.
 
 ## Verification
 
@@ -43,16 +46,18 @@ The migrations `supabase/add_tax_ops_foundation.sql` and `supabase/add_tax_ops_w
 - Do not calculate expected tax for a customer until taxability, jurisdiction, effective-date, source, and rounding rules are all explicit.
 - Do not connect customer tax data to benchmark/community tables.
 - Do not add a generic “agent” in front of the preflight; the deterministic workflow already defines the calculation path.
+- Do not point `taxbrains.ai` at Vercel until the authentication/API transition and rollback gates in `docs/runbooks/taxbrains-domain-cutover.md` pass.
 
 ## Next implementation order
 
 1. Validate `add_tax_ops_foundation.sql` in a preview Supabase project and test two-user/two-organization isolation.
-2. Add TaxBrains authentication plus an organization selector using the new RPC and membership tables.
-3. Add a trusted server endpoint for import-batch creation and normalized-row persistence; clients must not write financial rows directly.
-4. Build the review UI around `runComplianceClosePreflight`: import errors first, then anomalies and reconciliation items.
-5. Re-verify and import the first narrow taxability/rate rule set demanded by a design partner.
-6. Connect sourced determinations to `buildFilingWorkpaper` and persist named approvals/evidence artifacts.
-7. Deploy only after a preview exercise with synthetic company data passes.
+2. Create the new TaxBrains Cloud Run API boundary and add Supabase JWT verification plus a server-side organization-membership check.
+3. Add TaxBrains authentication plus an organization selector using the new API and membership tables.
+4. Add a trusted server endpoint for import-batch creation and normalized-row persistence; clients must not write financial rows directly.
+5. Build the review UI around `runComplianceClosePreflight`: import errors first, then anomalies and reconciliation items.
+6. Re-verify and import the first narrow taxability/rate rule set demanded by a design partner.
+7. Connect sourced determinations to `buildFilingWorkpaper` and persist named approvals/evidence artifacts.
+8. Deploy only after a preview exercise with synthetic company data passes.
 
 ## Repositories retained as references
 

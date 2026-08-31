@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addMoney,
   moneyFromDecimal,
+  moneyFromMinorUnits,
   moneyToDecimal,
   subtractMoney,
 } from './money';
@@ -40,5 +41,6 @@ describe('Money invariants', () => {
     expect(() => moneyFromDecimal('USD', '1e3')).toThrow(/Invalid decimal/);
     expect(() => moneyFromDecimal('USD', '+1.00')).toThrow(/Invalid decimal/);
     expect(() => moneyFromDecimal('USD', '1.00', 10)).toThrow(/scale/);
+    expect(() => moneyFromMinorUnits('USD', 100 as never)).toThrow(/must be a bigint/);
   });
 });

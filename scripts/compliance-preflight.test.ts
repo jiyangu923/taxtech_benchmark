@@ -15,6 +15,8 @@ describe('compliance preflight CLI helpers', () => {
 
   it('rejects malformed thresholds', () => {
     expect(() => parseThresholds('USD')).toThrow(/CURRENCY=AMOUNT/);
+    expect(() => parseThresholds('USD=10,usd=20')).toThrow(/Duplicate threshold currency/);
+    expect(() => parseThresholds('USD=-1.00')).toThrow(/must not be negative/);
   });
 
   it('never writes raw imported rows into the console report', () => {

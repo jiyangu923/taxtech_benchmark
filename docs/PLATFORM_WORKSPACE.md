@@ -38,12 +38,15 @@ A fictional, non-customer example is available under `examples/compliance-close`
 
 ## Deployment boundaries
 
-| Surface | Vercel project root | Domain | Data/secrets |
+| Surface | Runtime/project root | Domain | Data/secrets |
 |---|---|---|---|
-| Benchmark | repository root | `taxbenchmark.ai` | Community and benchmark credentials |
-| Tax operations | `apps/tax-ops` | `taxbrains.ai` | Organization tax-operations credentials |
+| Benchmark web | Vercel, repository root | `taxbenchmark.ai` | Community and benchmark browser credentials |
+| Tax operations web | Vercel, `apps/tax-ops` | `taxbrains.ai` after preview approval | Browser-safe TaxBrains credentials only |
+| Tax operations API | New Google Cloud Run service | `api.taxbrains.ai` | Server credentials and narrow organization operations |
+| Tax workflow workers | Google Cloud Run jobs/services | No public browser domain | Imports, reconciliation, evidence, and notice processing |
+| System of record | Supabase | Provider-managed endpoints | Auth, RLS-protected organization data, and evidence storage |
 
-The projects share Git history and packages, not deployment authority. Production promotion remains independent.
+The projects share Git history and packages, not deployment authority. Production promotion remains independent. The existing `taxbrains-platform` FastAPI service is a retained rollback target during migration, not the backend foundation for the new product. See [ADR 0002](decisions/0002-taxbrains-deployment-architecture.md) and the [domain cutover runbook](runbooks/taxbrains-domain-cutover.md).
 
 ## Database transition
 

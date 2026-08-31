@@ -1,4 +1,6 @@
 import {
+  assertIsoDate,
+  assertValidTaxRuleReference,
   moneyFromMinorUnits,
   type Money,
   type TaxRuleReference,
@@ -30,9 +32,8 @@ export interface AppliedTaxRule {
 }
 
 const PERCENT_PATTERN = /^(\d{1,3})(?:\.(\d{1,9}))?$/;
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
 export function taxRateFromPercent(percent: string): RationalTaxRate {
+  if (typeof percent !== 'string') throw new Error(`Invalid tax-rate percentage: ${String(percent)}`);
   const match = PERCENT_PATTERN.exec(percent);
   if (!match) throw new Error(`Invalid tax-rate percentage: ${percent}`);
 
@@ -68,26 +69,19 @@ function roundRatio(numerator: bigint, denominator: bigint, mode: RoundingMode):
 }
 
 export function applyTaxRate(amount: Money, rate: RationalTaxRate, rounding: RoundingMode): Money {
+  if (typeof rate.numerator !== 'bigint' || typeof rate.denominator !== 'bigint') {
+    throw new Error('Tax-rate numerator and denominator must be bigint values');
+  }
   if (rate.numerator < 0n || rate.numerator > rate.denominator) {
     throw new Error('Tax rate must be between 0% and 100%');
   }
+  if (typeof rate.percent !== 'string') throw new Error('Tax-rate percent label must be a string');
+  const percentRate = taxRateFromPercent(rate.percent);
+  if (percentRate.numerator * rate.denominator !== rate.numerator * percentRate.denominator) {
+    throw new Error('Tax-rate percent label must match its exact numerator and denominator');
+  }
   const minorUnits = roundRatio(amount.minorUnits * rate.numerator, rate.denominator, rounding);
   return moneyFromMinorUnits(amount.currency, minorUnits, amount.scale);
-}
-
-function assertIsoDate(value: string, field: string): void {
-  if (!ISO_DATE.test(value)) {
-    throw new Error(`${field} must be a valid YYYY-MM-DD date`);
-  }
-  const [year, month, day] = value.split('-').map(Number);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  if (
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() !== month - 1 ||
-    parsed.getUTCDate() !== day
-  ) {
-    throw new Error(`${field} must be a valid YYYY-MM-DD date`);
-  }
 }
 
 export function isRuleEffective(rule: EffectiveTaxRule, asOf: string): boolean {
@@ -106,28 +100,25 @@ export function applyEffectiveTaxRule(
   asOf: string,
   rounding: RoundingMode,
 ): AppliedTaxRule {
+  if (!rule.ruleId.trim()) throw new Error('Rule ruleId is required');
+  if (!rule.version.trim()) throw new Error('Rule version is required');
+  if (!rule.jurisdiction.trim()) throw new Error('Rule jurisdiction is required');
+  if (!rule.taxType.trim()) throw new Error('Rule taxType is required');
   if (!isRuleEffective(rule, asOf)) {
     throw new Error(`Rule ${rule.ruleId}@${rule.version} is not effective on ${asOf}`);
   }
-  assertIsoDate(rule.lastVerified, 'lastVerified');
-  let source: URL;
-  try {
-    source = new URL(rule.sourceUrl);
-  } catch {
-    throw new Error(`Rule ${rule.ruleId}@${rule.version} has an invalid source URL`);
-  }
-  if (source.protocol !== 'https:') {
-    throw new Error(`Rule ${rule.ruleId}@${rule.version} source URL must use HTTPS`);
-  }
+
+  const ruleReference: TaxRuleReference = {
+    ruleId: rule.ruleId,
+    version: rule.version,
+    sourceUrl: rule.sourceUrl,
+    effectiveFrom: rule.effectiveFrom,
+    lastVerified: rule.lastVerified,
+  };
+  assertValidTaxRuleReference(ruleReference, `Rule ${rule.ruleId}@${rule.version}`);
 
   return {
     taxAmount: applyTaxRate(amount, rule.rate, rounding),
-    ruleReference: {
-      ruleId: rule.ruleId,
-      version: rule.version,
-      sourceUrl: rule.sourceUrl,
-      effectiveFrom: rule.effectiveFrom,
-      lastVerified: rule.lastVerified,
-    },
+    ruleReference,
   };
 }

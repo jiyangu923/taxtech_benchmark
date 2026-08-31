@@ -9,16 +9,20 @@ import {
 
 export function parseThresholds(value: string): Record<string, Money> {
   if (!value.trim()) throw new Error('At least one currency threshold is required');
-  return Object.fromEntries(
-    value.split(',').map((item) => {
-      const [currency, amount, ...extra] = item.split('=');
-      if (!currency || !amount || extra.length > 0) {
-        throw new Error(`Invalid threshold ${item}; expected CURRENCY=AMOUNT`);
-      }
-      const code = currency.trim().toUpperCase();
-      return [code, moneyFromDecimal(code, amount.trim())];
-    }),
-  );
+  const thresholds: Record<string, Money> = {};
+  for (const item of value.split(',')) {
+    const [currency, amount, ...extra] = item.split('=');
+    if (!currency?.trim() || !amount?.trim() || extra.length > 0) {
+      throw new Error(`Invalid threshold ${item}; expected CURRENCY=AMOUNT`);
+    }
+    const code = currency.trim().toUpperCase();
+    if (thresholds[code]) throw new Error(`Duplicate threshold currency: ${code}`);
+
+    const threshold = moneyFromDecimal(code, amount.trim());
+    if (threshold.minorUnits < 0n) throw new Error(`Threshold for ${code} must not be negative`);
+    thresholds[code] = threshold;
+  }
+  return thresholds;
 }
 
 export function stringifyExact(value: unknown): string {

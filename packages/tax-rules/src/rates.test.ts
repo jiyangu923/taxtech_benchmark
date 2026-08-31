@@ -62,6 +62,9 @@ describe('tax rates', () => {
     expect(() =>
       applyTaxRate(amount, taxRateFromPercent('5'), 'invented' as never),
     ).toThrow(/Unsupported rounding mode/);
+    expect(() =>
+      applyTaxRate(amount, { numerator: 5n, denominator: 100n, percent: '99' }, 'half_up'),
+    ).toThrow(/percent label must match/);
   });
 
   it('rounds negative refund amounts symmetrically', () => {
@@ -114,5 +117,16 @@ describe('effective tax rules', () => {
         'half_up',
       ),
     ).toThrow(/must use HTTPS/);
+  });
+
+  it('rejects rules without stable identity fields', () => {
+    expect(() =>
+      applyEffectiveTaxRule(
+        moneyFromDecimal('USD', '10.00'),
+        { ...RULE, ruleId: '' },
+        '2026-07-15',
+        'half_up',
+      ),
+    ).toThrow(/ruleId is required/);
   });
 });

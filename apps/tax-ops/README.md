@@ -1,6 +1,6 @@
 # TaxBrains tax operations
 
-This app is the authenticated commercial product surface for indirect-tax compliance operations. During Phase 1 it contains the public pilot landing page; product workflows will be added behind organization-level authentication and row-level security.
+This app is the commercial product surface for indirect-tax compliance operations. During Phase 1 it contains public product, compliance-pilot, and benchmark-intelligence pages. Customer workflows will be added behind organization-level authentication and row-level security.
 
 ## Local commands
 
@@ -9,11 +9,11 @@ Run commands from the repository root so the shared lockfile is used:
 ```sh
 npm install
 npm run build:tax-ops
-npm run typecheck:tax-ops
+npm run typecheck --workspace=@taxbrains/tax-ops
 npm --workspace=@taxbrains/tax-ops run dev
 ```
 
-For an independent Vercel project, configure the project root directory as `apps/tax-ops`. Keep its domains, secrets, service roles, and deployment approvals separate from the benchmark project.
+For an independent Vercel project, configure the project root directory as `apps/tax-ops`. Keep its domains, secrets, service roles, and deployment approvals separate from the benchmark project. The authenticated API and durable workflow workers deploy as a new Cloud Run service under `api.taxbrains.ai`; the existing FastAPI deployment is migration rollback only.
 
 ## Product boundary
 

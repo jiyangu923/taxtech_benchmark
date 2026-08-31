@@ -53,6 +53,24 @@ describe('detectTransactionAnomalies', () => {
     expect(anomalies.map((item) => item.type)).toEqual(['large_amount', 'missing_jurisdiction']);
   });
 
+  it('flags large refunds by absolute magnitude', () => {
+    const anomalies = detectTransactionAnomalies(
+      ORG,
+      [transaction({ netAmount: moneyFromDecimal('USD', '-100000.01') })],
+      { largeAmountThreshold: LARGE },
+    );
+
+    expect(anomalies.map((item) => item.type)).toContain('large_amount');
+  });
+
+  it('rejects a negative large-amount threshold', () => {
+    expect(() =>
+      detectTransactionAnomalies(ORG, [transaction()], {
+        largeAmountThreshold: moneyFromDecimal('USD', '-1.00'),
+      }),
+    ).toThrow(/must not be negative/);
+  });
+
   it('links duplicate source records to the first transaction', () => {
     const anomalies = detectTransactionAnomalies(
       ORG,

@@ -1,4 +1,11 @@
 import { addMoney, assertSameMoneyUnit, subtractMoney, zeroMoney, type Money } from './money';
+import {
+  assertIsoDate,
+  assertValidTaxRuleReference,
+  type TaxRuleReference,
+} from './provenance';
+
+export type { TaxRuleReference } from './provenance';
 
 export type FilingTransactionType = 'sale' | 'purchase' | 'refund';
 
@@ -6,14 +13,6 @@ export interface FilingSourceTransaction {
   readonly id: string;
   readonly organizationId: string;
   readonly transactionType: FilingTransactionType;
-}
-
-export interface TaxRuleReference {
-  readonly ruleId: string;
-  readonly version: string;
-  readonly sourceUrl: string;
-  readonly effectiveFrom: string;
-  readonly lastVerified: string;
 }
 
 export interface DeterministicTaxDetermination {
@@ -61,8 +60,6 @@ export interface FilingWorkpaperInput {
   readonly determinations: readonly DeterministicTaxDetermination[];
 }
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
 function sameRuleReference(left: TaxRuleReference, right: TaxRuleReference): boolean {
   return left.ruleId === right.ruleId &&
     left.version === right.version &&
@@ -72,12 +69,11 @@ function sameRuleReference(left: TaxRuleReference, right: TaxRuleReference): boo
 }
 
 export function buildFilingWorkpaper(input: FilingWorkpaperInput): FilingWorkpaper {
-  if (!input.organizationId) throw new Error('organizationId is required');
-  if (!input.jurisdiction) throw new Error('jurisdiction is required');
-  if (!input.taxType) throw new Error('taxType is required');
-  if (!ISO_DATE.test(input.periodStart) || !ISO_DATE.test(input.periodEnd)) {
-    throw new Error('Filing period dates must use YYYY-MM-DD');
-  }
+  if (!input.organizationId.trim()) throw new Error('organizationId is required');
+  if (!input.jurisdiction.trim()) throw new Error('jurisdiction is required');
+  if (!input.taxType.trim()) throw new Error('taxType is required');
+  assertIsoDate(input.periodStart, 'periodStart');
+  assertIsoDate(input.periodEnd, 'periodEnd');
   if (input.periodEnd < input.periodStart) throw new Error('periodEnd must not precede periodStart');
 
   const scale = input.amountScale ?? 2;
@@ -85,8 +81,12 @@ export function buildFilingWorkpaper(input: FilingWorkpaperInput): FilingWorkpap
   if (input.transactions.length === 0) throw new Error('At least one source transaction is required');
   const transactions = new Map<string, FilingSourceTransaction>();
   for (const transaction of input.transactions) {
+    if (!transaction.id.trim()) throw new Error('Transaction id is required');
     if (transaction.organizationId !== input.organizationId) {
       throw new Error('Cross-organization workpaper inputs are forbidden');
+    }
+    if (!['sale', 'purchase', 'refund'].includes(transaction.transactionType)) {
+      throw new Error(`Unsupported transaction type: ${String(transaction.transactionType)}`);
     }
     if (transactions.has(transaction.id)) throw new Error(`Duplicate transaction ID: ${transaction.id}`);
     transactions.set(transaction.id, transaction);
@@ -103,6 +103,7 @@ export function buildFilingWorkpaper(input: FilingWorkpaperInput): FilingWorkpap
   const determinedTransactionIds = new Set<string>();
 
   for (const determination of input.determinations) {
+    if (!determination.id.trim()) throw new Error('Determination id is required');
     if (determinationIds.has(determination.id)) {
       throw new Error(`Duplicate determination ID: ${determination.id}`);
     }
@@ -124,6 +125,7 @@ export function buildFilingWorkpaper(input: FilingWorkpaperInput): FilingWorkpap
       throw new Error(`Determination ${determination.id} has no rule provenance`);
     }
     for (const rule of determination.ruleReferences) {
+      assertValidTaxRuleReference(rule, `Determination ${determination.id} rule reference`);
       const key = `${rule.ruleId}:${rule.version}`;
       const existing = rules.get(key);
       if (existing && !sameRuleReference(existing, rule)) {

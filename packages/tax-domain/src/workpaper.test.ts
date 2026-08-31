@@ -134,4 +134,57 @@ describe('buildFilingWorkpaper', () => {
       ),
     ).toThrow(/outside the requested jurisdiction/);
   });
+
+  it('rejects impossible filing-period calendar dates', () => {
+    expect(() =>
+      buildFilingWorkpaper({
+        organizationId: ORG,
+        jurisdiction: 'US-CA',
+        taxType: 'sales_tax',
+        periodStart: '2026-99-01',
+        periodEnd: '2026-99-30',
+        currency: 'USD',
+        transactions: [transaction('sale-1', 'sale')],
+        determinations: [determination('det-sale', 'sale-1', '10.00')],
+      }),
+    ).toThrow(/valid YYYY-MM-DD/);
+  });
+
+  it('rejects unknown runtime transaction types', () => {
+    expect(() =>
+      build(
+        [{ id: 'sale-1', organizationId: ORG, transactionType: 'mystery' as never }],
+        [determination('det-sale', 'sale-1', '10.00')],
+      ),
+    ).toThrow(/Unsupported transaction type/);
+  });
+
+  it('rejects incomplete or invalid rule provenance', () => {
+    expect(() =>
+      build(
+        [transaction('sale-1', 'sale')],
+        [determination('det-sale', 'sale-1', '10.00', {
+          ruleReferences: [{ ...RULE, ruleId: '' }],
+        })],
+      ),
+    ).toThrow(/ruleId is required/);
+
+    expect(() =>
+      build(
+        [transaction('sale-1', 'sale')],
+        [determination('det-sale', 'sale-1', '10.00', {
+          ruleReferences: [{ ...RULE, effectiveFrom: '2026-02-30' }],
+        })],
+      ),
+    ).toThrow(/valid YYYY-MM-DD/);
+
+    expect(() =>
+      build(
+        [transaction('sale-1', 'sale')],
+        [determination('det-sale', 'sale-1', '10.00', {
+          ruleReferences: [{ ...RULE, sourceUrl: 'http://example.com' }],
+        })],
+      ),
+    ).toThrow(/must use HTTPS/);
+  });
 });

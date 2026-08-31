@@ -12,6 +12,8 @@
 --     by trusted server/service-role workflows;
 --   * no customer tax data is joined to benchmark/community tables.
 
+begin;
+
 create table if not exists public.tax_ops_organizations (
   id          uuid primary key default gen_random_uuid(),
   name        text not null check (char_length(btrim(name)) between 2 and 160),
@@ -39,7 +41,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
   select exists (
     select 1
@@ -57,7 +59,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = ''
 as $$
   select exists (
     select 1
@@ -75,7 +77,7 @@ create or replace function public.create_tax_ops_organization(
 returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   actor_id uuid := auth.uid();
@@ -237,6 +239,26 @@ create table if not exists public.tax_ops_reconciliation_items (
 
 create index if not exists tax_ops_reconciliation_items_run_status_idx
   on public.tax_ops_reconciliation_items (reconciliation_run_id, status);
+create index if not exists tax_ops_reconciliation_items_transaction_idx
+  on public.tax_ops_reconciliation_items (organization_id, transaction_id)
+  where transaction_id is not null;
+
+-- Reconciliation groups transaction rows by invoice/reference. Preserve every
+-- source row rather than collapsing a split invoice into one nullable ID.
+create table if not exists public.tax_ops_reconciliation_item_transactions (
+  organization_id        uuid not null references public.tax_ops_organizations(id) on delete cascade,
+  reconciliation_item_id uuid not null,
+  transaction_id         uuid not null,
+  created_at             timestamptz not null default now(),
+  foreign key (reconciliation_item_id, organization_id)
+    references public.tax_ops_reconciliation_items(id, organization_id) on delete cascade,
+  foreign key (transaction_id, organization_id)
+    references public.tax_ops_transactions(id, organization_id) on delete restrict,
+  primary key (reconciliation_item_id, transaction_id)
+);
+
+create index if not exists tax_ops_reconciliation_item_transactions_transaction_idx
+  on public.tax_ops_reconciliation_item_transactions (organization_id, transaction_id);
 
 create table if not exists public.tax_ops_reconciliation_item_gl_entries (
   organization_id       uuid not null references public.tax_ops_organizations(id) on delete cascade,
@@ -250,10 +272,13 @@ create table if not exists public.tax_ops_reconciliation_item_gl_entries (
   primary key (reconciliation_item_id, gl_entry_id)
 );
 
+create index if not exists tax_ops_reconciliation_item_gl_entries_gl_idx
+  on public.tax_ops_reconciliation_item_gl_entries (organization_id, gl_entry_id);
+
 create or replace function public.set_tax_ops_updated_at()
 returns trigger
 language plpgsql
-set search_path = public
+set search_path = ''
 as $$
 begin
   new.updated_at := now();
@@ -283,6 +308,7 @@ alter table public.tax_ops_transactions enable row level security;
 alter table public.tax_ops_gl_entries enable row level security;
 alter table public.tax_ops_reconciliation_runs enable row level security;
 alter table public.tax_ops_reconciliation_items enable row level security;
+alter table public.tax_ops_reconciliation_item_transactions enable row level security;
 alter table public.tax_ops_reconciliation_item_gl_entries enable row level security;
 
 drop policy if exists "Tax ops members read organizations" on public.tax_ops_organizations;
@@ -330,6 +356,11 @@ create policy "Tax ops members read reconciliation items"
   on public.tax_ops_reconciliation_items for select
   using (public.is_tax_ops_organization_member(organization_id));
 
+drop policy if exists "Tax ops members read reconciliation transaction links" on public.tax_ops_reconciliation_item_transactions;
+create policy "Tax ops members read reconciliation transaction links"
+  on public.tax_ops_reconciliation_item_transactions for select
+  using (public.is_tax_ops_organization_member(organization_id));
+
 drop policy if exists "Tax ops members read reconciliation GL links" on public.tax_ops_reconciliation_item_gl_entries;
 create policy "Tax ops members read reconciliation GL links"
   on public.tax_ops_reconciliation_item_gl_entries for select
@@ -346,16 +377,18 @@ revoke all on public.tax_ops_transactions from anon;
 revoke all on public.tax_ops_gl_entries from anon;
 revoke all on public.tax_ops_reconciliation_runs from anon;
 revoke all on public.tax_ops_reconciliation_items from anon;
+revoke all on public.tax_ops_reconciliation_item_transactions from anon;
 revoke all on public.tax_ops_reconciliation_item_gl_entries from anon;
 
-revoke insert, update, delete on public.tax_ops_organizations from authenticated;
-revoke insert, update, delete on public.tax_ops_organization_members from authenticated;
-revoke insert, update, delete on public.tax_ops_import_batches from authenticated;
-revoke insert, update, delete on public.tax_ops_transactions from authenticated;
-revoke insert, update, delete on public.tax_ops_gl_entries from authenticated;
-revoke insert, update, delete on public.tax_ops_reconciliation_runs from authenticated;
-revoke insert, update, delete on public.tax_ops_reconciliation_items from authenticated;
-revoke insert, update, delete on public.tax_ops_reconciliation_item_gl_entries from authenticated;
+revoke all on public.tax_ops_organizations from authenticated;
+revoke all on public.tax_ops_organization_members from authenticated;
+revoke all on public.tax_ops_import_batches from authenticated;
+revoke all on public.tax_ops_transactions from authenticated;
+revoke all on public.tax_ops_gl_entries from authenticated;
+revoke all on public.tax_ops_reconciliation_runs from authenticated;
+revoke all on public.tax_ops_reconciliation_items from authenticated;
+revoke all on public.tax_ops_reconciliation_item_transactions from authenticated;
+revoke all on public.tax_ops_reconciliation_item_gl_entries from authenticated;
 
 grant select on public.tax_ops_organizations to authenticated;
 grant select on public.tax_ops_organization_members to authenticated;
@@ -364,6 +397,7 @@ grant select on public.tax_ops_transactions to authenticated;
 grant select on public.tax_ops_gl_entries to authenticated;
 grant select on public.tax_ops_reconciliation_runs to authenticated;
 grant select on public.tax_ops_reconciliation_items to authenticated;
+grant select on public.tax_ops_reconciliation_item_transactions to authenticated;
 grant select on public.tax_ops_reconciliation_item_gl_entries to authenticated;
 
 comment on table public.tax_ops_organizations is
@@ -372,3 +406,7 @@ comment on table public.tax_ops_import_batches is
   'Idempotent source-file ingestion envelope; raw financial rows are written by trusted server workflows.';
 comment on table public.tax_ops_reconciliation_runs is
   'Versioned transaction-to-GL reconciliation result awaiting human review.';
+comment on table public.tax_ops_reconciliation_item_transactions is
+  'Complete source-transaction lineage for grouped reconciliation items, including split invoices.';
+
+commit;

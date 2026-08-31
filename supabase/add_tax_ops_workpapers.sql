@@ -2,6 +2,70 @@
 -- Depends on add_tax_ops_foundation.sql. Review and apply in preview only until
 -- RLS and lifecycle integration tests exist.
 
+begin;
+
+create or replace function public.tax_ops_is_valid_iso_date(value text)
+returns boolean
+language plpgsql
+immutable
+strict
+set search_path = ''
+as $$
+declare
+  parsed_value date;
+begin
+  if value !~ '^\d{4}-\d{2}-\d{2}$' then
+    return false;
+  end if;
+  parsed_value := value::date;
+  return pg_catalog.to_char(parsed_value, 'YYYY-MM-DD') = value;
+exception when others then
+  return false;
+end;
+$$;
+
+create or replace function public.tax_ops_rule_references_are_valid(rule_references jsonb)
+returns boolean
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  rule_reference jsonb;
+begin
+  if pg_catalog.jsonb_typeof(rule_references) <> 'array'
+     or pg_catalog.jsonb_array_length(rule_references) = 0 then
+    return false;
+  end if;
+
+  for rule_reference in
+    select value from pg_catalog.jsonb_array_elements(rule_references)
+  loop
+    if pg_catalog.jsonb_typeof(rule_reference) <> 'object'
+       or not (rule_reference ?& array['ruleId', 'version', 'sourceUrl', 'effectiveFrom', 'lastVerified'])
+       or pg_catalog.jsonb_typeof(rule_reference -> 'ruleId') <> 'string'
+       or pg_catalog.jsonb_typeof(rule_reference -> 'version') <> 'string'
+       or pg_catalog.jsonb_typeof(rule_reference -> 'sourceUrl') <> 'string'
+       or pg_catalog.jsonb_typeof(rule_reference -> 'effectiveFrom') <> 'string'
+       or pg_catalog.jsonb_typeof(rule_reference -> 'lastVerified') <> 'string'
+       or pg_catalog.btrim(rule_reference ->> 'ruleId') = ''
+       or pg_catalog.btrim(rule_reference ->> 'version') = ''
+       or (rule_reference ->> 'sourceUrl') !~ '^https://[^[:space:]]+$'
+       or not public.tax_ops_is_valid_iso_date(rule_reference ->> 'effectiveFrom')
+       or not public.tax_ops_is_valid_iso_date(rule_reference ->> 'lastVerified') then
+      return false;
+    end if;
+  end loop;
+
+  return true;
+end;
+$$;
+
+revoke all on function public.tax_ops_is_valid_iso_date(text) from public, anon, authenticated;
+revoke all on function public.tax_ops_rule_references_are_valid(jsonb) from public, anon, authenticated;
+grant execute on function public.tax_ops_is_valid_iso_date(text) to service_role;
+grant execute on function public.tax_ops_rule_references_are_valid(jsonb) to service_role;
+
 create table if not exists public.tax_ops_tax_determinations (
   id                       uuid primary key default gen_random_uuid(),
   organization_id          uuid not null references public.tax_ops_organizations(id) on delete cascade,
@@ -15,10 +79,7 @@ create table if not exists public.tax_ops_tax_determinations (
   tax_rate_percent         numeric(15, 9) not null check (tax_rate_percent between 0 and 100),
   expected_tax_amount      numeric(38, 9) not null,
   rule_references          jsonb not null
-                           check (
-                             jsonb_typeof(rule_references) = 'array'
-                             and jsonb_array_length(rule_references) > 0
-                           ),
+                           check (public.tax_ops_rule_references_are_valid(rule_references)),
   algorithm_version        text not null,
   input_fingerprint_sha256 text not null check (input_fingerprint_sha256 ~ '^[0-9a-f]{64}$'),
   created_by               uuid references auth.users(id) on delete set null,
@@ -63,6 +124,11 @@ create table if not exists public.tax_ops_filing_workpapers (
   approved_at              timestamptz,
   foreign key (reconciliation_run_id, organization_id)
     references public.tax_ops_reconciliation_runs(id, organization_id) on delete restrict,
+  check (
+    (status in ('approved', 'exported') and approved_at is not null)
+    or (status in ('draft', 'in_review') and approved_at is null)
+  ),
+  check (net_tax_payable = output_tax - input_tax),
   unique (
     organization_id,
     jurisdiction,
@@ -77,6 +143,8 @@ create table if not exists public.tax_ops_filing_workpapers (
 
 create index if not exists tax_ops_workpapers_org_period_idx
   on public.tax_ops_filing_workpapers (organization_id, period_end desc, jurisdiction);
+create index if not exists tax_ops_workpapers_reconciliation_run_idx
+  on public.tax_ops_filing_workpapers (organization_id, reconciliation_run_id);
 
 create table if not exists public.tax_ops_filing_workpaper_lines (
   id              uuid primary key default gen_random_uuid(),
@@ -93,6 +161,9 @@ create table if not exists public.tax_ops_filing_workpaper_lines (
   unique (id, organization_id)
 );
 
+create index if not exists tax_ops_workpaper_lines_workpaper_idx
+  on public.tax_ops_filing_workpaper_lines (organization_id, workpaper_id);
+
 create table if not exists public.tax_ops_workpaper_line_determinations (
   organization_id uuid not null references public.tax_ops_organizations(id) on delete cascade,
   workpaper_line_id uuid not null,
@@ -104,6 +175,9 @@ create table if not exists public.tax_ops_workpaper_line_determinations (
     references public.tax_ops_tax_determinations(id, organization_id) on delete restrict,
   primary key (workpaper_line_id, determination_id)
 );
+
+create index if not exists tax_ops_workpaper_line_determinations_determination_idx
+  on public.tax_ops_workpaper_line_determinations (organization_id, determination_id);
 
 create table if not exists public.tax_ops_workpaper_approvals (
   id              uuid primary key default gen_random_uuid(),
@@ -129,6 +203,147 @@ create unique index if not exists tax_ops_workpaper_one_pending_approval_idx
   on public.tax_ops_workpaper_approvals (workpaper_id)
   where status = 'pending';
 
+create index if not exists tax_ops_workpaper_approvals_workpaper_idx
+  on public.tax_ops_workpaper_approvals (organization_id, workpaper_id);
+create index if not exists tax_ops_workpaper_approvals_requested_by_idx
+  on public.tax_ops_workpaper_approvals (requested_by);
+create index if not exists tax_ops_workpaper_approvals_decided_by_idx
+  on public.tax_ops_workpaper_approvals (decided_by)
+  where decided_by is not null;
+
+create or replace function public.enforce_tax_ops_workpaper_approval()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  approval_time timestamptz;
+begin
+  if new.status in ('approved', 'exported') then
+    select approval.decided_at
+      into approval_time
+      from public.tax_ops_workpaper_approvals approval
+     where approval.workpaper_id = new.id
+       and approval.organization_id = new.organization_id
+       and approval.status = 'approved'
+     order by approval.decided_at desc
+     limit 1;
+
+    if approval_time is null then
+      raise exception 'Approved or exported workpapers require a named approved decision';
+    end if;
+    new.approved_at := approval_time;
+  else
+    new.approved_at := null;
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.enforce_tax_ops_approval_membership()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not exists (
+    select 1
+      from public.tax_ops_organization_members member
+     where member.organization_id = new.organization_id
+       and member.user_id = new.requested_by
+  ) then
+    raise exception 'Approval requester must belong to the workpaper organization';
+  end if;
+
+  if new.decided_by is not null and not exists (
+    select 1
+      from public.tax_ops_organization_members member
+     where member.organization_id = new.organization_id
+       and member.user_id = new.decided_by
+       and member.role in ('owner', 'admin', 'reviewer')
+  ) then
+    raise exception 'Approval decision requires an owner, admin, or reviewer in the organization';
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.approve_tax_ops_workpaper(
+  target_workpaper_id uuid,
+  approval_note text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  actor_id uuid := auth.uid();
+  approval_id uuid;
+  target_organization_id uuid;
+  decision_time timestamptz := pg_catalog.now();
+begin
+  if actor_id is null then
+    raise exception 'Authentication required';
+  end if;
+
+  select approval.id, approval.organization_id
+    into approval_id, target_organization_id
+    from public.tax_ops_workpaper_approvals approval
+    join public.tax_ops_filing_workpapers workpaper
+      on workpaper.id = approval.workpaper_id
+     and workpaper.organization_id = approval.organization_id
+   where approval.workpaper_id = target_workpaper_id
+     and approval.status = 'pending'
+   for update of approval, workpaper;
+
+  if approval_id is null then
+    raise exception 'No pending approval exists for this workpaper';
+  end if;
+  if not public.has_tax_ops_organization_role(
+    target_organization_id,
+    array['owner', 'admin', 'reviewer']
+  ) then
+    raise exception 'Reviewer access required';
+  end if;
+
+  update public.tax_ops_workpaper_approvals
+     set status = 'approved',
+         decided_by = actor_id,
+         decided_at = decision_time,
+         decision_note = approval_note
+   where id = approval_id
+     and organization_id = target_organization_id;
+
+  update public.tax_ops_filing_workpapers
+     set status = 'approved',
+         approved_at = decision_time
+   where id = target_workpaper_id
+     and organization_id = target_organization_id;
+
+  return approval_id;
+end;
+$$;
+
+revoke all on function public.enforce_tax_ops_workpaper_approval() from public, anon, authenticated;
+revoke all on function public.enforce_tax_ops_approval_membership() from public, anon, authenticated;
+revoke all on function public.approve_tax_ops_workpaper(uuid, text) from public;
+grant execute on function public.approve_tax_ops_workpaper(uuid, text) to authenticated;
+
+drop trigger if exists tax_ops_workpaper_approval_guard on public.tax_ops_filing_workpapers;
+create trigger tax_ops_workpaper_approval_guard
+  before insert or update on public.tax_ops_filing_workpapers
+  for each row execute function public.enforce_tax_ops_workpaper_approval();
+
+drop trigger if exists tax_ops_approval_membership_guard on public.tax_ops_workpaper_approvals;
+create trigger tax_ops_approval_membership_guard
+  before insert or update on public.tax_ops_workpaper_approvals
+  for each row execute function public.enforce_tax_ops_approval_membership();
+
 create table if not exists public.tax_ops_evidence_artifacts (
   id                     uuid primary key default gen_random_uuid(),
   organization_id        uuid not null references public.tax_ops_organizations(id) on delete cascade,
@@ -142,9 +357,12 @@ create table if not exists public.tax_ops_evidence_artifacts (
   created_at             timestamptz not null default now(),
   foreign key (workpaper_id, organization_id)
     references public.tax_ops_filing_workpapers(id, organization_id) on delete restrict,
-  unique (organization_id, content_sha256),
+  unique (workpaper_id, artifact_kind, content_sha256),
   unique (id, organization_id)
 );
+
+create index if not exists tax_ops_evidence_artifacts_workpaper_idx
+  on public.tax_ops_evidence_artifacts (organization_id, workpaper_id);
 
 drop trigger if exists tax_ops_filing_workpapers_updated_at on public.tax_ops_filing_workpapers;
 create trigger tax_ops_filing_workpapers_updated_at
@@ -195,12 +413,12 @@ revoke all on public.tax_ops_workpaper_line_determinations from anon;
 revoke all on public.tax_ops_workpaper_approvals from anon;
 revoke all on public.tax_ops_evidence_artifacts from anon;
 
-revoke insert, update, delete on public.tax_ops_tax_determinations from authenticated;
-revoke insert, update, delete on public.tax_ops_filing_workpapers from authenticated;
-revoke insert, update, delete on public.tax_ops_filing_workpaper_lines from authenticated;
-revoke insert, update, delete on public.tax_ops_workpaper_line_determinations from authenticated;
-revoke insert, update, delete on public.tax_ops_workpaper_approvals from authenticated;
-revoke insert, update, delete on public.tax_ops_evidence_artifacts from authenticated;
+revoke all on public.tax_ops_tax_determinations from authenticated;
+revoke all on public.tax_ops_filing_workpapers from authenticated;
+revoke all on public.tax_ops_filing_workpaper_lines from authenticated;
+revoke all on public.tax_ops_workpaper_line_determinations from authenticated;
+revoke all on public.tax_ops_workpaper_approvals from authenticated;
+revoke all on public.tax_ops_evidence_artifacts from authenticated;
 
 grant select on public.tax_ops_tax_determinations to authenticated;
 grant select on public.tax_ops_filing_workpapers to authenticated;
@@ -215,3 +433,5 @@ comment on table public.tax_ops_workpaper_approvals is
   'Named human decisions for a filing workpaper; direct client writes are not granted.';
 comment on table public.tax_ops_evidence_artifacts is
   'Content-addressed exports linked to their source fingerprint and filing workpaper.';
+
+commit;

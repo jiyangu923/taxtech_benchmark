@@ -1,4 +1,4 @@
-import { assertSameMoneyUnit, type Money } from './money';
+import { absoluteMoney, assertSameMoneyUnit, type Money } from './money';
 
 export interface AnomalyTransaction {
   readonly id: string;
@@ -38,6 +38,9 @@ export function detectTransactionAnomalies(
   options: AnomalyOptions,
 ): readonly TaxAnomaly[] {
   if (!organizationId) throw new Error('organizationId is required');
+  if (options.largeAmountThreshold.minorUnits < 0n) {
+    throw new Error('Large-amount review threshold must not be negative');
+  }
 
   const anomalies: TaxAnomaly[] = [];
   const seenSourceIds = new Map<string, string>();
@@ -60,7 +63,7 @@ export function detectTransactionAnomalies(
       });
     }
 
-    if (transaction.netAmount.minorUnits > options.largeAmountThreshold.minorUnits) {
+    if (absoluteMoney(transaction.netAmount).minorUnits > options.largeAmountThreshold.minorUnits) {
       anomalies.push({
         type: 'large_amount',
         severity: 'medium',
