@@ -22,6 +22,7 @@ Move only `taxbrains.ai` from the legacy Cloud Run web application to the unifie
 ## Verified unified frontend preview — 2026-08-30
 
 - Vercel project: `taxbrains` (`prj_rGSuA6PozoOHjTd7US43RbINw9kR`)
+- Current Git link: none; current project root setting: repository root (`null`)
 - Deployment ID: `dpl_2BmeaoNmPPrZKUKBgB3rbr2WoPvF`
 - Immutable preview: `https://taxbrains-korpsww07-jiyangu923-3533s-projects.vercel.app`
 - Deployment target: preview, not production
@@ -31,6 +32,8 @@ Move only `taxbrains.ai` from the legacy Cloud Run web application to the unifie
 - Local browser QA: desktop/mobile layouts, client navigation, Back/Forward, focus treatment, console, metadata, and overflow checks passed after the CTA contrast fix in commit `45c3c35`
 
 The preview proves the static web route boundary. It does not satisfy the authentication, new API, Supabase isolation, or production-domain cutover gates below.
+
+Do not connect the Vercel project to GitHub before PR #152 is merged: the current default branch does not yet contain `apps/tax-ops`. After merge, set the Vercel project root to `apps/tax-ops` and then connect `jiyangu923/taxtech_benchmark`; doing these in the opposite order can create a failed default-branch deployment.
 
 Do not copy secret values from the legacy service into documentation, logs, frontend variables, or pull requests.
 
