@@ -39,6 +39,8 @@ git diff --check
 
 The migrations `supabase/add_tax_ops_foundation.sql` and `supabase/add_tax_ops_workpapers.sql` have been reviewed statically but not executed because no local Postgres/Supabase CLI is installed and production mutation was intentionally excluded.
 
+The unified TaxBrains frontend is deployed as a protected, non-production Vercel preview at `https://taxbrains-korpsww07-jiyangu923-3533s-projects.vercel.app` (deployment `dpl_2BmeaoNmPPrZKUKBgB3rbr2WoPvF`). All direct routes and the social image return 200 through the authenticated preview check. GitHub PR #152 contains the branch, CI is green, and neither production domain nor DNS has been changed.
+
 ## Important stop gates
 
 - Do not apply the migration to production first. Use a preview Supabase project and add RLS integration tests.

@@ -15,6 +15,18 @@ Move only `taxbrains.ai` from the legacy Cloud Run web application to the unifie
 - Public legacy routes include `/login`, `/register`, `/docs`, `/openapi.json`, and `/api/v1/*`
 - The deployed environment exposes application, Google OAuth, and Gemini configuration names but no database connection variable.
 
+## Verified unified frontend preview — 2026-08-30
+
+- Vercel project: `taxbrains` (`prj_rGSuA6PozoOHjTd7US43RbINw9kR`)
+- Deployment ID: `dpl_2BmeaoNmPPrZKUKBgB3rbr2WoPvF`
+- Immutable preview: `https://taxbrains-korpsww07-jiyangu923-3533s-projects.vercel.app`
+- Deployment target: preview, not production
+- Access: Vercel deployment protection is enabled
+- Authenticated smoke checks: `/`, `/automation`, `/automation/compliance`, `/benchmark`, `/not-a-real-page`, and `/og.png` all returned 200
+- Local browser QA: desktop/mobile layouts, client navigation, Back/Forward, focus treatment, console, metadata, and overflow checks passed after the CTA contrast fix in commit `45c3c35`
+
+The preview proves the static web route boundary. It does not satisfy the authentication, new API, Supabase isolation, or production-domain cutover gates below.
+
 Do not copy secret values from the legacy service into documentation, logs, frontend variables, or pull requests.
 
 ## Non-negotiable preconditions
