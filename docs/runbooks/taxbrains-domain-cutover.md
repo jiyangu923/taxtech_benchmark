@@ -12,6 +12,10 @@ Move only `taxbrains.ai` from the legacy Cloud Run web application to the unifie
 - Traffic: 100% to revision `taxbrains-platform-00072-x99`
 - Stable provider URL: `https://taxbrains-platform-fo6dbyfcda-uw.a.run.app`
 - Custom domain: `taxbrains.ai`, currently mapped to Cloud Run and healthy
+- DNS authority: Cloudflare nameservers `darl.ns.cloudflare.com` and `michelle.ns.cloudflare.com`
+- Current apex A records: `216.239.32.21`, `216.239.34.21`, `216.239.36.21`, and `216.239.38.21`
+- Current apex AAAA records: Google `2001:4860:4802:*::15` domain-mapping targets
+- `www.taxbrains.ai` did not return a public A or CNAME record during the audit
 - Public legacy routes include `/login`, `/register`, `/docs`, `/openapi.json`, and `/api/v1/*`
 - The deployed environment exposes application, Google OAuth, and Gemini configuration names but no database connection variable.
 
@@ -22,6 +26,7 @@ Move only `taxbrains.ai` from the legacy Cloud Run web application to the unifie
 - Immutable preview: `https://taxbrains-korpsww07-jiyangu923-3533s-projects.vercel.app`
 - Deployment target: preview, not production
 - Access: Vercel deployment protection is enabled
+- The Vercel project already lists `taxbrains.ai` and `www.taxbrains.ai`, but Vercel correctly reports the domain as misconfigured because authoritative DNS still points the apex to Google Cloud Run.
 - Authenticated smoke checks: `/`, `/automation`, `/automation/compliance`, `/benchmark`, `/not-a-real-page`, and `/og.png` all returned 200
 - Local browser QA: desktop/mobile layouts, client navigation, Back/Forward, focus treatment, console, metadata, and overflow checks passed after the CTA contrast fix in commit `45c3c35`
 
