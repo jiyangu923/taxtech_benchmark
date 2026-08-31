@@ -1,3 +1,7 @@
+# Claude Code entry point
+
+Read and follow `AGENTS.md` before making changes. The accepted product and architecture direction is in `docs/decisions/0001-unified-platform-workspace.md`; older TaxBrains planning documents are historical unless that ADR explicitly incorporates them.
+
 # Project Memory
 
 ## Supabase Project

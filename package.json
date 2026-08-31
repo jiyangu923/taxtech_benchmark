@@ -3,12 +3,27 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:benchmark": "vite build",
+    "build:tax-ops": "npm run build --workspace=@taxbrains/tax-ops",
+    "build:workspaces": "npm run build --workspaces --if-present",
+    "build:all": "npm run build:benchmark && npm run build:workspaces",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:all": "vitest run",
+    "test:benchmark": "vitest run",
     "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "typecheck:workspaces": "npm run typecheck --workspaces --if-present",
+    "typecheck:all": "npm run typecheck && npm run typecheck:workspaces",
+    "verify": "npm run typecheck:all && npm run build:all && npm run test:all",
+    "compliance:preflight": "tsx scripts/compliance-preflight.ts",
     "evals:live": "tsx evals/run.ts"
   },
   "dependencies": {

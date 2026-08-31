@@ -1,0 +1,3 @@
+external_id,invoice_number,transaction_type,transaction_at,seller_country,buyer_country,buyer_jurisdiction,currency,net_amount,recorded_tax_amount,is_exempt
+txn-1001,INV-1001,sale,2026-07-15,US,US,US-CA,USD,1000.00,72.50,false
+txn-1002,INV-1002,sale,2026-07-16,US,US,US-CA,USD,500.00,0.00,false

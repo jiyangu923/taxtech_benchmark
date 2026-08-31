@@ -1,6 +1,6 @@
 # taxbrains.ai — Product & Build Plan
 
-**Status:** Draft for founder review · 2026-08-08
+**Status:** Superseded on 2026-08-30 by [ADR 0001](decisions/0001-unified-platform-workspace.md). Retained for decision history.
 **Decision owner:** J Gu
 **Relationship to prior docs:** revises one decision in [AI_HARNESS_PLAN.md](AI_HARNESS_PLAN.md) (see §1); inherits its non-negotiables (§2) and phase sequencing (§4).
 
